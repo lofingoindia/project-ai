@@ -4,6 +4,7 @@ import 'home_page.dart';
 import 'pages/books_page.dart';
 import 'pages/cart_page.dart';
 import 'my_account_page.dart';
+import 'my_orders_page.dart';
 import 'services/localization_service.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -22,6 +23,18 @@ class MainNavigation extends StatefulWidget {
   static void switchToShopWithAgeFilter(BuildContext context, String ageFilter) {
     final state = context.findAncestorStateOfType<_MainNavigationState>();
     state?.switchToShopWithAge(ageFilter);
+  }
+
+  // Static method to switch to Profile tab and navigate to Orders
+  static void switchToProfileAndNavigateToOrders(BuildContext context) {
+    final state = context.findAncestorStateOfType<_MainNavigationState>();
+    state?.switchToProfileWithOrdersNavigation();
+  }
+
+  // Static method to refresh cart
+  static void refreshCart(BuildContext context) {
+    final state = context.findAncestorStateOfType<_MainNavigationState>();
+    state?._refreshCartIfVisible();
   }
 }
 
@@ -89,6 +102,27 @@ class _MainNavigationState extends State<MainNavigation> {
         _navigatorKeys[1].currentState?.pushReplacement(
           MaterialPageRoute(
             builder: (context) => BooksPage(initialAgeFilter: ageFilter),
+          ),
+        );
+      }
+    });
+  }
+
+  // Method to switch to Profile tab and navigate to Orders
+  void switchToProfileWithOrdersNavigation() {
+    // First, reset the Profile tab navigator to ensure fresh state
+    _navigatorKeys[3].currentState?.popUntil((route) => route.isFirst);
+    
+    setState(() {
+      _currentIndex = 3; // Switch to Profile tab (index 3)
+    });
+    
+    // Navigate to Orders page within the Profile tab after switching
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        _navigatorKeys[3].currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => MyOrdersPage(),
           ),
         );
       }
@@ -402,6 +436,13 @@ class _MainNavigationState extends State<MainNavigation> {
               }
             });
           }
+          
+          // If switching TO Cart tab, refresh the cart
+          if (index == 2) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              _refreshCartIfVisible();
+            });
+          }
         }
         setState(() {
           _currentIndex = index;
@@ -545,6 +586,13 @@ class _MainNavigationState extends State<MainNavigation> {
                     ),
                   );
                 }
+              });
+            }
+            
+            // If switching TO Cart tab, refresh the cart
+            if (index == 2) {
+              Future.delayed(const Duration(milliseconds: 100), () {
+                _refreshCartIfVisible();
               });
             }
           }

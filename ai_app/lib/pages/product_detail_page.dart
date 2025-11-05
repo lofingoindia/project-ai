@@ -523,22 +523,103 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                                       height: 1.2,
                                     ),
                                   ),
+                                  const SizedBox(height: 8),
+                                  // Price display
+                                  Row(
+                                    children: [
+                                      if (widget.book.discountPercentage > 0) ...[
+                                        // Show discounted price
+                                        Text(
+                                          widget.book.formattedDiscountedPrice,
+                                          style: GoogleFonts.tajawal(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF784D9C),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Show original price with strikethrough
+                                        Text(
+                                          widget.book.formattedPrice,
+                                          style: GoogleFonts.tajawal(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey[600],
+                                            decoration: TextDecoration.lineThrough,
+                                          ),
+                                        ),
+                                      ] else ...[
+                                        // Show regular price
+                                        Text(
+                                          widget.book.formattedPrice,
+                                          style: GoogleFonts.tajawal(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF784D9C),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               )
                             : Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  // Title - takes available space
+                                  // Title and Price - takes available space
                                   Expanded(
-                                    child: Text(
-                                      widget.book.title,
-                                      textAlign: TextAlign.left,
-                                      style: GoogleFonts.tajawal(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color.fromARGB(255, 0, 0, 0),
-                                        height: 1.2,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          widget.book.title,
+                                          textAlign: TextAlign.left,
+                                          style: GoogleFonts.tajawal(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color.fromARGB(255, 0, 0, 0),
+                                            height: 1.2,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        // Price display
+                                        Row(
+                                          children: [
+                                            if (widget.book.discountPercentage > 0) ...[
+                                              // Show discounted price
+                                              Text(
+                                                widget.book.formattedDiscountedPrice,
+                                                style: GoogleFonts.tajawal(
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: const Color(0xFF784D9C),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              // Show original price with strikethrough
+                                              Text(
+                                                widget.book.formattedPrice,
+                                                style: GoogleFonts.tajawal(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Colors.grey[600],
+                                                  decoration: TextDecoration.lineThrough,
+                                                ),
+                                              ),
+                                            ] else ...[
+                                              // Show regular price
+                                              Text(
+                                                widget.book.formattedPrice,
+                                                style: GoogleFonts.tajawal(
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: const Color(0xFF784D9C),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   
@@ -678,7 +759,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        widget.book.ageRange ?? '${widget.book.ageMin} - ${widget.book.ageMax} ${'product_detail_years_old'.tr}',
+                                        widget.book.ageRange != null && widget.book.ageRange!.isNotEmpty 
+                                            ? widget.book.ageRange! 
+                                            : '${widget.book.ageMin} - ${widget.book.ageMax} ${'product_detail_years_old'.tr}',
                                         style: GoogleFonts.tajawal(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,

@@ -7,6 +7,7 @@ import '../models/book.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
 import '../services/localization_service.dart';
+import '../main_navigation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'thank_you_page.dart';
 
@@ -1137,6 +1138,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
       // Clear cart after successful order
       final cartService = CartService();
       await cartService.clearCart();
+
+      // Refresh cart in main navigation to ensure UI updates
+      if (mounted) {
+        MainNavigation.refreshCart(context);
+      }
       
       return orderId;
     } catch (e) {

@@ -152,11 +152,11 @@ class Book {
   }
 
   String get formattedPrice {
-    return '\$${price.toStringAsFixed(2)}';
+    return 'SYP ${price.toStringAsFixed(2)}';
   }
 
   String get formattedDiscountedPrice {
-    return '\$${discountedPrice.toStringAsFixed(2)}';
+    return 'SYP ${discountedPrice.toStringAsFixed(2)}';
   }
 
   // Get the title (compatibility with existing code)

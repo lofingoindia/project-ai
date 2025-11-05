@@ -36,6 +36,11 @@ class CartNotifier extends ChangeNotifier {
     await _loadCartCount(); // Refresh count
   }
 
+  Future<void> clearCart() async {
+    await _cartService.clearCart();
+    await _loadCartCount(); // Refresh count
+  }
+
   Future<void> refresh() async {
     await _loadCartCount();
   }

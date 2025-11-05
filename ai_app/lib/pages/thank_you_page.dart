@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../my_orders_page.dart';
+import '../main_navigation.dart';
 import '../services/localization_service.dart';
 
 class ThankYouPage extends StatefulWidget {
@@ -52,11 +52,15 @@ class _ThankYouPageState extends State<ThankYouPage>
     // Navigate to My Orders after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => MyOrdersPage(),
-          ),
-        );
+        // Navigate back to main navigation and switch to profile tab with orders
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        
+        // Use a post-frame callback to ensure navigation is complete
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            MainNavigation.switchToProfileAndNavigateToOrders(context);
+          }
+        });
       }
     });
   }

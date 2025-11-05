@@ -215,40 +215,95 @@ class _BooksPageState extends State<BooksPage> {
 
         // Age filter
         if (_selectedAge != null && _selectedAge!.isNotEmpty && _selectedAge != 'All ages') {
-          // First, try to match using the age_range string field from database
+          // Parse selected age range (e.g., "3-5" -> minAge: 3, maxAge: 5)
+          int selectedMinAge = 0;
+          int selectedMaxAge = 100;
+          
+          if (_selectedAge!.contains('+')) {
+            // Handle "13+" format
+            selectedMinAge = int.tryParse(_selectedAge!.replaceAll('+', '').trim()) ?? 0;
+            selectedMaxAge = 100;
+          } else if (_selectedAge!.contains('-')) {
+            // Handle "0-2", "3-5", etc. format
+            List<String> parts = _selectedAge!.split('-');
+            selectedMinAge = int.tryParse(parts[0].trim()) ?? 0;
+            selectedMaxAge = int.tryParse(parts[1].trim()) ?? 100;
+          }
+
+          // Debug print
+          print('🎯 Selected age filter: $_selectedAge -> Min: $selectedMinAge, Max: $selectedMaxAge');
+
+          bool ageMatches = false;
+
+          // Try to extract numeric ages from the book's age_range field (supports Arabic and English)
           if (book.ageRange != null && book.ageRange!.isNotEmpty) {
-            // Extract age range from string like "3-5 years old" or "6-8 years old"
-            String bookAgeRange = book.ageRange!.replaceAll(RegExp(r'\s*years?\s*old'), '').trim();
+            print('📖 Book: ${book.title}, ageRange field: "${book.ageRange}"');
             
-            // Debug print
-            print('Checking book: ${book.title}, ageRange field: "${book.ageRange}", extracted: "$bookAgeRange", selected: "$_selectedAge"');
+            // Convert Arabic numerals to English numerals and extract numbers
+            String normalizedAgeRange = book.ageRange!
+                .replaceAll('٠', '0').replaceAll('١', '1').replaceAll('٢', '2')
+                .replaceAll('٣', '3').replaceAll('٤', '4').replaceAll('٥', '5')
+                .replaceAll('٦', '6').replaceAll('٧', '7').replaceAll('٨', '8')
+                .replaceAll('٩', '9');
             
-            // Direct match: if book's age range matches selected range
-            if (bookAgeRange != _selectedAge) {
-              return false;
+            print('📝 Normalized age range: "$normalizedAgeRange"');
+            
+            // Extract numbers from normalized text
+            RegExp numberRegex = RegExp(r'\d+');
+            List<String> numbers = numberRegex.allMatches(normalizedAgeRange).map((m) => m.group(0)!).toList();
+            
+            print('🔢 Extracted numbers: $numbers');
+            
+            if (numbers.length >= 2) {
+              // If we found at least 2 numbers, assume they are min and max ages
+              int bookMinAge = int.tryParse(numbers[0]) ?? 0;
+              int bookMaxAge = int.tryParse(numbers[1]) ?? 100;
+              
+              print('📊 Extracted from ageRange: Min: $bookMinAge, Max: $bookMaxAge');
+              
+              // Check if the book's age range matches exactly with the selected range
+              if (bookMinAge == selectedMinAge && bookMaxAge == selectedMaxAge) {
+                ageMatches = true;
+                print('✅ Exact age range match');
+              } else {
+                print('❌ Age range mismatch: Book($bookMinAge-$bookMaxAge) vs Selected($selectedMinAge-$selectedMaxAge)');
+              }
+            } else if (numbers.length == 1) {
+              // Single number in age range, check if it falls within selected range
+              int bookAge = int.tryParse(numbers[0]) ?? 0;
+              if (bookAge >= selectedMinAge && bookAge <= selectedMaxAge) {
+                ageMatches = true;
+                print('✅ Single age $bookAge falls within selected range');
+              } else {
+                print('❌ Single age $bookAge outside selected range');
+              }
+            } else {
+              print('⚠️ No numbers found in age range, trying fallback');
             }
+          }
+          
+          // If no match from ageRange field, try numeric age_min and age_max fields
+          if (!ageMatches) {
+            print('🔄 Trying fallback with ageMin: ${book.ageMin}, ageMax: ${book.ageMax}');
+            
+            // Check if book's numeric age range matches selected range
+            if (book.ageMin == selectedMinAge && book.ageMax == selectedMaxAge) {
+              ageMatches = true;
+              print('✅ Fallback exact match');
+            } else if (selectedMinAge <= book.ageMin && book.ageMax <= selectedMaxAge) {
+              // Book's range is within selected range
+              ageMatches = true;
+              print('✅ Book range within selected range');
+            } else {
+              print('❌ Fallback mismatch: Book(${book.ageMin}-${book.ageMax}) vs Selected($selectedMinAge-$selectedMaxAge)');
+            }
+          }
+          
+          if (!ageMatches) {
+            print('🚫 Book filtered out: ${book.title}');
+            return false;
           } else {
-            // Fallback to numeric age_min and age_max if age_range field is not available
-            int minAge = 0;
-            int maxAge = 100;
-            
-            if (_selectedAge!.contains('+')) {
-              // Handle "13+" format
-              minAge = int.tryParse(_selectedAge!.replaceAll('+', '').trim()) ?? 0;
-              maxAge = 100;
-            } else if (_selectedAge!.contains('-')) {
-              // Handle "0-2", "3-5", etc. format
-              List<String> parts = _selectedAge!.split('-');
-              minAge = int.tryParse(parts[0].trim()) ?? 0;
-              maxAge = int.tryParse(parts[1].trim()) ?? 100;
-            }
-
-            print('Checking book: ${book.title}, ageMin: ${book.ageMin}, ageMax: ${book.ageMax}, selected range: $minAge-$maxAge');
-
-            // Check if book's age range falls within selected range
-            if (book.ageMin < minAge || book.ageMax > maxAge) {
-              return false;
-            }
+            print('✅ Book passed age filter: ${book.title}');
           }
         }
 
