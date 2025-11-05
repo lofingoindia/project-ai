@@ -507,24 +507,29 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
   }
 
   String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    final monthKeys = [
+      'month_jan', 'month_feb', 'month_mar', 'month_apr', 'month_may', 'month_jun',
+      'month_jul', 'month_aug', 'month_sep', 'month_oct', 'month_nov', 'month_dec'
     ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    final monthName = monthKeys[date.month - 1].tr;
+    return '$monthName ${date.day}, ${date.year}';
   }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'paid':
       case 'processing':
+      case 'confirmed':
         return Colors.blue;
       case 'shipped':
         return Colors.orange;
       case 'delivered':
+      case 'completed':
         return Colors.green;
       case 'cancelled':
+      case 'failed':
         return Colors.red;
+      case 'pending':
       default:
         return Colors.grey;
     }
@@ -532,12 +537,14 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
 
   String _getStatusText(String status) {
     final statusKey = 'my_orders_page_${status.toLowerCase()}';
-    // Try to get translation, fallback to capitalized status
-    try {
-      return statusKey.tr;
-    } catch (e) {
+    
+    // Check if translation exists, otherwise return capitalized status
+    final translatedText = statusKey.tr;
+    if (translatedText == statusKey) {
+      // Translation not found, return capitalized status
       return status.charAt(0).toUpperCase() + status.substring(1).toLowerCase();
     }
+    return translatedText;
   }
 
   /// Build generation status section with download button

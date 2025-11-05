@@ -169,7 +169,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
       if (_selectedCategory == 'all') {
         books = await _bookService.getFeaturedBooks(limit: 6);
-      } else if (_selectedCategory == 'boy' || _selectedCategory == 'girl') {
+      } else if (_selectedCategory == 'ولد' || _selectedCategory == 'girl') {
         books = await _bookService.getBooksByGender(
           _selectedCategory,
           limit: 6,
@@ -537,7 +537,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     // Popular Places Section
                     _buildPopularPlacesSection(),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 5),
                   ],
                 ),
               ),

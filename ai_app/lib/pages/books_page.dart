@@ -651,7 +651,6 @@ class _BooksPageState extends State<BooksPage> {
                               }),
                             ],
                           ),
-                          const SizedBox(height: 16),
                         ],
                       ],
                     ),
@@ -664,7 +663,7 @@ class _BooksPageState extends State<BooksPage> {
                     child: Container(
                       constraints: BoxConstraints(maxWidth: maxWidth),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0.5, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: _filteredBooks.isEmpty
                         ? Container(
                             padding: const EdgeInsets.all(40),
@@ -700,8 +699,8 @@ class _BooksPageState extends State<BooksPage> {
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: gridColumns,
-                              childAspectRatio: 0.95, // Adjusted for larger cards
-                              crossAxisSpacing: 16,
+                              childAspectRatio: 0.65, // Adjusted for larger cards
+                              crossAxisSpacing: 6,
                               mainAxisSpacing: 20,
                             ),
                             itemCount: _filteredBooks.length,
@@ -734,7 +733,7 @@ class _BooksPageState extends State<BooksPage> {
                     ),
                   ),
                   
-                  SizedBox(height: 15),
+                  SizedBox(height: 10),
                   
                   // Age groups - horizontal scroll for web, 2x2 grid for mobile
                   _buildAgeCardsSection(),

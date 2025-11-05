@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/ai_direct_service.dart';
@@ -175,9 +176,9 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildPreviewImage(String imageUrl) {
+  Widget _buildPreviewImage(String imageUrl, [bool isWeb = false]) {
     return Container(
-      height: 120,
+      height: isWeb ? 140 : 120, // Taller on web
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
@@ -227,8 +228,8 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
             // Eye icon overlay
             Center(
               child: Container(
-                width: 40,
-                height: 40,
+                width: isWeb ? 48 : 40, // Larger on web
+                height: isWeb ? 48 : 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withOpacity(0.2),
@@ -240,7 +241,7 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
                 child: Icon(
                   Icons.visibility_off,
                   color: Colors.white.withOpacity(0.8),
-                  size: 20,
+                  size: isWeb ? 24 : 20, // Larger on web
                 ),
               ),
             ),
@@ -252,291 +253,314 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
 
   @override
   Widget build(BuildContext context) {
+    // Check if we're on web
+    final bool isWeb = kIsWeb;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // For web, constrain the width like other pages
+    final double maxWidth = isWeb ? 600 : double.infinity;
+    final EdgeInsets padding = isWeb 
+        ? EdgeInsets.symmetric(
+            horizontal: screenWidth > 800 ? (screenWidth - maxWidth) / 2 : 16,
+            vertical: 16,
+          )
+        : const EdgeInsets.all(16.0);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3FF),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // Header
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                    ),
-                    Expanded(
-                      child: Text(
-                        widget.book.title,
-                        style: GoogleFonts.tajawal(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+            padding: padding,
+            child: Container(
+              width: isWeb ? maxWidth : double.infinity,
+              child: Column(
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                      ),
+                      Expanded(
+                        child: Text(
+                          widget.book.title,
+                          style: GoogleFonts.tajawal(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Main content
-                Container(
-                  width: double.infinity,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
+                      const SizedBox(width: 48),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Stack(
-                      children: [
-                        // Background gradient
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFFE8D5FF),
-                                  Color(0xFFD1B3FF),
-                                ],
-                              ),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Main content
+                  Container(
+                    width: double.infinity,
+                    height: isWeb ? 450 : 400, // Slightly taller for web
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
                         ),
-                        
-                        // Blur effect
-                        Positioned.fill(
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          // Background gradient
+                          Positioned.fill(
                             child: Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                   colors: [
-                                    Colors.black.withOpacity(0.3),
-                                    Colors.black.withOpacity(0.6),
+                                    Color(0xFFE8D5FF),
+                                    Color(0xFFD1B3FF),
                                   ],
+                                ),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                          ),
+                          
+                          // Blur effect
+                          Positioned.fill(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black.withOpacity(0.3),
+                                      Colors.black.withOpacity(0.6),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        
-                        // Content overlay
-                        Positioned.fill(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Spacer(),
-                                
-                                // Main message
-                                Text(
-                                  'Your book is just one moment away...',
-                                  style: GoogleFonts.tajawal(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                          
+                          // Content overlay
+                          Positioned.fill(
+                            child: Padding(
+                              padding: EdgeInsets.all(isWeb ? 32.0 : 24.0), // More padding on web
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Spacer(),
+                                  
+                                  // Main message
+                                  Text(
+                                    'Your book is just one moment away...',
+                                    style: GoogleFonts.tajawal(
+                                      fontSize: isWeb ? 24 : 20, // Larger text on web
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                
-                                const SizedBox(height: 16),
-                                
-                                Text(
-                                  _statusMessage,
-                                  style: GoogleFonts.tajawal(
-                                    fontSize: 16,
-                                    color: Colors.white.withOpacity(0.9),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  Text(
+                                    _statusMessage,
+                                    style: GoogleFonts.tajawal(
+                                      fontSize: isWeb ? 18 : 16, // Larger text on web
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                
-                                const SizedBox(height: 40),
-                                
-                                // Countdown circle
-                                AnimatedBuilder(
-                                  animation: _pulseAnimation,
-                                  builder: (context, child) {
-                                    return Transform.scale(
-                                      scale: _pulseAnimation.value,
-                                      child: Container(
-                                        width: 120,
-                                        height: 120,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.white.withOpacity(0.1),
-                                          border: Border.all(
-                                            color: Colors.white.withOpacity(0.3),
-                                            width: 2,
+                                  
+                                  SizedBox(height: isWeb ? 50 : 40), // More space on web
+                                  
+                                  // Countdown circle
+                                  AnimatedBuilder(
+                                    animation: _pulseAnimation,
+                                    builder: (context, child) {
+                                      return Transform.scale(
+                                        scale: _pulseAnimation.value,
+                                        child: Container(
+                                          width: isWeb ? 140 : 120, // Larger on web
+                                          height: isWeb ? 140 : 120,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.white.withOpacity(0.1),
+                                            border: Border.all(
+                                              color: Colors.white.withOpacity(0.3),
+                                              width: 2,
+                                            ),
                                           ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '$_countdownSeconds',
-                                            style: GoogleFonts.tajawal(
-                                              fontSize: 36,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
+                                          child: Center(
+                                            child: Text(
+                                              '$_countdownSeconds',
+                                              style: GoogleFonts.tajawal(
+                                                fontSize: isWeb ? 42 : 36, // Larger text on web
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
                                         ),
+                                      );
+                                    },
+                                  ),
+                                  
+                                  SizedBox(height: isWeb ? 50 : 40), // More space on web
+                                  
+                                  // Progress bar
+                                  if (_isProcessing) ...[
+                                    Container(
+                                      width: double.infinity,
+                                      height: isWeb ? 6 : 4, // Thicker on web
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.3),
+                                        borderRadius: BorderRadius.circular(isWeb ? 3 : 2),
                                       ),
-                                    );
-                                  },
-                                ),
-                                
-                                const SizedBox(height: 40),
-                                
-                                // Progress bar
-                                if (_isProcessing) ...[
-                                  Container(
-                                    width: double.infinity,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                    child: FractionallySizedBox(
-                                      alignment: Alignment.centerLeft,
-                                      widthFactor: _countdownSeconds > 0 ? (60 - _countdownSeconds) / 60 : 1.0,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(2),
+                                      child: FractionallySizedBox(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: _countdownSeconds > 0 ? (60 - _countdownSeconds) / 60 : 1.0,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(isWeb ? 3 : 2),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
+                                  ],
+                                  
+                                  const Spacer(),
+                                  
+                                  // Success state
+                                  if (!_isProcessing && _statusMessage == 'Generation completed!') ...[
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                      size: isWeb ? 56 : 48, // Larger on web
+                                    ),
+                                  ],
                                 ],
-                                
-                                const Spacer(),
-                                
-                                // Success state
-                                if (!_isProcessing && _statusMessage == 'Generation completed!') ...[
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green,
-                                    size: 48,
-                                  ),
-                                ],
-                              ],
+                              ),
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: isWeb ? 32 : 20), // More space on web
+                  
+                  // Preview images section
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isWeb ? 24 : 20), // More padding on web
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Preview images grid
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildPreviewImage(
+                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/1AEORo0ORZ9RdJH8rFMPD9x89VzAdy-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczEucG5n--blurred.png',
+                                isWeb,
+                              ),
+                            ),
+                            SizedBox(width: isWeb ? 16 : 12), // More space on web
+                            Expanded(
+                              child: _buildPreviewImage(
+                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/7HT71KMqMIZrtY77mxsfT0UinRvt13-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczQucG5n--blurred.png',
+                                isWeb,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        SizedBox(height: isWeb ? 16 : 12), // More space on web
+                        
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildPreviewImage(
+                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/dIdUBTa9hDyWtKvQSGsF60cTgRYx0I-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE1LnBuZw==--blurred.png',
+                                isWeb,
+                              ),
+                            ),
+                            SizedBox(width: isWeb ? 16 : 12), // More space on web
+                            Expanded(
+                              child: _buildPreviewImage(
+                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/iLjIVoazmUhpB3LhhRRcKdBO9uNteD-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE0LnBuZw==--blurred.png',
+                                isWeb,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        SizedBox(height: isWeb ? 20 : 16), // More space on web
+                        
+                        // Description text
+                        Container(
+                          padding: EdgeInsets.all(isWeb ? 20 : 16), // More padding on web
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.visibility_off,
+                                color: Colors.grey[600],
+                                size: isWeb ? 24 : 20, // Larger on web
+                              ),
+                              SizedBox(width: isWeb ? 16 : 12), // More space on web
+                              Expanded(
+                                child: Text(
+                                  'The full book will be generated completely after your purchase. Go ahead and unlock it.',
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: isWeb ? 16 : 14, // Larger text on web
+                                    color: Colors.grey[700],
+                                    height: 1.4,
+                                  ),
+                                  textAlign: TextAlign.left,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Preview images section
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Preview images grid
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildPreviewImage(
-                              'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/1AEORo0ORZ9RdJH8rFMPD9x89VzAdy-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczEucG5n--blurred.png',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildPreviewImage(
-                              'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/7HT71KMqMIZrtY77mxsfT0UinRvt13-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczQucG5n--blurred.png',
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 12),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildPreviewImage(
-                              'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/dIdUBTa9hDyWtKvQSGsF60cTgRYx0I-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE1LnBuZw==--blurred.png',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildPreviewImage(
-                              'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/iLjIVoazmUhpB3LhhRRcKdBO9uNteD-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE0LnBuZw==--blurred.png',
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Description text
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.visibility_off,
-                              color: Colors.grey[600],
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'The full book will be generated completely after your purchase. Go ahead and unlock it.',
-                                style: GoogleFonts.tajawal(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
-                                  height: 1.4,
-                                ),
-                                textAlign: TextAlign.left,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  
+                  // Add bottom padding for web
+                  if (isWeb) const SizedBox(height: 32),
+                ],
+              ),
             ),
           ),
         ),

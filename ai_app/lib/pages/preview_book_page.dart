@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/book.dart';
@@ -125,179 +126,207 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if we're on web
+    final bool isWeb = kIsWeb;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // For web, constrain the width like other pages
+    final double maxWidth = isWeb ? 600 : double.infinity;
+    final EdgeInsets bodyPadding = isWeb 
+        ? EdgeInsets.symmetric(
+            horizontal: screenWidth > 800 ? (screenWidth - maxWidth) / 2 : 16,
+            vertical: 16,
+          )
+        : const EdgeInsets.all(16);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Preview', style: GoogleFonts.tajawal()),
         backgroundColor: const Color(0xFFF5F3FF),
         elevation: 0,
+        centerTitle: isWeb, // Center title on web
       ),
       backgroundColor: const Color(0xFFF5F3FF),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Personalized Cover',
-                style: GoogleFonts.tajawal(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+          padding: bodyPadding,
+          child: Container(
+            width: isWeb ? maxWidth : double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Personalized Cover',
+                  style: GoogleFonts.tajawal(
+                    fontSize: isWeb ? 28 : 24, // Larger on web
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Display the generated image
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                SizedBox(height: isWeb ? 32 : 24), // More space on web
+                
+                // Display the generated image
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: _buildImage(isWeb),
+                  ),
+                ),
+                
+                SizedBox(height: isWeb ? 40 : 32), // More space on web
+                
+                // Show personalization details if available
+                if (widget.childName != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isWeb ? 20 : 16), // More padding on web
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFB47AFF).withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Personalized for:',
+                          style: GoogleFonts.tajawal(
+                            fontSize: isWeb ? 16 : 14, // Larger on web
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: isWeb ? 12 : 8), // More space on web
+                        Text(
+                          widget.childName!,
+                          style: GoogleFonts.tajawal(
+                            fontSize: isWeb ? 22 : 18, // Larger on web
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFB47AFF),
+                          ),
+                        ),
+                        if (widget.childAge != null) ...[
+                          SizedBox(height: isWeb ? 6 : 4), // More space on web
+                          Text(
+                            'Age: ${widget.childAge} years old',
+                            style: GoogleFonts.tajawal(
+                              fontSize: isWeb ? 16 : 14, // Larger on web
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                        if (widget.selectedLanguage != null) ...[
+                          SizedBox(height: isWeb ? 6 : 4), // More space on web
+                          Text(
+                            'Language: ${widget.selectedLanguage}',
+                            style: GoogleFonts.tajawal(
+                              fontSize: isWeb ? 16 : 14, // Larger on web
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: isWeb ? 32 : 24), // More space on web
+                ],
+                
+                Text(
+                  'Your personalized book cover is ready!',
+                  style: GoogleFonts.tajawal(
+                    fontSize: isWeb ? 18 : 16, // Larger on web
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                SizedBox(height: isWeb ? 32 : 24), // More space on web
+                
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isWeb ? 20 : 16, // More padding on web
+                          ),
+                          side: BorderSide(color: Theme.of(context).primaryColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Back',
+                          style: GoogleFonts.tajawal(
+                            fontSize: isWeb ? 18 : 16, // Larger on web
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: isWeb ? 20 : 16), // More space on web
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isAddingToCart ? null : _addToCart,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF784D9C),
+                          padding: EdgeInsets.symmetric(
+                            vertical: isWeb ? 20 : 16, // More padding on web
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: _isAddingToCart
+                            ? SizedBox(
+                                width: isWeb ? 24 : 20, // Larger on web
+                                height: isWeb ? 24 : 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Text(
+                                'Add to Cart',
+                                style: GoogleFonts.tajawal(
+                                  fontSize: isWeb ? 18 : 16, // Larger on web
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _buildImage(),
-                ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Show personalization details if available
-              if (widget.childName != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFB47AFF).withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Personalized for:',
-                        style: GoogleFonts.tajawal(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.childName!,
-                        style: GoogleFonts.tajawal(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFB47AFF),
-                        ),
-                      ),
-                      if (widget.childAge != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Age: ${widget.childAge} years old',
-                          style: GoogleFonts.tajawal(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                      if (widget.selectedLanguage != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Language: ${widget.selectedLanguage}',
-                          style: GoogleFonts.tajawal(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+                
+                // Add bottom padding for web
+                if (isWeb) const SizedBox(height: 32),
               ],
-              
-              Text(
-                'Your personalized book cover is ready!',
-                style: GoogleFonts.tajawal(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: BorderSide(color: Theme.of(context).primaryColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        'Back',
-                        style: GoogleFonts.tajawal(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isAddingToCart ? null : _addToCart,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF784D9C),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: _isAddingToCart
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Text(
-                              'Add to Cart',
-                              style: GoogleFonts.tajawal(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildImage() {
+  Widget _buildImage([bool isWeb = false]) {
+    // Set appropriate image constraints for web vs mobile
+    final double? imageHeight = isWeb ? 500 : 400;
+    final BoxFit imageFit = BoxFit.contain;
+
     if (widget.generatedImageUrl != null) {
       // Check if it's a data URL (base64)
       if (widget.generatedImageUrl!.startsWith('data:image/')) {
@@ -306,54 +335,77 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
           final base64Data = widget.generatedImageUrl!.split(',')[1];
           final bytes = base64Decode(base64Data);
           
-          return Image.memory(
-            bytes,
-            fit: BoxFit.contain,
+          return Container(
+            height: imageHeight,
+            child: Image.memory(
+              bytes,
+              fit: imageFit,
+            ),
           );
         } catch (e) {
           print('Error decoding base64 image: $e');
           return Container(
-            height: 400,
+            height: imageHeight,
             color: Colors.grey[200],
-            child: const Center(
-              child: Icon(Icons.error, color: Colors.grey, size: 48),
+            child: Center(
+              child: Icon(
+                Icons.error, 
+                color: Colors.grey, 
+                size: isWeb ? 56 : 48, // Larger icon on web
+              ),
             ),
           );
         }
       } else {
         // Display image from URL (regular HTTP URL)
-        return CachedNetworkImage(
-          imageUrl: widget.generatedImageUrl!,
-          fit: BoxFit.contain,
-          placeholder: (context, url) => Container(
-            height: 400,
-            color: Colors.grey[200],
-            child: const Center(
-              child: CircularProgressIndicator(),
+        return Container(
+          height: imageHeight,
+          child: CachedNetworkImage(
+            imageUrl: widget.generatedImageUrl!,
+            fit: imageFit,
+            placeholder: (context, url) => Container(
+              height: imageHeight,
+              color: Colors.grey[200],
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
             ),
-          ),
-          errorWidget: (context, url, error) => Container(
-            height: 400,
-            color: Colors.grey[200],
-            child: const Center(
-              child: Icon(Icons.error, color: Colors.grey, size: 48),
+            errorWidget: (context, url, error) => Container(
+              height: imageHeight,
+              color: Colors.grey[200],
+              child: Center(
+                child: Icon(
+                  Icons.error, 
+                  color: Colors.grey, 
+                  size: isWeb ? 56 : 48, // Larger icon on web
+                ),
+              ),
             ),
           ),
         );
       }
     } else if (widget.generatedCoverBytes != null) {
       // Display image from bytes (local processing - fallback)
-      return Image.memory(
-        widget.generatedCoverBytes!,
-        fit: BoxFit.contain,
+      return Container(
+        height: imageHeight,
+        child: Image.memory(
+          widget.generatedCoverBytes!,
+          fit: imageFit,
+        ),
       );
     } else {
       // No image available
       return Container(
-        height: 400,
+        height: imageHeight,
         color: Colors.grey[200],
-        child: const Center(
-          child: Text('No image available'),
+        child: Center(
+          child: Text(
+            'No image available',
+            style: GoogleFonts.tajawal(
+              fontSize: isWeb ? 18 : 16, // Larger text on web
+              color: Colors.grey[600],
+            ),
+          ),
         ),
       );
     }
