@@ -1,0 +1,178 @@
+/* Additional CSS for Product Metadata Fields */
+
+/* Metadata section styling */
+.product-metadata-section {
+  background: var(--nav-hover);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  border: 1px solid var(--border-color);
+}
+
+.product-metadata-section h4 {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--nav-active);
+}
+
+/* Character input styling */
+.character-input-hint {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Metadata display in view mode */
+.metadata-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin: 0.25rem;
+  background: var(--nav-active);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.characters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.character-tag {
+  background: #667eea;
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+
+/* Genre badge styling */
+.genre-badge {
+  background: #f5576c;
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+/* Age range badge */
+.age-range-badge {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+/* Ideal for badge */
+.ideal-for-badge {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+/* Enhanced form group for metadata */
+.form-group.metadata-field {
+  position: relative;
+}
+
+.form-group.metadata-field::before {
+  content: '★';
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--nav-active);
+  font-size: 1.2rem;
+}
+
+/* Product list item metadata display */
+.item-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.item-metadata-tag {
+  background: var(--border-color);
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.item-metadata-tag.genre {
+  background: rgba(245, 87, 108, 0.1);
+  color: #f5576c;
+  border: 1px solid rgba(245, 87, 108, 0.3);
+}
+
+.item-metadata-tag.age {
+  background: rgba(79, 172, 254, 0.1);
+  color: #4facfe;
+  border: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.item-metadata-tag.ideal-for {
+  background: rgba(67, 233, 123, 0.1);
+  color: #43e97b;
+  border: 1px solid rgba(67, 233, 123, 0.3);
+}
+
+/* Dark mode adjustments */
+body.dark-mode .metadata-badge,
+body.dark-mode .character-tag,
+body.dark-mode .genre-badge,
+body.dark-mode .age-range-badge,
+body.dark-mode .ideal-for-badge {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode .product-metadata-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive design for metadata */
+@media (max-width: 768px) {
+  .product-metadata-section {
+    padding: 1rem;
+  }
+  
+  .characters-list {
+    flex-direction: column;
+  }
+  
+  .character-tag {
+    width: fit-content;
+  }
+  
+  .item-metadata {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,397 @@
+/* RTL Global Utility System - Comprehensive RTL Support */
+
+/* Base RTL Direction */
+[dir="rtl"] {
+  direction: rtl;
+}
+
+[dir="ltr"] {
+  direction: ltr;
+}
+
+/* Automatic Text Alignment */
+[dir="rtl"] .text-left {
+  text-align: right !important;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left !important;
+}
+
+/* Margin Utilities - Auto RTL Swap */
+[dir="rtl"] .ml-1 { margin-right: 0.25rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-1 { margin-left: 0.25rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-2 { margin-right: 0.5rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-2 { margin-left: 0.5rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-3 { margin-right: 0.75rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-3 { margin-left: 0.75rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-4 { margin-right: 1rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-4 { margin-left: 1rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-5 { margin-right: 1.25rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-5 { margin-left: 1.25rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-6 { margin-right: 1.5rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-6 { margin-left: 1.5rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-8 { margin-right: 2rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-8 { margin-left: 2rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-10 { margin-right: 2.5rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-10 { margin-left: 2.5rem !important; margin-right: 0 !important; }
+[dir="rtl"] .ml-12 { margin-right: 3rem !important; margin-left: 0 !important; }
+[dir="rtl"] .mr-12 { margin-left: 3rem !important; margin-right: 0 !important; }
+
+/* Padding Utilities - Auto RTL Swap */
+[dir="rtl"] .pl-1 { padding-right: 0.25rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-1 { padding-left: 0.25rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-2 { padding-right: 0.5rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-2 { padding-left: 0.5rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-3 { padding-right: 0.75rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-3 { padding-left: 0.75rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-4 { padding-right: 1rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-4 { padding-left: 1rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-5 { padding-right: 1.25rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-5 { padding-left: 1.25rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-6 { padding-right: 1.5rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-6 { padding-left: 1.5rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-8 { padding-right: 2rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-8 { padding-left: 2rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-10 { padding-right: 2.5rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-10 { padding-left: 2.5rem !important; padding-right: 0 !important; }
+[dir="rtl"] .pl-12 { padding-right: 3rem !important; padding-left: 0 !important; }
+[dir="rtl"] .pr-12 { padding-left: 3rem !important; padding-right: 0 !important; }
+
+/* Flexbox Direction - Auto RTL Swap */
+[dir="rtl"] .flex-row {
+  flex-direction: row-reverse !important;
+}
+
+[dir="rtl"] .flex-row-reverse {
+  flex-direction: row !important;
+}
+
+/* Space Between Items - Auto RTL Swap */
+[dir="rtl"] .space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 0;
+  margin-right: 0;
+  margin-left: var(--tw-space-x);
+}
+
+[dir="rtl"] .space-x-1 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 0.25rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 0.5rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 0.75rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 1rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .space-x-5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 1.25rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .space-x-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 1.5rem;
+  margin-left: 0;
+}
+
+/* Border Utilities - Auto RTL Swap */
+[dir="rtl"] .border-l {
+  border-left: none !important;
+  border-right: 1px solid !important;
+  border-right-color: inherit;
+}
+
+[dir="rtl"] .border-r {
+  border-right: none !important;
+  border-left: 1px solid !important;
+  border-left-color: inherit;
+}
+
+[dir="rtl"] .border-l-2 {
+  border-left: none !important;
+  border-right: 2px solid !important;
+  border-right-color: inherit;
+}
+
+[dir="rtl"] .border-r-2 {
+  border-right: none !important;
+  border-left: 2px solid !important;
+  border-left-color: inherit;
+}
+
+/* Positioning - Auto RTL Swap */
+[dir="rtl"] .left-0 {
+  left: auto !important;
+  right: 0 !important;
+}
+
+[dir="rtl"] .right-0 {
+  right: auto !important;
+  left: 0 !important;
+}
+
+[dir="rtl"] .left-2 {
+  left: auto !important;
+  right: 0.5rem !important;
+}
+
+[dir="rtl"] .right-2 {
+  right: auto !important;
+  left: 0.5rem !important;
+}
+
+[dir="rtl"] .left-3 {
+  left: auto !important;
+  right: 0.75rem !important;
+}
+
+[dir="rtl"] .right-3 {
+  right: auto !important;
+  left: 0.75rem !important;
+}
+
+[dir="rtl"] .left-4 {
+  left: auto !important;
+  right: 1rem !important;
+}
+
+[dir="rtl"] .right-4 {
+  right: auto !important;
+  left: 1rem !important;
+}
+
+/* Transform - Auto RTL Swap */
+[dir="rtl"] .translate-x-full {
+  transform: translateX(-100%) !important;
+}
+
+[dir="rtl"] .-translate-x-full {
+  transform: translateX(100%) !important;
+}
+
+/* Rounded Corners - Auto RTL Swap */
+[dir="rtl"] .rounded-l {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: 0.25rem !important;
+  border-bottom-right-radius: 0.25rem !important;
+}
+
+[dir="rtl"] .rounded-r {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-top-left-radius: 0.25rem !important;
+  border-bottom-left-radius: 0.25rem !important;
+}
+
+[dir="rtl"] .rounded-l-lg {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: 0.5rem !important;
+  border-bottom-right-radius: 0.5rem !important;
+}
+
+[dir="rtl"] .rounded-r-lg {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-top-left-radius: 0.5rem !important;
+  border-bottom-left-radius: 0.5rem !important;
+}
+
+[dir="rtl"] .first\:rounded-t-lg:first-child {
+  border-top-left-radius: 0.5rem !important;
+  border-top-right-radius: 0.5rem !important;
+}
+
+[dir="rtl"] .last\:rounded-b-lg:last-child {
+  border-bottom-left-radius: 0.5rem !important;
+  border-bottom-right-radius: 0.5rem !important;
+}
+
+/* Layout Specific - Main Layout with Sidebar on Left in RTL */
+.main-layout {
+  display: flex !important;
+}
+
+/* LTR: Normal order - Sidebar left, content right */
+[dir="ltr"] .main-layout {
+  flex-direction: row !important;
+}
+
+/* RTL: Force sidebar to left side by NOT reversing the flex direction */
+[dir="rtl"] .main-layout {
+  flex-direction: row !important; /* Keep same order as LTR so sidebar stays on left */
+}
+
+/* Sidebar specific RTL - Since sidebar stays on left, border should be on right */
+[dir="rtl"] .sidebar-rtl {
+  border-right: 1px solid rgb(229 231 235) !important;
+  border-left: none !important;
+}
+
+[dir="ltr"] .sidebar-rtl {
+  border-right: 1px solid rgb(229 231 235) !important;
+  border-left: none !important;
+}
+
+/* Dark mode sidebar borders - Same for both RTL and LTR since sidebar stays left */
+.dark [dir="rtl"] .sidebar-rtl {
+  border-right: 1px solid rgb(55 65 81) !important;
+  border-left: none !important;
+}
+
+.dark [dir="ltr"] .sidebar-rtl {
+  border-right: 1px solid rgb(55 65 81) !important;
+  border-left: none !important;
+}
+
+/* Custom RTL Classes for Specific Components */
+
+/* Dropdown positioning */
+[dir="rtl"] .dropdown-rtl {
+  left: 0 !important;
+  right: auto !important;
+}
+
+[dir="ltr"] .dropdown-rtl {
+  right: 0 !important;
+  left: auto !important;
+}
+
+/* Icon positioning in inputs */
+[dir="rtl"] .icon-left {
+  left: auto !important;
+  right: 0.75rem !important;
+}
+
+[dir="rtl"] .icon-right {
+  right: auto !important;
+  left: 0.75rem !important;
+}
+
+/* Table cell alignment */
+[dir="rtl"] .table-cell-rtl {
+  text-align: right !important;
+}
+
+[dir="ltr"] .table-cell-rtl {
+  text-align: left !important;
+}
+
+/* Form input text direction inheritance */
+[dir="rtl"] input[type="text"],
+[dir="rtl"] input[type="email"],
+[dir="rtl"] input[type="password"],
+[dir="rtl"] input[type="search"],
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
+}
+
+[dir="ltr"] input[type="text"],
+[dir="ltr"] input[type="email"],
+[dir="ltr"] input[type="password"],
+[dir="ltr"] input[type="search"],
+[dir="ltr"] textarea,
+[dir="ltr"] select {
+  text-align: left;
+}
+
+/* Utility for auto-reversing flex containers */
+.rtl-flex {
+  display: flex;
+}
+
+[dir="rtl"] .rtl-flex {
+  flex-direction: row-reverse;
+}
+
+[dir="ltr"] .rtl-flex {
+  flex-direction: row;
+}
+
+/* Utility for auto-spacing in RTL */
+.rtl-space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+[dir="rtl"] .rtl-space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+.rtl-space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-left: 0.75rem;
+  margin-right: 0;
+}
+
+[dir="rtl"] .rtl-space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-left: 0;
+  margin-right: 0.75rem;
+}
+
+.rtl-space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-left: 1rem;
+  margin-right: 0;
+}
+
+[dir="rtl"] .rtl-space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+/* Navigation and menu specific */
+[dir="rtl"] .nav-item {
+  text-align: right;
+}
+
+[dir="ltr"] .nav-item {
+  text-align: left;
+}
+
+/* Badge positioning */
+[dir="rtl"] .badge-top-right {
+  top: -0.25rem;
+  left: -0.25rem;
+  right: auto;
+}
+
+[dir="ltr"] .badge-top-right {
+  top: -0.25rem;
+  right: -0.25rem;
+  left: auto;
+}
+
+/* Modal and overlay positioning */
+[dir="rtl"] .modal-slide-in {
+  transform: translateX(100%);
+}
+
+[dir="rtl"] .modal-slide-in.open {
+  transform: translateX(0);
+}
+
+[dir="ltr"] .modal-slide-in {
+  transform: translateX(-100%);
+}
+
+[dir="ltr"] .modal-slide-in.open {
+  transform: translateX(0);
+}

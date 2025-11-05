@@ -1,0 +1,65 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import RTL Global Utilities */
+@import './styles/rtl.css';
+
+/* Global Font Configuration - Apply Tajawal globally */
+@layer base {
+  body {
+    font-family: 'Tajawal', system-ui, Arial, sans-serif;
+  }
+  
+  /* Ensure all text elements inherit the font */
+  * {
+    font-family: inherit;
+  }
+}
+
+/* Legacy RTL Support - Keep for backwards compatibility */
+[dir="rtl"] {
+  direction: rtl;
+}
+
+[dir="ltr"] {
+  direction: ltr;
+}
+
+/* Ensure proper RTL layout for main container */
+.main-layout {
+  /* Use flexbox consistently - no conflicting grid rules */
+  display: flex !important;
+}
+
+/* RTL-specific flex direction - Keep sidebar on left in RTL */
+[dir="rtl"] .main-layout {
+  flex-direction: row; /* Same as LTR to keep sidebar on left */
+}
+
+[dir="ltr"] .main-layout {
+  flex-direction: row;
+}
+
+/* Ensure sidebar borders are on correct side - Right border for both RTL and LTR since sidebar stays on left */
+[dir="rtl"] .sidebar-rtl {
+  border-right: 1px solid rgb(229 231 235);
+  border-left: none;
+}
+
+[dir="ltr"] .sidebar-rtl {
+  border-right: 1px solid rgb(229 231 235);
+  border-left: none;
+}
+
+/* Dark mode border colors - Right border for both modes */
+.dark [dir="rtl"] .sidebar-rtl {
+  border-right: 1px solid rgb(55 65 81);
+  border-left: none;
+}
+
+.dark [dir="ltr"] .sidebar-rtl {
+  border-right: 1px solid rgb(55 65 81);
+  border-left: none;
+}
