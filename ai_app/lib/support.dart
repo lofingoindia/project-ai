@@ -157,9 +157,9 @@ class _SupportPageState extends State<SupportPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('support_page_how_can_help'.tr, style: TextStyle(fontSize: fontSizeTitle, fontWeight: FontWeight.bold)),
+                        Text('support_page_how_can_help'.tr, style: GoogleFonts.tajawal(fontSize: fontSizeTitle, fontWeight: FontWeight.bold)),
                         SizedBox(height: 8),
-                        Text('support_page_subtitle'.tr, style: TextStyle(color: Colors.black54, fontSize: fontSizeBody)),
+                        Text('support_page_subtitle'.tr, style: GoogleFonts.tajawal(color: Colors.black54, fontSize: fontSizeBody)),
                         SizedBox(height: 16),
                         TextField(
                           controller: _emailController,
@@ -227,7 +227,7 @@ class _SupportPageState extends State<SupportPage> {
                                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                       ),
                                     )
-                                  : Text('support_page_submit'.tr, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  : Text('support_page_submit'.tr, style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ),

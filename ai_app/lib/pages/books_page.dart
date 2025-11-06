@@ -724,7 +724,7 @@ class _BooksPageState extends State<BooksPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       'books_page_browse_stories_by_age'.tr,
-                      style: GoogleFonts.libreBaskerville(
+                      style: GoogleFonts.tajawal(
                         fontSize: MediaQuery.of(context).size.width < 500 ? 24 : 28,
                         fontWeight: FontWeight.w400,
                         color: Colors.black87,
@@ -1025,7 +1025,7 @@ class _BooksPageState extends State<BooksPage> {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
               child: Text(
                 ' ${'age'.tr} $ageRange',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF784D9C),
@@ -1099,7 +1099,7 @@ class _BooksPageState extends State<BooksPage> {
                 children: [
                   Text(
                     'books_page_imagination_heading'.tr,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: titleFontSize,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -1109,7 +1109,7 @@ class _BooksPageState extends State<BooksPage> {
                   SizedBox(height: _isTablet(context) ? 15 : 20),
                   Text(
                     'books_page_imagination_description'.tr,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: descFontSize,
                       fontWeight: FontWeight.w400,
                       color: Colors.white,
@@ -1137,7 +1137,7 @@ class _BooksPageState extends State<BooksPage> {
                     ),
                     child: Text(
                       'books_page_view_all_books'.tr,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.tajawal(
                         fontSize: buttonFontSize,
                         fontWeight: FontWeight.w600,
                       ),

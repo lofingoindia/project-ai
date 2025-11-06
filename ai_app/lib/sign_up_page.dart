@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'login_page.dart';
 import 'home_page.dart';
 import 'services/cart_service.dart';
@@ -71,7 +72,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 const SizedBox(height: 24),
                 Text(
                   'signup_page_title'.tr,
-                  style: TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF1A1A1A),
@@ -82,7 +83,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 const SizedBox(height: 8),
                 Text(
                   'signup_page_subtitle'.tr,
-                  style: TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 15,
                     color: Color(0xFF666666),
                     height: 1.5,
@@ -94,7 +95,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   controller: _nameController,
                   decoration: InputDecoration(
                     hintText: 'signup_page_enter_name'.tr,
-                    hintStyle: TextStyle(color: Color(0xFF999999)),
+                    hintStyle: GoogleFonts.tajawal(color: Color(0xFF999999)),
                     filled: true,
                     fillColor: Color(0xFFF8F9FA),
                     border: OutlineInputBorder(
@@ -117,7 +118,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   controller: _emailController,
                   decoration: InputDecoration(
                     hintText: 'signup_page_enter_email'.tr,
-                    hintStyle: TextStyle(color: Color(0xFF999999)),
+                    hintStyle: GoogleFonts.tajawal(color: Color(0xFF999999)),
                     filled: true,
                     fillColor: Color(0xFFF8F9FA),
                     border: OutlineInputBorder(
@@ -141,7 +142,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   obscureText: true,
                   decoration: InputDecoration(
                     hintText: 'signup_page_enter_password'.tr,
-                    hintStyle: TextStyle(color: Color(0xFF999999)),
+                    hintStyle: GoogleFonts.tajawal(color: Color(0xFF999999)),
                     filled: true,
                     fillColor: Color(0xFFF8F9FA),
                     border: OutlineInputBorder(
@@ -161,7 +162,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
                 const SizedBox(height: 24),
                 if (_error != null) ...[
-                  Text(_error!, style: TextStyle(color: Colors.red)),
+                  Text(_error!, style: GoogleFonts.tajawal(color: Colors.red)),
                   const SizedBox(height: 8),
                 ],
                 SizedBox(
@@ -185,7 +186,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           )
                         : Text(
                             'signup_page_button'.tr,
-                            style: TextStyle(
+                            style: GoogleFonts.tajawal(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.5,
@@ -199,7 +200,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   children: [
                     Text(
                       'signup_page_already_member'.tr,
-                      style: TextStyle(
+                      style: GoogleFonts.tajawal(
                         color: Color(0xFF666666),
                         fontSize: 14,
                       ),
@@ -212,7 +213,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       },
                       child: Text(
                         'signup_page_login'.tr,
-                        style: TextStyle(
+                        style: GoogleFonts.tajawal(
                           color: Color(0xFFB47AFF),
                           fontWeight: FontWeight.w600,
                           fontSize: 14,

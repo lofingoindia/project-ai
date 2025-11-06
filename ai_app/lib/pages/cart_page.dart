@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/order.dart';
@@ -203,7 +204,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                   const SizedBox(height: 16),
                   Text(
                     'cart_page_empty_title'.tr,
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20,
                       color: Colors.grey[600],
                     ),
@@ -211,7 +212,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                   const SizedBox(height: 8),
                   Text(
                     'cart_page_empty_subtitle'.tr,
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 16,
                       color: Colors.grey[500],
                     ),
@@ -228,7 +229,9 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                     ),
                     child: Text(
                       'cart_page_browse_books'.tr,
-                      style: const TextStyle(color: Colors.white),
+                      style: GoogleFonts.tajawal(
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -339,7 +342,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                 children: [
                   Text(
                     book.title,
-                    style: const TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -370,7 +373,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                               const SizedBox(width: 4),
                               Text(
                                 'cart_page_personalized_for'.tr,
-                                style: TextStyle(
+                                style: GoogleFonts.tajawal(
                                   fontSize: 12,
                                   color: Colors.grey[600],
                                 ),
@@ -380,7 +383,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                           const SizedBox(height: 4),
                           Text(
                             item.personalizationData['child_name'] ?? 'cart_page_unknown'.tr,
-                            style: const TextStyle(
+                            style: GoogleFonts.tajawal(
                               fontWeight: FontWeight.bold,
                               color: Color(0xFFB47AFF),
                             ),
@@ -389,7 +392,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                             const SizedBox(height: 2),
                             Text(
                               '${'cart_page_age_label'.tr} ${item.personalizationData['child_age']} ${'cart_page_years'.tr}',
-                              style: TextStyle(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 12,
                                 color: Colors.grey[600],
                               ),
@@ -399,7 +402,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                             const SizedBox(height: 2),
                             Text(
                               '${'cart_page_language_label'.tr} ${item.personalizationData['selected_language']}',
-                              style: TextStyle(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 12,
                                 color: Colors.grey[600],
                               ),
@@ -416,7 +419,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                     children: [
                       Text(
                         book.formattedDiscountedPrice,
-                        style: const TextStyle(
+                        style: GoogleFonts.tajawal(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFB47AFF),
@@ -489,7 +492,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
         children: [
           Text(
             'cart_page_add_another_book'.tr,
-            style: const TextStyle(
+            style: GoogleFonts.tajawal(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: Color(0xFF6B46C1),
@@ -513,7 +516,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
               ),
               child: Text(
                 'cart_page_add_books'.tr,
-                style: const TextStyle(
+                style: GoogleFonts.tajawal(
                   color: Color(0xFFB47AFF),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -552,14 +555,14 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
             children: [
               Text(
                 'cart_page_total'.tr,
-                style: const TextStyle(
+                style: GoogleFonts.tajawal(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 '\$${_total.toStringAsFixed(2)}',
-                style: const TextStyle(
+                style: GoogleFonts.tajawal(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFB47AFF),
@@ -597,7 +600,9 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                           ),
                           child: Text(
                             'cart_page_login_button'.tr,
-                            style: const TextStyle(color: Colors.white),
+                            style: GoogleFonts.tajawal(
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -652,7 +657,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
               ),
               child: Text(
                 'cart_page_proceed_checkout'.tr,
-                style: const TextStyle(
+                style: GoogleFonts.tajawal(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

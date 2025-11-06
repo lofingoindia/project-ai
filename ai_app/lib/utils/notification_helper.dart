@@ -84,7 +84,7 @@ class NotificationHelper {
           SnackBar(
             content: Text(
               message,
-              style: GoogleFonts.poppins(color: Colors.white),
+              style: GoogleFonts.tajawal(color: Colors.white),
             ),
             backgroundColor: backgroundColor,
             duration: const Duration(seconds: 2),

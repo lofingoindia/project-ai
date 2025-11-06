@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'login_page.dart';
 import 'services/localization_service.dart';
 
@@ -58,7 +59,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 const SizedBox(height: 24),
                 Text(
                   'forgot_password_page_title'.tr,
-                  style: TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF1A1A1A),
@@ -68,7 +69,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 const SizedBox(height: 8),
                 Text(
                   'forgot_password_page_subtitle'.tr,
-                  style: TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 15,
                     color: Color(0xFF666666),
                     height: 1.5,
@@ -81,7 +82,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     controller: _emailController,
                     decoration: InputDecoration(
                       hintText: 'forgot_password_page_enter_email'.tr,
-                      hintStyle: TextStyle(color: Color(0xFF999999)),
+                      hintStyle: GoogleFonts.tajawal(color: Color(0xFF999999)),
                       filled: true,
                       fillColor: Color(0xFFF8F9FA),
                       border: OutlineInputBorder(
@@ -101,7 +102,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                   const SizedBox(height: 24),
                   if (_error != null) ...[
-                    Text(_error!, style: TextStyle(color: Colors.red)),
+                    Text(_error!, style: GoogleFonts.tajawal(color: Colors.red)),
                     const SizedBox(height: 16),
                   ],
                   SizedBox(
@@ -125,7 +126,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             )
                           : Text(
                               'forgot_password_page_button'.tr,
-                              style: TextStyle(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.5,
@@ -142,7 +143,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   const SizedBox(height: 16),
                   Text(
                     'forgot_password_page_reset_link_sent'.tr,
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -151,7 +152,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   const SizedBox(height: 8),
                   Text(
                     'forgot_password_page_check_email'.tr,
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 15,
                       color: Color(0xFF666666),
                       height: 1.5,
@@ -166,7 +167,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                     child: Text(
                       'forgot_password_page_back_to_login'.tr,
-                      style: TextStyle(
+                      style: GoogleFonts.tajawal(
                         color: Color(0xFFB47AFF),
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -181,7 +182,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     children: [
                       Text(
                         'forgot_password_page_remember_password'.tr,
-                        style: TextStyle(
+                        style: GoogleFonts.tajawal(
                           color: Color(0xFF666666),
                           fontSize: 14,
                         ),
@@ -195,7 +196,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         },
                         child: Text(
                           'forgot_password_page_login'.tr,
-                          style: TextStyle(
+                          style: GoogleFonts.tajawal(
                             color: Color(0xFFB47AFF),
                             fontWeight: FontWeight.w600,
                             fontSize: 14,

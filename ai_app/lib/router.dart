@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'auth_wrapper.dart';
 import 'main_navigation.dart';
 import 'pages/privacy_policy_page.dart';
@@ -99,7 +100,7 @@ final GoRouter router = GoRouter(
           SizedBox(height: 16),
           Text(
             '404 - Page Not Found',
-            style: TextStyle(
+            style: GoogleFonts.tajawal(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.grey[700],
@@ -108,7 +109,7 @@ final GoRouter router = GoRouter(
           SizedBox(height: 8),
           Text(
             'The page you are looking for does not exist.',
-            style: TextStyle(
+            style: GoogleFonts.tajawal(
               fontSize: 16,
               color: Colors.grey[600],
             ),
@@ -153,7 +154,7 @@ PreferredSizeWidget _buildAppBar(String title) {
         SizedBox(width: 12),
         Text(
           title,
-          style: TextStyle(
+          style: GoogleFonts.tajawal(
             fontSize: 20,
             fontWeight: FontWeight.w600,
             color: Color(0xFF784D9C),
@@ -168,7 +169,7 @@ PreferredSizeWidget _buildAppBar(String title) {
         },
         child: Text(
           'Back to App',
-          style: TextStyle(
+          style: GoogleFonts.tajawal(
             color: Color(0xFF784D9C),
             fontWeight: FontWeight.w600,
           ),

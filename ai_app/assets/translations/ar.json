@@ -573,5 +573,13 @@
   "customer_support_payment_billing": "الدفع والفواتير",
   "customer_support_shipping_delivery": "الشحن والتوصيل",
   "customer_support_returns_refunds": "الإرجاع والاسترداد",
-  "customer_support_other": "أخرى"
+  "customer_support_other": "أخرى",
+  
+  "bring_your_unique_storybook_to_life": "أحيِ كتاب قصصك الفريد إلى الحياة",
+  "craft_magical_tales_where_youre_the_hero": "اصنع حكايات سحرية تكون فيها البطل",
+  "view_all_books": "عرض جميع الكتب",
+  "bestsellers": "الأكثر مبيعاً",
+  "personalise_a_bestseller": "خصص كتاباً من الأكثر مبيعاً",
+  "view_all": "عرض الكل",
+  "personalise": "تخصيص"
 }

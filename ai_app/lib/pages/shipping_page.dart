@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'checkout_page.dart';
 import '../models/order.dart';
 import '../services/localization_service.dart';
@@ -535,7 +536,7 @@ class _ShippingPageState extends State<ShippingPage> {
               children: [
                 Text(
                   'shipping_page_email_address'.tr,
-                  style: const TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 12,
                     color: Colors.grey,
                     fontWeight: FontWeight.w500,
@@ -544,7 +545,7 @@ class _ShippingPageState extends State<ShippingPage> {
                 const SizedBox(height: 2),
                 Text(
                   _userEmail,
-                  style: const TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -552,7 +553,7 @@ class _ShippingPageState extends State<ShippingPage> {
                 const SizedBox(height: 2),
                 Text(
                   'shipping_page_email_info'.tr,
-                  style: const TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 12,
                     color: Colors.grey,
                   ),
@@ -578,7 +579,7 @@ class _ShippingPageState extends State<ShippingPage> {
         children: [
           Text(
             'shipping_page_shipping_details'.tr,
-            style: const TextStyle(
+            style: GoogleFonts.tajawal(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -714,7 +715,7 @@ class _ShippingPageState extends State<ShippingPage> {
               Expanded(
                 child: Text(
                   'shipping_page_save_shipping_details'.tr,
-                  style: const TextStyle(fontSize: 14),
+                  style: GoogleFonts.tajawal(fontSize: 14),
                 ),
               ),
             ],
@@ -782,7 +783,7 @@ class _ShippingPageState extends State<ShippingPage> {
         children: [
           Text(
             'shipping_page_shipping_method'.tr,
-            style: const TextStyle(
+            style: GoogleFonts.tajawal(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -856,7 +857,7 @@ class _ShippingPageState extends State<ShippingPage> {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: isSelected ? const Color(0xFF784D9C) : Colors.black,
@@ -864,7 +865,7 @@ class _ShippingPageState extends State<ShippingPage> {
                   ),
                   Text(
                     duration,
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 14,
                       color: Colors.grey.shade600,
                     ),
@@ -874,7 +875,7 @@ class _ShippingPageState extends State<ShippingPage> {
             ),
             Text(
               '\$${cost.toStringAsFixed(2)}',
-              style: TextStyle(
+              style: GoogleFonts.tajawal(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: isSelected ? const Color(0xFF784D9C) : Colors.black,
@@ -901,7 +902,7 @@ class _ShippingPageState extends State<ShippingPage> {
         children: [
           Text(
             'shipping_page_order_summary'.tr,
-            style: const TextStyle(
+            style: GoogleFonts.tajawal(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -913,11 +914,11 @@ class _ShippingPageState extends State<ShippingPage> {
             children: [
               Text(
                 '${'shipping_page_subtotal'.tr} (${widget.cartItems.length} ${'shipping_page_items'.tr})',
-                style: const TextStyle(fontSize: 16),
+                style: GoogleFonts.tajawal(fontSize: 16),
               ),
               Text(
                 '\$${widget.cartTotal.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 16),
+                style: GoogleFonts.tajawal(fontSize: 16),
               ),
             ],
           ),
@@ -929,11 +930,11 @@ class _ShippingPageState extends State<ShippingPage> {
             children: [
               Text(
                 'shipping_page_shipping'.tr,
-                style: const TextStyle(fontSize: 16),
+                style: GoogleFonts.tajawal(fontSize: 16),
               ),
               Text(
                 '\$${_shippingCost.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 16),
+                style: GoogleFonts.tajawal(fontSize: 16),
               ),
             ],
           ),
@@ -945,14 +946,14 @@ class _ShippingPageState extends State<ShippingPage> {
             children: [
               Text(
                 'shipping_page_total'.tr,
-                style: const TextStyle(
+                style: GoogleFonts.tajawal(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 '\$${total.toStringAsFixed(2)}',
-                style: const TextStyle(
+                style: GoogleFonts.tajawal(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF784D9C),
@@ -982,7 +983,7 @@ class _ShippingPageState extends State<ShippingPage> {
             ? const CircularProgressIndicator(color: Colors.white)
             : Text(
                 'shipping_page_continue'.tr,
-                style: const TextStyle(
+                style: GoogleFonts.tajawal(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1004,7 +1005,7 @@ class _ShippingPageState extends State<ShippingPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: GoogleFonts.tajawal(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: Colors.black87,
@@ -1017,7 +1018,7 @@ class _ShippingPageState extends State<ShippingPage> {
           validator: validator,
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: TextStyle(color: Colors.grey.shade400),
+            hintStyle: GoogleFonts.tajawal(color: Colors.grey.shade400),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -1054,7 +1055,7 @@ class _ShippingPageState extends State<ShippingPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: GoogleFonts.tajawal(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: Colors.black87,

@@ -984,8 +984,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                         
                         const SizedBox(height: 48),
 
-                        // Adored by millions section (Web Only)
-                        if (!_isMobile(context)) _buildAdoredSection(),
+                        // Adored by millions section (Desktop/Web Only - not tablet/iPad)
+                        if (!_isMobile(context) && !_isTablet(context)) _buildAdoredSection(),
 
                         const SizedBox(height: 48),
 
@@ -1233,7 +1233,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                 ),
                 
                 // Imagination section (Web Only) - Edge to Edge (outside maxWidth container)
-                if (!_isMobile(context)) ...[
+                if (!_isMobile(context) && !_isTablet(context)) ...[
                   const SizedBox(height: 60),
                   _buildImaginationSection(),
                 ],
@@ -1323,7 +1323,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
               children: [
                 Text(
                   'product_detail_how_others'.tr,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: const  Color(0xFF784D9C),
@@ -1333,7 +1333,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                 const SizedBox(height: 16),
                 Text(
                   'product_detail_adored_millions'.tr,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
@@ -1496,7 +1496,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                 children: [
                   Text(
                     'product_detail_bring_imagination'.tr,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -1506,7 +1506,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                   const SizedBox(height: 20),
                   Text(
                     'product_detail_hero_adventure'.tr,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: 18,
                       fontWeight: FontWeight.w400,
                       color: Colors.white,
@@ -1533,8 +1533,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                     ),
                     child: Text(
                       'product_detail_view_books'.tr,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
+                      style: GoogleFonts.tajawal(
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

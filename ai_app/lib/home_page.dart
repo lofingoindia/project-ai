@@ -27,17 +27,32 @@ double _getMaxWidth(BuildContext context) {
 EdgeInsets _getResponsivePadding(BuildContext context) {
   if (_isMobile(context)) return const EdgeInsets.symmetric(horizontal: 20);
   if (_isTablet(context)) return const EdgeInsets.symmetric(horizontal: 40);
+  
   final width = MediaQuery.of(context).size.width;
   final padding = (width - 1200) / 2;
-  return EdgeInsets.symmetric(horizontal: padding > 20 ? padding : 20);
+  final calculatedPadding = (padding > 20 ? padding : 20).toDouble();
+  
+  return EdgeInsets.symmetric(horizontal: calculatedPadding);
 }
 
 EdgeInsets _getResponsivePaddingNoLeft(BuildContext context) {
+  final localizationService = LocalizationService();
+  final isRTL = localizationService.textDirection == TextDirection.rtl;
+  
   if (_isMobile(context)) return const EdgeInsets.symmetric(horizontal: 20);
-  if (_isTablet(context)) return const EdgeInsets.only(left: 0, right: 40);
+  
+  if (_isTablet(context)) {
+    // For tablets (iPad mini), provide symmetric padding for better visual balance
+    return const EdgeInsets.symmetric(horizontal: 30);
+  }
+  
   final width = MediaQuery.of(context).size.width;
   final padding = (width - 1200) / 2;
-  return EdgeInsets.only(left: 0, right: padding > 20 ? padding : 20);
+  final calculatedPadding = (padding > 20 ? padding : 20).toDouble();
+  
+  return isRTL 
+      ? EdgeInsets.only(left: calculatedPadding, right: 0)
+      : EdgeInsets.only(left: 0, right: calculatedPadding);
 }
 
 class HomePage extends StatefulWidget {
@@ -491,39 +506,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
                     _buildAgeRangeCards(),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
+                    
+                    // Banner with a1.png image (mobile only)
+                    if (_isMobile(context))
+                      _buildMainBannerSection(),
+                    
+                    // Add spacing for mobile after banner
+                    if (_isMobile(context))
+                      const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
             
-            // Edge-to-Edge Image Section (Web Only) - Right after age cards
+            // Edge-to-Edge Main Banner Section (Desktop/Web and Tablet) - Right after age cards
             if (!_isMobile(context))
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  horizontal: _isTablet(context) ? 40.0 : 60.0,
-                  vertical: 30.0,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    height: _isTablet(context) ? 600.0 : 800.0,
-                    child: Image.asset(
-                      'assets/a2.png', // You can change this to any image from your assets
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[300],
-                          child: Center(
-                            child: Icon(Icons.image, size: 100, color: Colors.grey[600]),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
+              _buildMainBannerSection(),
             
             // Content sections wrapped in constrained container
             Center(
@@ -533,56 +532,56 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 30),
+                    
+                    // Bestsellers Section
+                    _buildBestsellersSection(),
 
-                    // Popular Places Section
-                    _buildPopularPlacesSection(),
-
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
             
-            // Edge-to-Edge Image Section (Web/Tablet Only)
-            if (!_isMobile(context))
-              Container(
-                width: double.infinity,
-                height: _isTablet(context) ? 400.0 : 500.0,
-                child: Image.asset(
-                  'assets/a3.png', // You can change this to any image from your assets
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: Icon(Icons.image, size: 100, color: Colors.grey[600]),
-                      ),
-                    );
-                  },
-                ),
-              ),
+            // Edge-to-Edge Image Section (Desktop/Web Only)
+            // if (!_isMobile(context) && !_isTablet(context))
+            //   Container(
+            //     width: double.infinity,
+            //     height: 500.0,
+            //     child: Image.asset(
+            //       'assets/a3.png', // You can change this to any image from your assets
+            //       fit: BoxFit.cover,
+            //       errorBuilder: (context, error, stackTrace) {
+            //         return Container(
+            //           color: Colors.grey[300],
+            //           child: Center(
+            //             child: Icon(Icons.image, size: 100, color: Colors.grey[600]),
+            //           ),
+            //         );
+            //       },
+            //     ),
+            //   ),
             
             // Genre Categories with magical princess banner - dynamically built
             ..._buildGenreWithBannerSections(),
             
-            // Edge-to-Edge Image Section (Web Only) - Above review carousel
-            if (!_isMobile(context))
-              Container(
-                width: double.infinity,
-                height: _isTablet(context) ? 400.0 : 700.0,
-                child: Image.asset(
-                  'assets/a1.png', // You can change this to any image from your assets
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: Icon(Icons.image, size: 100, color: Colors.grey[600]),
-                      ),
-                    );
-                  },
-                ),
-              ),
+            // Edge-to-Edge Image Section (Desktop/Web Only) - Above review carousel
+            // if (!_isMobile(context) && !_isTablet(context))
+            //   Container(
+            //     width: double.infinity,
+            //     height: 700.0,
+            //     child: Image.asset(
+            //       'assets/a1.png', // You can change this to any image from your assets
+            //       fit: BoxFit.cover,
+            //       errorBuilder: (context, error, stackTrace) {
+            //         return Container(
+            //           color: Colors.grey[300],
+            //           child: Center(
+            //             child: Icon(Icons.image, size: 100, color: Colors.grey[600]),
+            //           ),
+            //         );
+            //       },
+            //     ),
+            //   ),
             
             // Add the review carousel (web/tablet/desktop only)
             if (!_isMobile(context)) _buildReviewCarouselSection(),
@@ -735,7 +734,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     children: [
                                       Text(
                                         r['name'] as String,
-                                        style: GoogleFonts.poppins(
+                                        style: GoogleFonts.tajawal(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.black87,
@@ -757,7 +756,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   Expanded(
                                     child: Text(
                                       r['text'] as String,
-                                      style: GoogleFonts.poppins(
+                                      style: GoogleFonts.tajawal(
                                         fontSize: 14,
                                         color: Colors.grey.shade700,
                                         height: 1.5,
@@ -782,8 +781,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildMagicalPrincessBanner() {
-    final bannerHeight = _isTablet(context) ? 400.0 : 500.0;
-    
     return Container(
       width: double.infinity,
       height: 600,
@@ -952,8 +949,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ),
       );
       
-      // Insert magical princess banner after 2nd genre (web only) - EDGE TO EDGE
-      if (displayedGenreCount == 2 && !_isMobile(context)) {
+      // Insert magical princess banner after 2nd genre (desktop only) - EDGE TO EDGE
+      if (displayedGenreCount == 2 && !_isMobile(context) && !_isTablet(context)) {
         sections.add(
           Column(
             children: [
@@ -1281,7 +1278,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       ),
                       child: Text(
                         ' ${'age'.tr} ${ageRanges[index]}',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF784D9C),
@@ -1305,7 +1302,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _isTablet(context) ? 3 : 4,
+          crossAxisCount: _isTablet(context) ? 4 : 4, // 2x2 for tablets, 4x1 for desktop
           childAspectRatio: 0.85,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
@@ -1354,7 +1351,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     ),
                     child: Text(
                       ' ${'age'.tr} ${ageRanges[index]}',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.tajawal(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF784D9C),
@@ -1453,7 +1450,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               Text(
                 'CUSTOMIZE FACTS, EXPRESSIONS, AND ANGLES',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -1464,7 +1461,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               Text(
                 'To bring your character to life!',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.tajawal(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -1587,6 +1584,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final isFavorite = _favoriteIds.contains(book.id);
     final isMobile = _isMobile(context);
     final isTablet = _isTablet(context);
+    final isRTL = _localizationService.textDirection == TextDirection.rtl;
     
     return GestureDetector(
       onTap: () {
@@ -1599,7 +1597,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       },
       child: Container(
         width: isMobile ? 300 : (isTablet ? 320 : 350), // Fixed widths for all screen sizes
-        margin: EdgeInsets.only(right: 16), // Right margin for all
+        margin: EdgeInsets.only(
+          right: isRTL ? 0 : 16,
+          left: isRTL ? 16 : 0,
+        ), // RTL-aware margin
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1975,8 +1976,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ),
       );
       
-      // Insert magical princess banner after 2nd genre (web only)
-      if (displayedGenreCount == 2 && !_isMobile(context)) {
+      // Insert magical princess banner after 2nd genre (desktop only)
+      if (displayedGenreCount == 2 && !_isMobile(context) && !_isTablet(context)) {
         genreSections.add(
           Column(
             children: [
@@ -2141,32 +2142,547 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  // Helper methods for responsive design
-  bool _isMobile(BuildContext context) {
-    return MediaQuery.of(context).size.width < 600;
-  }
-
-  bool _isTablet(BuildContext context) {
-    return MediaQuery.of(context).size.width >= 600 && MediaQuery.of(context).size.width < 1024;
-  }
-
-  double _getMaxWidth(BuildContext context) {
+  Widget _buildMainBannerSection() {
+    // For mobile only, keep the original stacked layout
     if (_isMobile(context)) {
-      return double.infinity;
-    } else if (_isTablet(context)) {
-      return 1024;
-    } else {
-      return 1440; // Desktop max width
+      return Container(
+        width: double.infinity,
+        margin: EdgeInsets.zero, // No margins for mobile
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFE8D5FF), // Light purple
+              Color(0xFFF3E8FF), // Lighter purple
+              Color(0xFFE8D5FF), // Light purple
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+          borderRadius: BorderRadius.zero, // No border radius for edge-to-edge
+        ),
+        child: Column(
+          children: [
+            // Banner Image at the top
+            Container(
+              width: double.infinity,
+              height: 200,
+              child: ClipRRect(
+                borderRadius: BorderRadius.zero,
+                child: Image.asset(
+                  'assets/a1.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF784D9C), Color(0xFFB39DDB)],
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(Icons.image, size: 80, color: Colors.white70),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            
+            // Text Content with background
+            Padding(
+              padding: EdgeInsets.all(30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Upper label
+                  Text(
+                    'bring_your_unique_storybook_to_life'.tr.toUpperCase(),
+                    textAlign: TextAlign.start,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF784D9C),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Main heading
+                  Text(
+                    'craft_magical_tales_where_youre_the_hero'.tr,
+                    textAlign: TextAlign.start,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D1B69),
+                      height: 1.2,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 30),
+                  
+                  // View All Books Button
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: 160,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Navigate to books tab (index 1)
+                          MainNavigation.switchTab(context, 1);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Color(0xFF784D9C),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(color: Color(0xFF784D9C), width: 2),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        child: Text(
+                          'view_all_books'.tr,
+                          style: GoogleFonts.tajawal(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.visible,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
     }
+
+    // For tablet and desktop - side by side layout (edge to edge)
+    return Container(
+      width: double.infinity,
+      height: _isTablet(context) ? 400 : 500, // Responsive height
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFE8D5FF), // Light purple
+            Color(0xFFF3E8FF), // Lighter purple
+            Color(0xFFE8D5FF), // Light purple
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: Row(
+        children: [
+          // Left side - Image (50% width)
+          Expanded(
+            flex: 1,
+            child: Container(
+              height: double.infinity,
+              child: Image.asset(
+                'assets/a1.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF784D9C), Color(0xFFB39DDB)],
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.image, size: 100, color: Colors.white70),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          
+          // Right side - Text content (50% width)
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: _isTablet(context) ? 40 : 80, 
+                vertical: _isTablet(context) ? 40 : 60,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Upper label
+                  Text(
+                    'bring_your_unique_storybook_to_life'.tr.toUpperCase(),
+                    textAlign: TextAlign.start,
+                    style: GoogleFonts.tajawal(
+                      fontSize: _isTablet(context) ? 16 : 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF784D9C),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  
+                  SizedBox(height: _isTablet(context) ? 16 : 20),
+                  
+                  // Main heading
+                  Text(
+                    'craft_magical_tales_where_youre_the_hero'.tr,
+                    textAlign: TextAlign.start,
+                    style: GoogleFonts.tajawal(
+                      fontSize: _isTablet(context) ? 32 : 48,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D1B69),
+                      height: 1.2,
+                    ),
+                  ),
+                  
+                  SizedBox(height: _isTablet(context) ? 30 : 40),
+                  
+                  // View All Books Button
+                  SizedBox(
+                    width: _isTablet(context) ? 180 : 200,
+                    height: _isTablet(context) ? 45 : 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Navigate to books tab (index 1)
+                        MainNavigation.switchTab(context, 1);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Color(0xFF784D9C),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(color: Color(0xFF784D9C), width: 2),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: _isTablet(context) ? 16 : 20, 
+                          vertical: _isTablet(context) ? 8 : 12,
+                        ),
+                      ),
+                      child: Text(
+                        'view_all_books'.tr,
+                        style: GoogleFonts.tajawal(
+                          fontSize: _isTablet(context) ? 14 : 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  EdgeInsets _getResponsivePaddingNoLeft(BuildContext context) {
-    if (_isMobile(context)) {
-      return const EdgeInsets.symmetric(horizontal: 20);
-    } else if (_isTablet(context)) {
-      return const EdgeInsets.symmetric(horizontal: 40);
-    } else {
-      return const EdgeInsets.symmetric(horizontal: 40);
-    }
+  Widget _buildBestsellersSection() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _isMobile(context) ? 20 : (_isTablet(context) ? 40 : 30)), // Reduced desktop padding
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // BESTSELLERS label
+          Text(
+            'bestsellers'.tr.toUpperCase(),
+            style: GoogleFonts.tajawal(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+              letterSpacing: 1.5,
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Section header with title and View All button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  'personalise_a_bestseller'.tr,
+                  style: GoogleFonts.tajawal(
+                    fontSize: _isMobile(context) ? 28 : (_isTablet(context) ? 32 : 36),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+              
+              // View All button with proper styling
+              Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF784D9C), // Purple background
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    // Navigate to books tab (index 1)
+                    MainNavigation.switchTab(context, 1);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'view_all'.tr,
+                        style: GoogleFonts.tajawal(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        _localizationService.textDirection == TextDirection.rtl 
+                            ? Icons.arrow_back_ios
+                            : Icons.arrow_forward_ios,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 5),
+          
+          // Books Grid
+          _buildBestsellersBooksGrid(),
+        ],
+      ),
+    );
   }
+
+  Widget _buildBestsellersBooksGrid() {
+    final booksToShow = _featuredBooks.isNotEmpty 
+        ? _featuredBooks.take(8).toList() // Show up to 8 books
+        : _getDummyBooks().take(8).toList();
+
+    if (booksToShow.isEmpty) {
+      return Container(
+        height: 200,
+        child: Center(
+          child: Text(
+            'no_books_available'.tr,
+            style: GoogleFonts.tajawal(
+              fontSize: 16,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Responsive grid: 2 columns on mobile, 3 on tablet, 4 on desktop
+    final crossAxisCount = _isMobile(context) ? 2 : (_isTablet(context) ? 3 : 4);
+    final childAspectRatio = _isMobile(context) ? 0.55 : (_isTablet(context) ? 0.45 : 0.7); // Keep tablet at 0.45
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: _isMobile(context) ? 12 : (_isTablet(context) ? 14 : 18), // Reduced tablet spacing
+        mainAxisSpacing: _isMobile(context) ? 16 : (_isTablet(context) ? 18 : 16), // Reduced tablet spacing
+      ),
+      itemCount: booksToShow.length,
+      itemBuilder: (context, index) {
+        return _buildBestsellerBookCard(booksToShow[index]);
+      },
+    );
+  }
+
+  Widget _buildBestsellerBookCard(Book book) {
+    final isFavorite = _favoriteIds.contains(book.id);
+    
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailPage(book: book),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Book cover with discount badge and favorite button
+          Expanded(
+            flex: 4, // Give more space to the book cover
+            child: Stack(
+              children: [
+                // Book cover image
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: book.coverImageUrl.isNotEmpty
+                        ? Image.network(
+                            book.coverImageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildPlaceholderBookCover(0);
+                            },
+                          )
+                        : _buildPlaceholderBookCover(0),
+                  ),
+                ),
+                
+                // Discount badge
+                if (book.discountPercentage > 0)
+                  Positioned(
+                    top: 8,
+                    left: _localizationService.textDirection == TextDirection.rtl ? null : 8,
+                    right: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '-${book.discountPercentage.toInt()}%',
+                        style: GoogleFonts.tajawal(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                
+                // Favorite button
+                Positioned(
+                  top: 8,
+                  right: _localizationService.textDirection == TextDirection.rtl ? null : 8,
+                  left: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
+                  child: GestureDetector(
+                    onTap: () => _toggleFavorite(book.id),
+                    child: Container(
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? Colors.red : Colors.grey[600],
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Text content outside the book cover (below)
+          Expanded(
+            flex: 2, // Space for title, description, and button
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Book title
+                  Text(
+                    book.title.isNotEmpty ? book.title : book.name,
+                    style: GoogleFonts.tajawal(
+                      fontSize: _isMobile(context) ? 14 : (_isTablet(context) ? 15 : 16),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const SizedBox(height: 6),
+                  
+                  // Book description
+                  Text(
+                    book.description,
+                    style: GoogleFonts.tajawal(
+                      fontSize: _isMobile(context) ? 11 : (_isTablet(context) ? 12 : 13),
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const Spacer(),
+                  
+                  // Personalise button
+                  SizedBox(
+                    width: double.infinity,
+                    height: _isMobile(context) ? 36 : (_isTablet(context) ? 38 : 40),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProductDetailPage(book: book),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF784D9C),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      child: Text(
+                        'personalise'.tr,
+                        style: GoogleFonts.tajawal(
+                          fontSize: _isMobile(context) ? 12 : (_isTablet(context) ? 13 : 14),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

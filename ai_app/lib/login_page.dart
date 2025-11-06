@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sign_up_page.dart';
 import 'forgot_password_page.dart';
@@ -70,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 24),
                   Text(
                     _localizationService.translate('login_page_title'),
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF1A1A1A),
@@ -80,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 8),
                   Text(
                     _localizationService.translate('login_page_subtitle'),
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 15,
                       color: Color(0xFF666666),
                       height: 1.5,
@@ -92,7 +93,7 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _emailController,
                     decoration: InputDecoration(
                       hintText: _localizationService.translate('login_page_email_hint'),
-                      hintStyle: TextStyle(color: Color(0xFF999999)),
+                      hintStyle: GoogleFonts.tajawal(color: Color(0xFF999999)),
                       filled: true,
                       fillColor: Color(0xFFF8F9FA),
                       border: OutlineInputBorder(
@@ -116,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
                     obscureText: true,
                     decoration: InputDecoration(
                       hintText: _localizationService.translate('login_page_password_hint'),
-                      hintStyle: TextStyle(color: Color(0xFF999999)),
+                      hintStyle: GoogleFonts.tajawal(color: Color(0xFF999999)),
                       filled: true,
                       fillColor: Color(0xFFF8F9FA),
                       border: OutlineInputBorder(
@@ -136,7 +137,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
                   if (_error != null) ...[
-                    Text(_error!, style: TextStyle(color: Colors.red)),
+                    Text(_error!, style: GoogleFonts.tajawal(color: Colors.red)),
                     const SizedBox(height: 8),
                   ],
                   SizedBox(
@@ -160,7 +161,7 @@ class _LoginPageState extends State<LoginPage> {
                             )
                           : Text(
                               _localizationService.translate('login_page_login_button'),
-                              style: TextStyle(
+                              style: GoogleFonts.tajawal(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.5,
@@ -183,7 +184,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       child: Text(
                         _localizationService.translate('login_page_forgot_password'),
-                        style: TextStyle(
+                        style: GoogleFonts.tajawal(
                           color: Color(0xFFB47AFF),
                           fontWeight: FontWeight.w500,
                           fontSize: 14,
@@ -197,7 +198,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Text(
                         _localizationService.translate('login_page_not_member'),
-                        style: TextStyle(
+                        style: GoogleFonts.tajawal(
                           color: Color(0xFF666666),
                           fontSize: 14,
                         ),
@@ -210,7 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                         },
                         child: Text(
                           _localizationService.translate('login_page_create_account'),
-                          style: TextStyle(
+                          style: GoogleFonts.tajawal(
                             color: Color(0xFFB47AFF),
                             fontWeight: FontWeight.w600,
                             fontSize: 14,

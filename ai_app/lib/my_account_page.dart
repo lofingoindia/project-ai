@@ -1,5 +1,6 @@
 import 'package:hero_kids/pages/my_books_page.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -174,7 +175,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
+                      style: GoogleFonts.tajawal(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: Colors.black87,
@@ -183,7 +184,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: TextStyle(
+                      style: GoogleFonts.tajawal(
                         fontSize: 13,
                         color: Colors.black54,
                       ),
@@ -228,7 +229,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
             const SizedBox(height: 24),
             Text(
               'my_account_not_logged_in_title'.tr,
-              style: TextStyle(
+              style: GoogleFonts.tajawal(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -238,7 +239,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
             const SizedBox(height: 12),
             Text(
               'my_account_not_logged_in_subtitle'.tr,
-              style: TextStyle(
+              style: GoogleFonts.tajawal(
                 fontSize: 14,
                 color: Colors.black54,
               ),
@@ -270,7 +271,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                 icon: Icon(Icons.login, size: 22),
                 label: Text(
                   'my_account_login_button'.tr,
-                  style: TextStyle(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -293,7 +294,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
           backgroundColor: Colors.white,
           elevation: 0.5,
           iconTheme: const IconThemeData(color: Colors.black),
-          title: Text('my_account'.tr, style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          title: Text('my_account'.tr, style: GoogleFonts.tajawal(color: Colors.black, fontWeight: FontWeight.bold)),
           automaticallyImplyLeading: false,
           actions: [
             Padding(
@@ -326,7 +327,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
               if (_profileError != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Text(_profileError!, style: TextStyle(color: Colors.red)),
+                  child: Text(_profileError!, style: GoogleFonts.tajawal(color: Colors.red)),
                 ),
               
               // Show login prompt if not logged in
@@ -394,11 +395,11 @@ class _MyAccountPageState extends State<MyAccountPage> {
                           _userName.isNotEmpty 
                               ? _userName.substring(0, 1).toUpperCase() + (_userName.length > 1 ? _userName.substring(1, 2).toUpperCase() : 'S')
                               : 'US',
-                          style: TextStyle(fontSize: 48, color: Colors.white, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.tajawal(fontSize: 48, color: Colors.white, fontWeight: FontWeight.bold),
                         ) : null,
                       ),
                       const SizedBox(height: 16),
-                      Text(_userName.isNotEmpty ? _userName : 'my_account_user'.tr, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
+                      Text(_userName.isNotEmpty ? _userName : 'my_account_user'.tr, style: GoogleFonts.tajawal(fontSize: 22, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: 120,
@@ -429,7 +430,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                           mainAxisSize: MainAxisSize.min,
                                           crossAxisAlignment: CrossAxisAlignment.stretch,
                                           children: [
-                                            Text('my_account_edit_profile'.tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                            Text('my_account_edit_profile'.tr, style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, fontSize: 18)),
                                             const SizedBox(height: 16),
                                             Center(
                                               child: GestureDetector(
@@ -492,7 +493,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                                       _userName.isNotEmpty
                                                                           ? _userName.substring(0, 1).toUpperCase() + (_userName.length > 1 ? _userName.substring(1, 2).toUpperCase() : 'S')
                                                                           : 'US',
-                                                                      style: TextStyle(fontSize: 36, color: Color(0xFFB47AFF), fontWeight: FontWeight.bold),
+                                                                      style: GoogleFonts.tajawal(fontSize: 36, color: Color(0xFFB47AFF), fontWeight: FontWeight.bold),
                                                                     ),
                                                                   ),
                                                       ),
@@ -546,7 +547,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                             ),
                                             const SizedBox(height: 20),
                                             if (dialogError != null) ...[
-                                              Text(dialogError!, style: TextStyle(color: Colors.red)),
+                                              Text(dialogError!, style: GoogleFonts.tajawal(color: Colors.red)),
                                               const SizedBox(height: 8),
                                             ],
                                             Row(
@@ -559,7 +560,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                       elevation: 0,
                                                     ),
                                                     onPressed: dialogLoading ? null : () => Navigator.of(context).pop(),
-                                                    child: Text('cancel'.tr, style: TextStyle(color: Color(0xFF7A6F92), fontWeight: FontWeight.bold)),
+                                                    child: Text('cancel'.tr, style: GoogleFonts.tajawal(color: Color(0xFF7A6F92), fontWeight: FontWeight.bold)),
                                                   ),
                                                 ),
                                                 const SizedBox(width: 16),
@@ -633,7 +634,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                           },
                                                     child: dialogLoading
                                                         ? SizedBox(height: 15, width: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                                        : Text('save'.tr, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                                        : Text('save'.tr, style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold)),
                                                   ),
                                                 ),
                                               ],
@@ -650,7 +651,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                           icon: Icon(Icons.edit, color: Colors.white, size: 18),
                           label: Text(
                             'edit'.tr, 
-                            style: TextStyle(
+                            style: GoogleFonts.tajawal(
                               color: Colors.white, 
                               fontWeight: FontWeight.w600,
                               fontSize: 14
@@ -758,7 +759,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             title: Text(
               'logout'.tr,
-              style: TextStyle(
+              style: GoogleFonts.tajawal(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: Colors.black87,
@@ -766,7 +767,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
             ),
             content: Text(
               'my_account_logout_confirm'.tr,
-              style: TextStyle(
+              style: GoogleFonts.tajawal(
                 fontSize: 16,
                 color: Colors.black54,
               ),
@@ -778,7 +779,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                 },
                 child: Text(
                   'cancel'.tr,
-                  style: TextStyle(
+                  style: GoogleFonts.tajawal(
                     color: Color(0xFF7A6F92),
                     fontWeight: FontWeight.w600,
                   ),
@@ -796,7 +797,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                 },
                 child: Text(
                   'logout'.tr,
-                  style: TextStyle(
+                  style: GoogleFonts.tajawal(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),

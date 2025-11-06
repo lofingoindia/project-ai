@@ -564,5 +564,13 @@
   "customer_support_other": "Other",
   
   "thank_you_page_title": "Thank You!",
-  "thank_you_page_success_message": "Your order has been placed successfully"
+  "thank_you_page_success_message": "Your order has been placed successfully",
+  
+  "bring_your_unique_storybook_to_life": "Bring your unique storybook to life",
+  "craft_magical_tales_where_youre_the_hero": "Craft magical tales where you're the hero",
+  "view_all_books": "View All Books",
+  "bestsellers": "Bestsellers",
+  "personalise_a_bestseller": "Personalise a bestseller",
+  "view_all": "View All",
+  "personalise": "Personalise"
 }

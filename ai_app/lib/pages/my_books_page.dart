@@ -107,7 +107,7 @@ class _MyBooksPageState extends State<MyBooksPage> {
           ),
           title: Text(
             'my_books_page_title'.tr,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.tajawal(
               color: Colors.black87,
               fontWeight: FontWeight.w600,
               fontSize: 18,
@@ -143,7 +143,7 @@ class _MyBooksPageState extends State<MyBooksPage> {
             _favoriteBooks.isEmpty 
                 ? 'my_books_page_no_favorites_title'.tr
                 : 'my_books_page_your_favorites'.tr,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.tajawal(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -155,7 +155,7 @@ class _MyBooksPageState extends State<MyBooksPage> {
             _favoriteBooks.isEmpty
                 ? 'my_books_page_browse_and_add'.tr
                 : "${_favoriteBooks.length} ${_favoriteBooks.length > 1 ? 'my_books_page_book_plural'.tr : 'my_books_page_book_singular'.tr} ${'my_books_page_in_collection'.tr}",
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.tajawal(
               fontSize: 16,
               color: Colors.grey[600],
             ),
@@ -202,7 +202,7 @@ class _MyBooksPageState extends State<MyBooksPage> {
             const SizedBox(height: 20),
             Text(
               'my_books_page_start_adding'.tr,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey[700],
@@ -212,7 +212,7 @@ class _MyBooksPageState extends State<MyBooksPage> {
             Text(
               'my_books_page_empty_description'.tr,
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.tajawal(
                 fontSize: 14,
                 color: Colors.grey[500],
               ),

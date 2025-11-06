@@ -52,7 +52,7 @@ class BannerSection extends StatelessWidget {
                     children: [
                       Text(
                         'Adored by millions\nworldwide',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.tajawal(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -62,7 +62,7 @@ class BannerSection extends StatelessWidget {
                       SizedBox(height: 24),
                       Text(
                         'From magical adventures for little dreamers to\nheartwarming reads for Mum, Dad, and\neven Grandma, there\'s a little something\nfor everyone.',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.tajawal(
                           fontSize: 18,
                           color: Colors.white.withOpacity(0.9),
                           height: 1.5,
@@ -86,7 +86,7 @@ class BannerSection extends StatelessWidget {
                         ),
                         child: Text(
                           'View All Books',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -133,7 +133,7 @@ class BannerSection extends StatelessWidget {
                         child: Center(
                           child: Text(
                             'W',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.tajawal(
                               fontSize: screenWidth * 0.12,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF0288D1),
@@ -195,7 +195,7 @@ class BannerSection extends StatelessWidget {
                       child: Center(
                         child: Text(
                           'W',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.tajawal(
                             fontSize: screenWidth * 0.2,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF0288D1),
@@ -208,7 +208,7 @@ class BannerSection extends StatelessWidget {
                 SizedBox(height: 32),
                 Text(
                   'Adored by millions\nworldwide',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -219,7 +219,7 @@ class BannerSection extends StatelessWidget {
                 SizedBox(height: 16),
                 Text(
                   'From magical adventures for little dreamers to heartwarming reads for Mum, Dad, and even Grandma, there\'s a little something for everyone.',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.tajawal(
                     fontSize: 16,
                     color: Colors.white.withOpacity(0.9),
                     height: 1.5,
@@ -244,7 +244,7 @@ class BannerSection extends StatelessWidget {
                   ),
                   child: Text(
                     'View All Books',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.tajawal(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
