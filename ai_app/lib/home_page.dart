@@ -2691,7 +2691,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   
                   // View All Books Button
                   Align(
-                    alignment: Alignment.centerLeft,
+                    alignment: _localizationService.textDirection == TextDirection.rtl
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
                     child: SizedBox(
                       width: 160,
                       height: 45,
@@ -2815,15 +2817,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   SizedBox(height: _isTablet(context) ? 30 : 40),
                   
                   // View All Books Button
-                  SizedBox(
-                    width: _isTablet(context) ? 180 : 200,
-                    height: _isTablet(context) ? 45 : 50,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Navigate to books tab (index 1)
-                        MainNavigation.switchTab(context, 1);
-                      },
-                      style: ElevatedButton.styleFrom(
+                  Align(
+                    alignment: _localizationService.textDirection == TextDirection.rtl
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: SizedBox(
+                      width: _isTablet(context) ? 180 : 200,
+                      height: _isTablet(context) ? 45 : 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Navigate to books tab (index 1)
+                          MainNavigation.switchTab(context, 1);
+                        },
+                        style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Color(0xFF784D9C),
                         elevation: 2,
@@ -2846,6 +2852,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       ),
                     ),
                   ),
+                ),
                 ],
               ),
             ),
