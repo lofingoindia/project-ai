@@ -86,7 +86,7 @@ class AiDirectService {
 
       // Call Supabase Edge Function directly
       final response = await _client.functions.invoke(
-        'smooth-endpoint',
+        'bright-service',
         body: requestBody,
       );
 

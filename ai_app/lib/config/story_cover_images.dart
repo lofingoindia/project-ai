@@ -2,26 +2,26 @@
 class StoryCoverImages {
   static const Map<String, String> _storyCoverMap = {
     // Boys Smile Story
-    'boys-smile': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/boycover.png',
-    'boys smile': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/boycover.png',
-    'boy smile': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/boycover.png',
+    'boys-smile': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/boycover.png',
+    'boys smile': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/boycover.png',
+    'boy smile': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/boycover.png',
     
     // Girl Counts with Forest Friends
-    'girl-counts': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
-    'girl counts': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
-    'forest friends': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
-    'girl counts with forest friends': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
+    'girl-counts': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
+    'girl counts': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
+    'forest friends': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
+    'girl counts with forest friends': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/girl1.png',
     
     // Boy The Dinos Need You
-    'dinos-need-you': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
-    'dinos need you': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
-    'dinosaur': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
-    'dinos': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
-    'the dinos need you': 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
+    'dinos-need-you': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
+    'dinos need you': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
+    'dinosaur': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
+    'dinos': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
+    'the dinos need you': 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/images/nmhkur2wvvd-1762161140714.png',
   };
 
   /// Default cover image for stories not in the map
-  static const String defaultCoverImage = 'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/cover-image.png';
+  static const String defaultCoverImage = 'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/cover-image.png';
 
   /// Get the cover image URL for a specific story
   /// 

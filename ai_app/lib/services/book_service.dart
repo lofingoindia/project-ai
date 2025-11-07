@@ -128,13 +128,9 @@ class BookService {
     try {
       final response = await _client
           .from('books')
-          .select('''
-            *,
-            categories!inner(id, name),
-            subcategories(id, name)
-          ''')
+          .select()
           .eq('is_active', true)
-          .eq('categories.name', category)
+          .ilike('category', category) // Case-insensitive search
           .order('created_at', ascending: false)
           .limit(limit);
 
@@ -142,21 +138,8 @@ class BookService {
           .map((json) => Book.fromJson(json))
           .toList();
     } catch (e) {
-      // Fallback to category field search
-      try {
-        final response = await _client
-            .from('books')
-            .select()
-            .eq('category', category)
-            .order('created_at', ascending: false)
-            .limit(limit);
-
-        return (response as List)
-            .map((json) => Book.fromJson(json))
-            .toList();
-      } catch (e2) {
-        throw Exception('Failed to fetch books by category: $e');
-      }
+      print('Failed to fetch books by category: $e');
+      return [];
     }
   }
 
@@ -267,25 +250,12 @@ class BookService {
   }
 
   // Get all books with pagination
-  Future<List<Book>> getAllBooks({int page = 0, int limit = 20}) async {
+  Future<List<Book>> getAllBooks({int page = 0, int limit = 50}) async {
     try {
-      final selectedCategory = await UserPreferenceService.getSelectedCategoryWithFallback();
-      
-      var query = _client
+      final response = await _client
           .from('books')
-          .select('''
-            *,
-            categories(id, name),
-            subcategories(id, name)
-          ''')
-          .eq('is_active', true);
-          
-      // Apply category filter if not 'all'
-      if (selectedCategory != 'all') {
-        query = query.eq('category', selectedCategory.toLowerCase() == 'girl' ? 'Girl' : 'Boy');
-      }
-      
-      final response = await query
+          .select()
+          .eq('is_active', true)
           .order('created_at', ascending: false)
           .range(page * limit, (page * limit) + limit - 1);
 
@@ -293,29 +263,8 @@ class BookService {
           .map((json) => Book.fromJson(json))
           .toList();
     } catch (e) {
-      // Fallback to basic query
-      try {
-        final selectedCategory = await UserPreferenceService.getSelectedCategoryWithFallback();
-        
-        var query = _client
-            .from('books')
-            .select();
-            
-        // Apply category filter if not 'all'
-        if (selectedCategory != 'all') {
-          query = query.eq('category', selectedCategory.toLowerCase() == 'girl' ? 'Girl' : 'Boy');
-        }
-        
-        final response = await query
-            .order('created_at', ascending: false)
-            .range(page * limit, (page * limit) + limit - 1);
-
-        return (response as List)
-            .map((json) => Book.fromJson(json))
-            .toList();
-      } catch (e2) {
-        throw Exception('Failed to fetch books: $e');
-      }
+      print('Failed to fetch books: $e');
+      return [];
     }
   }
 
@@ -349,8 +298,29 @@ class BookService {
     }
   }
 
-  // Get available categories
-  Future<List<String>> getCategories() async {
+  // Get available categories from categories table
+  Future<List<Map<String, dynamic>>> getCategories() async {
+    try {
+      final response = await _client
+          .from('categories')
+          .select('id, name, description')
+          .eq('is_active', true)
+          .order('sort_order', ascending: true);
+
+      return (response as List)
+          .map((item) => {
+            'id': item['id'],
+            'name': item['name'] as String,
+            'description': item['description'] as String?,
+          })
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to fetch categories: $e');
+    }
+  }
+
+  // Get available book categories (fallback)
+  Future<List<String>> getBookCategories() async {
     try {
       final response = await _client
           .from('books')
@@ -364,7 +334,7 @@ class BookService {
 
       return categories;
     } catch (e) {
-      throw Exception('Failed to fetch categories: $e');
+      throw Exception('Failed to fetch book categories: $e');
     }
   }
 

@@ -488,14 +488,14 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
                           children: [
                             Expanded(
                               child: _buildPreviewImage(
-                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/1AEORo0ORZ9RdJH8rFMPD9x89VzAdy-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczEucG5n--blurred.png',
+                                'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/1AEORo0ORZ9RdJH8rFMPD9x89VzAdy-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczEucG5n--blurred.png',
                                 isWeb,
                               ),
                             ),
                             SizedBox(width: isWeb ? 16 : 12), // More space on web
                             Expanded(
                               child: _buildPreviewImage(
-                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/7HT71KMqMIZrtY77mxsfT0UinRvt13-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczQucG5n--blurred.png',
+                                'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/7HT71KMqMIZrtY77mxsfT0UinRvt13-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczQucG5n--blurred.png',
                                 isWeb,
                               ),
                             ),
@@ -508,14 +508,14 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
                           children: [
                             Expanded(
                               child: _buildPreviewImage(
-                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/dIdUBTa9hDyWtKvQSGsF60cTgRYx0I-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE1LnBuZw==--blurred.png',
+                                'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/dIdUBTa9hDyWtKvQSGsF60cTgRYx0I-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE1LnBuZw==--blurred.png',
                                 isWeb,
                               ),
                             ),
                             SizedBox(width: isWeb ? 16 : 12), // More space on web
                             Expanded(
                               child: _buildPreviewImage(
-                                'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/iLjIVoazmUhpB3LhhRRcKdBO9uNteD-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE0LnBuZw==--blurred.png',
+                                'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/iLjIVoazmUhpB3LhhRRcKdBO9uNteD-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE0LnBuZw==--blurred.png',
                                 isWeb,
                               ),
                             ),

@@ -14,8 +14,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(
-  supabaseUrl || 'https://miplbkihtavbnxgznudj.supabase.co', 
-  supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pcGxia2lodGF2Ym54Z3pudWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MTEzNjMsImV4cCI6MjA3MTA4NzM2M30.2lXz8_wKbkt2E2OVTcy8j2vxfNlwD4p_abJFbJ11AP4',
+  supabaseUrl || 'https://jspzneczpbvyclycoelb.supabase.co', 
+  supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcHpuZWN6cGJ2eWNseWNvZWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0ODYwMDgsImV4cCI6MjA3ODA2MjAwOH0.J3aCJEq72LqEkUB6-sa7bG2LK44RStHdxPmfUs-0ezQ',
   {
     auth: {
       persistSession: true,

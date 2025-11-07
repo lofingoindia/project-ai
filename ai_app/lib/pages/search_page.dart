@@ -38,6 +38,7 @@ class _SearchPageState extends State<SearchPage> {
   List<Book> _searchResults = [];
   List<Book> _recentBooks = [];
   bool _isLoading = false;
+  bool _isLoadingRecent = true; // Add loading state for recent books
   bool _hasSearched = false;
   String _lastSearchQuery = '';
 
@@ -57,13 +58,27 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _loadRecentBooks() async {
+    setState(() {
+      _isLoadingRecent = true;
+    });
+    
     try {
-      final books = await _bookService.getFeaturedBooks(limit: 10);
-      setState(() {
-        _recentBooks = books;
-      });
+      // Use getAllBooks() instead of getFeaturedBooks() to get recent books
+      final books = await _bookService.getAllBooks();
+      if (mounted) {
+        setState(() {
+          _recentBooks = books.take(10).toList(); // Take first 10 books
+          _isLoadingRecent = false;
+        });
+      }
     } catch (e) {
-      // Handle error silently
+      print('Error loading recent books: $e');
+      if (mounted) {
+        setState(() {
+          _recentBooks = [];
+          _isLoadingRecent = false;
+        });
+      }
     }
   }
 
@@ -321,7 +336,7 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ),
           const SizedBox(height: 12),
-          _recentBooks.isEmpty
+          _isLoadingRecent
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -330,15 +345,28 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                 )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _recentBooks.length,
-                  itemBuilder: (context, index) {
-                    return _buildBookItem(_recentBooks[index]);
-                  },
-                ),
+              : _recentBooks.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          'search_page_no_books_available'.tr,
+                          style: GoogleFonts.tajawal(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _recentBooks.length,
+                      itemBuilder: (context, index) {
+                        return _buildBookItem(_recentBooks[index]);
+                      },
+                    ),
         ],
       ),
     );
@@ -470,8 +498,9 @@ class _SearchPageState extends State<SearchPage> {
                       style: GoogleFonts.tajawal(
                         fontSize: 13,
                         color: Colors.grey.shade600,
+                        height: 1.4,
                       ),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),

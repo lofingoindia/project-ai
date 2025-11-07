@@ -177,12 +177,12 @@ class _LoadingPageState extends State<LoadingPage>
     if (widget.book.title.toLowerCase().contains('boy') && 
         widget.book.title.toLowerCase().contains('smile')) {
       return [
-        'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/1AEORo0ORZ9RdJH8rFMPD9x89VzAdy-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczEucG5n--blurred.png',
-        'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/7HT71KMqMIZrtY77mxsfT0UinRvt13-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczQucG5n--blurred.png',
-        'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/dIdUBTa9hDyWtKvQSGsF60cTgRYx0I-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE1LnBuZw==--blurred.png',
-        'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/iLjIVoazmUhpB3LhhRRcKdBO9uNteD-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE0LnBuZw==--blurred.png',
-        'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/kRibaYdWauToH97b7gbsn9AfSMFRyQ-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczIwLnBuZw==--blurred.png',
-        'https://miplbkihtavbnxgznudj.supabase.co/storage/v1/object/public/product-media/products/new/l7oPCdztLdmCfiWgugqGGvl5aAFlDE-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE4LnBuZw==--blurred.png',
+        'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/1AEORo0ORZ9RdJH8rFMPD9x89VzAdy-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczEucG5n--blurred.png',
+        'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/7HT71KMqMIZrtY77mxsfT0UinRvt13-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczQucG5n--blurred.png',
+        'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/dIdUBTa9hDyWtKvQSGsF60cTgRYx0I-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE1LnBuZw==--blurred.png',
+        'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/iLjIVoazmUhpB3LhhRRcKdBO9uNteD-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE0LnBuZw==--blurred.png',
+        'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/kRibaYdWauToH97b7gbsn9AfSMFRyQ-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczIwLnBuZw==--blurred.png',
+        'https://jspzneczpbvyclycoelb.supabase.co/storage/v1/object/public/product-media/products/new/l7oPCdztLdmCfiWgugqGGvl5aAFlDE-metaQ2hpbGRzLVNtaWxlLVNraW50b25lczE4LnBuZw==--blurred.png',
       ];
     }
     return [];

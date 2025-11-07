@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'login_page.dart';
-import 'home_page.dart';
+import 'my_account_page.dart';
 import 'services/cart_service.dart';
 import 'services/localization_service.dart';
 
@@ -241,19 +241,45 @@ class _SignUpPageState extends State<SignUpPage> {
     final name = _nameController.text.trim();
     
     try {
+      // First, try to sign up the user
       final response = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
-        data: {'name': name},
+        data: {'name': name, 'full_name': name, 'email_confirm': false},
       );
       
+      // If user was created (regardless of email confirmation)
       if (response.user != null) {
-        // Migrate local cart to server after successful signup
-        await _cartService.migrateLocalCartToServer();
+        // Create user profile in app_users table
+        try {
+          await Supabase.instance.client
+              .from('app_users')
+              .insert({
+                'full_name': name,
+                'email': email,
+                'role': 'user',
+                'is_active': true,
+              });
+        } catch (profileError) {
+          print('Error creating user profile: $profileError');
+        }
         
-        // Account created successfully - navigate to HomePage
+        // Try to sign in immediately regardless of email confirmation status
+        try {
+          await Supabase.instance.client.auth.signInWithPassword(
+            email: email,
+            password: password,
+          );
+          // If sign in successful, migrate cart
+          await _cartService.migrateLocalCartToServer();
+        } catch (signInError) {
+          // If sign in fails due to email confirmation, continue anyway
+          print('Sign in after signup failed (possibly due to email confirmation): $signInError');
+        }
+        
+        // Always navigate to MyAccountPage - user account was created successfully
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => HomePage()),
+          MaterialPageRoute(builder: (_) => MyAccountPage()),
           (route) => false,
         );
         ScaffoldMessenger.of(context).showSnackBar(
@@ -265,6 +291,17 @@ class _SignUpPageState extends State<SignUpPage> {
       } else {
         setState(() {
           _error = 'signup_page_error_creation_failed'.tr;
+        });
+      }
+    } on AuthException catch (e) {
+      // Handle specific Supabase auth errors
+      if (e.message.contains('User already registered')) {
+        setState(() {
+          _error = 'An account with this email already exists. Please try logging in instead.';
+        });
+      } else {
+        setState(() {
+          _error = 'Signup failed: ${e.message}';
         });
       }
     } catch (e) {

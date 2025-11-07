@@ -232,170 +232,176 @@ class _MainNavigationState extends State<MainNavigation> {
           color: Colors.grey[200],
         ),
       ),
-      title: Row(
-        children: [
-          if (isRTL) ...[
-            // RTL: Navigation items on the left
-            SizedBox(width: 40),
-            _buildWebNavItem(
-              index: 0,
-              label: 'home'.tr,
-            ),
-            SizedBox(width: 40),
-            _buildWebNavItem(
-              index: 1,
-              label: 'library'.tr,
-            ),
-            SizedBox(width: 40),
-            _buildWebIconNavItem(
-              index: 2,
-              icon: FontAwesomeIcons.cartShopping,
-              activeIcon: FontAwesomeIcons.cartShopping,
-              showBadge: true,
-            ),
-            SizedBox(width: 40),
-            _buildWebIconNavItem(
-              index: 3,
-              icon: FontAwesomeIcons.user,
-              activeIcon: FontAwesomeIcons.solidUser,
-            ),
-            Spacer(),
-            // RTL: Logo on the right side
-            InkWell(
-              onTap: () {
-                // Navigate to home screen (index 0)
-                if (_currentIndex != 0) {
-                  // Clear any pending filters
-                  if (_currentIndex == 1) {
-                    _pendingAgeFilter = null;
-                    _booksPageKey++;
-                  }
-                  
-                  // Reset navigation stacks
-                  for (int i = 0; i < _navigatorKeys.length; i++) {
-                    _navigatorKeys[i].currentState?.popUntil((route) => route.isFirst);
-                  }
-                  
-                  setState(() {
-                    _currentIndex = 0;
-                  });
-                }
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: EdgeInsets.only(right: 40),
-                child: Image.asset(
-                  'assets/logs copy.png',
-                  height: 190,
-                  width: 190,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    // Fallback icon if image fails to load
-                    return Container(
-                      width: 40,
-                      height: 40,
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(0xFF784D9C),
-                            Color(0xFF9B6BBF),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: FaIcon(
-                        FontAwesomeIcons.bookOpen,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    );
-                  },
+      title: Directionality(
+        textDirection: TextDirection.ltr, // Force LTR for precise control
+        child: isRTL 
+          ? Row(
+              children: [
+                // RTL: Add left padding
+                SizedBox(width: 40),
+                // RTL: Navigation items on the left (reversed order: Profile, Cart, Library, Home)
+                _buildWebIconNavItem(
+                  index: 3,
+                  icon: FontAwesomeIcons.user,
+                  activeIcon: FontAwesomeIcons.solidUser,
                 ),
-              ),
-            ),
-          ] else ...[
-            // LTR: Logo on the left
-            InkWell(
-              onTap: () {
-                // Navigate to home screen (index 0)
-                if (_currentIndex != 0) {
-                  // Clear any pending filters
-                  if (_currentIndex == 1) {
-                    _pendingAgeFilter = null;
-                    _booksPageKey++;
-                  }
-                  
-                  // Reset navigation stacks
-                  for (int i = 0; i < _navigatorKeys.length; i++) {
-                    _navigatorKeys[i].currentState?.popUntil((route) => route.isFirst);
-                  }
-                  
-                  setState(() {
-                    _currentIndex = 0;
-                  });
-                }
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: EdgeInsets.only(left: 40),
-                child: Image.asset(
-                  'assets/logs copy.png',
-                  height: 190,
-                  width: 190,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    // Fallback icon if image fails to load
-                    return Container(
-                      width: 40,
-                      height: 40,
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(0xFF784D9C),
-                            Color(0xFF9B6BBF),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: FaIcon(
-                        FontAwesomeIcons.bookOpen,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    );
-                  },
+                SizedBox(width: 40),
+                _buildWebIconNavItem(
+                  index: 2,
+                  icon: FontAwesomeIcons.cartShopping,
+                  activeIcon: FontAwesomeIcons.cartShopping,
+                  showBadge: true,
                 ),
-              ),
+                SizedBox(width: 40),
+                _buildWebNavItem(
+                  index: 1,
+                  label: 'library'.tr,
+                ),
+                SizedBox(width: 40),
+                _buildWebNavItem(
+                  index: 0,
+                  label: 'home'.tr,
+                ),
+                Expanded(child: SizedBox()),
+                // RTL: Logo on the right side
+                InkWell(
+                  onTap: () {
+                    // Navigate to home screen (index 0)
+                    if (_currentIndex != 0) {
+                      // Clear any pending filters
+                      if (_currentIndex == 1) {
+                        _pendingAgeFilter = null;
+                        _booksPageKey++;
+                      }
+                      
+                      // Reset navigation stacks
+                      for (int i = 0; i < _navigatorKeys.length; i++) {
+                        _navigatorKeys[i].currentState?.popUntil((route) => route.isFirst);
+                      }
+                      
+                      setState(() {
+                        _currentIndex = 0;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 40),
+                    child: Image.asset(
+                      'assets/logs copy.png',
+                      height: 190,
+                      width: 190,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback icon if image fails to load
+                        return Container(
+                          width: 40,
+                          height: 40,
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF784D9C),
+                                Color(0xFF9B6BBF),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: FaIcon(
+                            FontAwesomeIcons.bookOpen,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                // LTR: Logo on the left
+                InkWell(
+                  onTap: () {
+                    // Navigate to home screen (index 0)
+                    if (_currentIndex != 0) {
+                      // Clear any pending filters
+                      if (_currentIndex == 1) {
+                        _pendingAgeFilter = null;
+                        _booksPageKey++;
+                      }
+                      
+                      // Reset navigation stacks
+                      for (int i = 0; i < _navigatorKeys.length; i++) {
+                        _navigatorKeys[i].currentState?.popUntil((route) => route.isFirst);
+                      }
+                      
+                      setState(() {
+                        _currentIndex = 0;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 40),
+                    child: Image.asset(
+                      'assets/logs copy.png',
+                      height: 190,
+                      width: 190,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback icon if image fails to load
+                        return Container(
+                          width: 40,
+                          height: 40,
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF784D9C),
+                                Color(0xFF9B6BBF),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: FaIcon(
+                            FontAwesomeIcons.bookOpen,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(child: SizedBox()),
+                // LTR: Navigation items on the right
+                _buildWebNavItem(
+                  index: 0,
+                  label: 'home'.tr,
+                ),
+                SizedBox(width: 40),
+                _buildWebNavItem(
+                  index: 1,
+                  label: 'library'.tr,
+                ),
+                SizedBox(width: 40),
+                _buildWebIconNavItem(
+                  index: 2,
+                  icon: FontAwesomeIcons.cartShopping,
+                  activeIcon: FontAwesomeIcons.cartShopping,
+                  showBadge: true,
+                ),
+                SizedBox(width: 40),
+                _buildWebIconNavItem(
+                  index: 3,
+                  icon: FontAwesomeIcons.user,
+                  activeIcon: FontAwesomeIcons.solidUser,
+                ),
+                SizedBox(width: 40),
+              ],
             ),
-            Spacer(),
-            // LTR: Navigation items on the right
-            _buildWebNavItem(
-              index: 0,
-              label: 'home'.tr,
-            ),
-            SizedBox(width: 40),
-            _buildWebNavItem(
-              index: 1,
-              label: 'library'.tr,
-            ),
-            SizedBox(width: 40),
-            _buildWebIconNavItem(
-              index: 2,
-              icon: FontAwesomeIcons.cartShopping,
-              activeIcon: FontAwesomeIcons.cartShopping,
-              showBadge: true,
-            ),
-            SizedBox(width: 40),
-            _buildWebIconNavItem(
-              index: 3,
-              icon: FontAwesomeIcons.user,
-              activeIcon: FontAwesomeIcons.solidUser,
-            ),
-            SizedBox(width: 40),
-          ],
-        ],
       ),
       centerTitle: false,
     );

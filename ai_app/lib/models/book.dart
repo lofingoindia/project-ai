@@ -32,6 +32,7 @@ class Book {
   final List<String> characters;   // Array of character names or types
   final String? genre;             // e.g., "Adventure & Exploration", "Fantasy", "Educational"
   final String? ageRange;          // e.g., "3-6 years old", "6-12 years old"
+  final String? dbCategory;        // Database category field
 
   Book({
     required this.id,
@@ -65,6 +66,7 @@ class Book {
     required this.level,
     required this.path,
     required this.sortOrder,
+    this.dbCategory,
   });
 
   factory Book.fromJson(Map<String, dynamic> json) {
@@ -76,7 +78,8 @@ class Book {
       discountPercentage: json['discount_percentage'] ?? 0,
       ageMin: json['age_min'] ?? 0,
       ageMax: json['age_max'] ?? 18,
-      genderTarget: json['category'] ?? json['gender_target'] ?? 'any', // Use 'category' field from database
+      genderTarget: json['gender_target'] ?? 'any',
+      dbCategory: json['category'], // Store the actual database category field
       coverImageUrl: json['cover_image_url'] ?? '',
       previewImages: json['preview_images'] != null 
           ? List<String>.from(json['preview_images']) 
@@ -163,5 +166,5 @@ class Book {
   String get title => name;
 
   // Get category (compatibility with existing code)
-  String get category => genderTarget.isNotEmpty ? genderTarget : 'Adventure';
+  String get category => dbCategory ?? genderTarget;
 }

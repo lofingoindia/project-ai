@@ -31,7 +31,7 @@ EdgeInsets _getResponsivePadding(BuildContext context) {
 
 int _getGridColumns(BuildContext context) {
   if (_isMobile(context)) return 2;
-  if (_isTablet(context)) return 3;
+  if (_isTablet(context)) return 2; // Changed from 3 to 2 for tablets
   return 4;
 }
 
@@ -158,18 +158,23 @@ class _BooksPageState extends State<BooksPage> {
   Future<void> _loadUserPreferencesAndBooks() async {
     try {
       final selectedCategory = await UserPreferenceService.getSelectedCategoryWithFallback();
+      print('📱 BooksPage: Loading with selected category: $selectedCategory');
+      
       // Pre-set the gender filter based on selected category
       if (selectedCategory == 'girl') {
         setState(() {
           _selectedGender = 'Girl';
         });
+        print('📱 BooksPage: Set gender filter to Girl');
       } else if (selectedCategory == 'boy') {
         setState(() {
           _selectedGender = 'Boy';
         });
+        print('📱 BooksPage: Set gender filter to Boy');
       }
       _loadBooks();
     } catch (e) {
+      print('📱 BooksPage: Error loading preferences: $e');
       _loadBooks();
     }
   }
@@ -195,20 +200,34 @@ class _BooksPageState extends State<BooksPage> {
   void _applyFilters() {
     setState(() {
       _filteredBooks = _books.where((book) {
-        // Gender filter - improved to handle Supabase 'category' field
+        // Gender filter - improved to handle category-based filtering like home page
         if (_selectedGender != null && _selectedGender!.isNotEmpty) {
-          final bookGender = book.genderTarget.toLowerCase().trim();
           final selectedGender = _selectedGender!.toLowerCase().trim();
+          print('📚 Filtering book: ${book.title}');
+          print('   - Selected gender: $selectedGender');
+          print('   - Book dbCategory: ${book.dbCategory}');
+          print('   - Book genderTarget: ${book.genderTarget}');
           
-          // Show book if:
-          // 1. It matches the selected gender (girl/boy)
-          // 2. OR book is marked as 'all', 'any', or 'both'
-          // 3. OR book category is empty (show all when no specific category)
-          if (bookGender.isNotEmpty && 
-              bookGender != selectedGender && 
-              bookGender != 'all' && 
-              bookGender != 'any' &&
-              bookGender != 'both') {
+          // Use same logic as home page: filter by dbCategory (1=boy, 2=girl)
+          bool matchesCategory = false;
+          print('   - Checking dbCategory type: ${book.dbCategory.runtimeType}');
+          print('   - dbCategory value: "${book.dbCategory}"');
+          
+          if (selectedGender == 'boy') {
+            // Handle both int and string types for dbCategory
+            if (book.dbCategory == 1 || book.dbCategory == '1') {
+              matchesCategory = true;
+            }
+          } else if (selectedGender == 'girl') {
+            // Handle both int and string types for dbCategory
+            if (book.dbCategory == 2 || book.dbCategory == '2') {
+              matchesCategory = true;
+            }
+          }
+          
+          print('   - Matches category: $matchesCategory');
+          
+          if (!matchesCategory) {
             return false;
           }
         }
@@ -318,20 +337,20 @@ class _BooksPageState extends State<BooksPage> {
       }).toList();
       
       // Debug: Print filter results
-      print('======= FILTER APPLIED =======');
+      print('======= BOOKS PAGE FILTER APPLIED =======');
       print('Gender: $_selectedGender, Age: $_selectedAge, Category: $_selectedCategory');
       print('Total books: ${_books.length}, Filtered books: ${_filteredBooks.length}');
       if (_filteredBooks.isNotEmpty) {
         print('Sample filtered books:');
         _filteredBooks.take(3).forEach((b) {
-          print('  - ${b.title} (Age: ${b.ageMin}-${b.ageMax}, Gender: ${b.genderTarget})');
+          print('  - ${b.title} (dbCategory: ${b.dbCategory}, Gender: ${b.genderTarget})');
         });
       } else {
         print('No books matched the filters');
-        if (_selectedAge != null) {
-          print('Sample of all books age ranges:');
+        if (_selectedAge != null || _selectedGender != null) {
+          print('Sample of all books:');
           _books.take(5).forEach((b) {
-            print('  - ${b.title}: Age ${b.ageMin}-${b.ageMax}');
+            print('  - ${b.title}: dbCategory ${b.dbCategory}, Age ${b.ageMin}-${b.ageMax}');
           });
         }
       }
@@ -699,9 +718,9 @@ class _BooksPageState extends State<BooksPage> {
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: gridColumns,
-                              childAspectRatio: 0.65, // Adjusted for larger cards
-                              crossAxisSpacing: 6,
-                              mainAxisSpacing: 20,
+                              childAspectRatio: _isMobile(context) ? 0.6 : (_isTablet(context) ? 0.65 : 0.55), // Better ratio for tablets
+                              crossAxisSpacing: _isMobile(context) ? 16 : 20,
+                              mainAxisSpacing: _isMobile(context) ? 20 : 24,
                             ),
                             itemCount: _filteredBooks.length,
                             itemBuilder: (context, index) {
@@ -851,22 +870,13 @@ class _BooksPageState extends State<BooksPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Book Image - using Expanded to fit within grid
+          // Book Image - standalone without background
           Expanded(
+            flex: 4,
             child: Stack(
               children: [
                 Container(
                   width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: book.displayImage.isNotEmpty
@@ -886,11 +896,12 @@ class _BooksPageState extends State<BooksPage> {
                                       Color(0xFF5A52A0),
                                     ],
                                   ),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Center(
                                   child: Icon(
                                     Icons.book,
-                                    size: 60,
+                                    size: 40,
                                     color: Colors.white.withOpacity(0.7),
                                   ),
                                 ),
@@ -907,11 +918,12 @@ class _BooksPageState extends State<BooksPage> {
                                   Color(0xFF5A52A0),
                                 ],
                               ),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Center(
                               child: Icon(
                                 Icons.book,
-                                size: 60,
+                                size: 40,
                                 color: Colors.white.withOpacity(0.7),
                               ),
                             ),
@@ -925,14 +937,14 @@ class _BooksPageState extends State<BooksPage> {
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 6,
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -940,7 +952,7 @@ class _BooksPageState extends State<BooksPage> {
                       child: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: isFavorite ? Colors.red : Colors.grey[600],
-                        size: 16,
+                        size: 14,
                       ),
                     ),
                   ),
@@ -949,17 +961,70 @@ class _BooksPageState extends State<BooksPage> {
             ),
           ),
           
-          // Title below the image - matching home screen style
           const SizedBox(height: 12),
-          Text(
-            book.title,
-            style: GoogleFonts.tajawal(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+          
+          // Text content - no background container
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Text(
+                  book.title,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                // Subtitle/Description
+                Text(
+                  book.description.isNotEmpty ? book.description : 'تجربة ممتعة ومشوقة',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                // Personalize button
+                Container(
+                  width: double.infinity,
+                  height: 32,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductDetailPage(book: book),
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF784D9C),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Text(
+                      'شخصي',
+                      style: GoogleFonts.tajawal(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

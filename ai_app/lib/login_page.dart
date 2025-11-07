@@ -253,6 +253,14 @@ class _LoginPageState extends State<LoginPage> {
         // Just pop back to the previous screen (could be profile page)
         Navigator.of(context).pop();
       }
+    } on AuthException catch (e) {
+      setState(() {
+        if (e.message.contains('email not confirmed') || e.message.contains('Email not confirmed')) {
+          _error = 'Please check your email and confirm your account before logging in. Check your spam folder if you don\'t see the email.';
+        } else {
+          _error = 'Login failed: ${e.message}';
+        }
+      });
     } catch (e) {
       setState(() {
         _error = '${_localizationService.translate('login_page_error_login')}${e.toString()}';

@@ -68,8 +68,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   List<Book> _featuredBooks = [];
   List<String> _categories = ['all', 'boy', 'girl'];
   String _selectedCategory = 'all';
+  // Display label for selected category (keeps original casing / language from DB)
+  String _selectedCategoryDisplay = 'all';
   bool _isLoading = true;
   bool _categoriesLoading = true;
+  List<Map<String, dynamic>> _allCategories = []; // Store full category data
+  bool _allCategoriesLoading = true;
   List<String> _genreCategories = [];
   bool _genreCategoriesLoading = true;
   Map<String, List<Book>> _booksByGenre = {};
@@ -86,6 +90,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _initializeVideo();
     _loadUserPreferencesAndBooks();
     _loadCategories();
+    _loadAllCategories(); // Load all categories from database
     _loadGenreCategories();
     _loadFavorites();
   }
@@ -166,6 +171,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           await UserPreferenceService.getSelectedCategoryWithFallback();
       setState(() {
         _selectedCategory = selectedCategory;
+        _selectedCategoryDisplay = selectedCategory; // will be normalized later when categories load
       });
 
       _loadFeaturedBooks();
@@ -175,49 +181,103 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _loadFeaturedBooks() async {
+    print('🏠 Loading featured books...');
     setState(() {
       _isLoading = true;
     });
 
     try {
-      List<Book> books;
-
-      if (_selectedCategory == 'all') {
-        books = await _bookService.getFeaturedBooks(limit: 6);
-      } else if (_selectedCategory == 'ولد' || _selectedCategory == 'girl') {
-        books = await _bookService.getBooksByGender(
-          _selectedCategory,
-          limit: 6,
-        );
-      } else {
-        books = await _bookService.getBooksByCategory(
-          _selectedCategory,
-          limit: 6,
-        );
+      // Use the same pattern as books page - load ALL books first without limit
+      final books = await _bookService.getAllBooks();
+      print('🏠 Fetched ${books.length} total books from database');
+      
+      List<Book> filteredBooks = books;
+      
+      // Apply client-side filtering based on selected category
+      if (_selectedCategory != 'all') {
+        print('🏠 Filtering books for category: $_selectedCategory');
+        
+        // Use the normalized category name directly for filtering
+        final normalizedCategory = _selectedCategory.toLowerCase();
+        print('🏠 Using normalized category: $normalizedCategory');
+        
+        // Filter books based on the normalized category
+        filteredBooks = books.where((book) {
+          // Debug: print book details
+          print('  Book: ${book.title}, dbCategory: ${book.dbCategory}, genderTarget: ${book.genderTarget}, category: ${book.category}');
+          
+          if (normalizedCategory == 'girl') {
+            // For girl category, check if dbCategory is 2 (since category 2 seems to be for girls)
+            final isGirlBook = (book.dbCategory != null && book.dbCategory.toString() == '2') ||
+                              (book.genderTarget.toLowerCase() == 'girl') ||
+                              (book.category.toLowerCase().contains('girl'));
+            print('    -> Is girl book: $isGirlBook (dbCategory: ${book.dbCategory})');
+            return isGirlBook;
+          } else if (normalizedCategory == 'boy') {
+            // For boy category, check if dbCategory is 1 (since category 1 seems to be for boys)
+            final isBoyBook = (book.dbCategory != null && book.dbCategory.toString() == '1') ||
+                             (book.genderTarget.toLowerCase() == 'boy') ||
+                             (book.category.toLowerCase().contains('boy'));
+            print('    -> Is boy book: $isBoyBook (dbCategory: ${book.dbCategory})');
+            return isBoyBook;
+          } else {
+            // For other categories, check category fields
+            final isMatchingCategory = (book.dbCategory?.toString().toLowerCase() == normalizedCategory ||
+                                       book.category.toLowerCase() == normalizedCategory ||
+                                       book.genderTarget.toLowerCase() == normalizedCategory);
+            print('    -> Is matching category: $isMatchingCategory');
+            return isMatchingCategory;
+          }
+        }).toList();
+        
+        print('🏠 Found ${filteredBooks.length} books for category $normalizedCategory');
+      }
+      
+      // Take only first 6 books for featured section
+      final featuredBooks = filteredBooks.take(6).toList();
+      
+      print('🏠 Final featured books count: ${featuredBooks.length}');
+      for (var book in featuredBooks) {
+        print('  - ${book.title} (Category: ${book.category}, Gender: ${book.genderTarget}, dbCategory: ${book.dbCategory})');
       }
 
       setState(() {
-        _featuredBooks = books;
+        _featuredBooks = featuredBooks;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      print('🚨 Error loading featured books: $e');
+      setState(() {
+        _featuredBooks = [];
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Helper method to map localized categories to database filter values
+  String _mapCategoryToFilter(String category) {
+    // Handle Arabic categories
+    switch (category.toLowerCase()) {
+      case 'فتاة':
+        return 'girl';
+      case 'ولد':
+        return 'boy';
+      case 'all':
+      case 'الكل':
+        return 'all';
+      default:
+        // Return the category as-is for English or other values
+        return category.toLowerCase();
     }
   }
 
   Future<void> _loadCategories() async {
     try {
-      final categories = await _bookService.getCategories();
+      final categories = await _bookService.getBookCategories();
       final validCategories = categories
-          .where(
-            (c) =>
-                c.toLowerCase() == 'boy' ||
-                c.toLowerCase() == 'girl' ||
-                c.toLowerCase() == 'fiction' ||
-                c.toLowerCase() == 'fantasy' ||
-                c.toLowerCase() == 'mystery',
-          )
+          .where((c) => c.isNotEmpty)
           .map((c) => c.toLowerCase())
+          .toSet() // Remove duplicates
           .toList();
 
       final allCategories = ['all', ...validCategories];
@@ -226,10 +286,59 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _categoriesLoading = false;
       });
     } catch (e) {
+      print('Error loading categories: $e');
       setState(() {
         _categoriesLoading = false;
-        _categories = ['all', 'boy', 'girl'];
+        _categories = ['all', 'boy', 'girl']; // Fallback categories
       });
+    }
+  }
+
+  Future<void> _loadAllCategories() async {
+    try {
+      final categories = await _bookService.getCategories();
+      // Determine a user-friendly display name for the currently selected category
+      String displayName = 'all';
+      for (var c in categories) {
+        final name = (c['name'] ?? '').toString();
+        if (_normalizeCategoryName(name) == _selectedCategory) {
+          displayName = name;
+          break;
+        }
+      }
+
+      setState(() {
+        _allCategories = categories;
+        _allCategoriesLoading = false;
+        _selectedCategoryDisplay = displayName;
+      });
+    } catch (e) {
+      print('Error loading categories: $e');
+      setState(() {
+        _allCategoriesLoading = false;
+        _allCategories = [];
+      });
+    }
+  }
+
+  // Normalize a category name (handles Arabic labels and common mappings)
+  String _normalizeCategoryName(String name) {
+    final n = name.trim().toLowerCase();
+    switch (n) {
+      case 'فتاة':
+  case 'بنت':
+      case 'girl':
+      case 'girls':
+        return 'girl';
+  case 'ولد':
+      case 'boy':
+      case 'boys':
+        return 'boy';
+      case 'all':
+      case 'الكل':
+        return 'all';
+      default:
+        return n; // use lowercased raw name for filtering (e.g., adventure)
     }
   }
 
@@ -258,30 +367,47 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     });
 
     try {
+      // Use the same pattern as books page - load ALL books first
       final allBooks = await _bookService.getAllBooks();
+      print('🏠 Fetched ${allBooks.length} total books for genre filtering');
+      
+      List<Book> filteredBooks = allBooks;
+      
+      // Apply the same category filtering logic as featured books
+      if (_selectedCategory != 'all') {
+        final normalizedCategory = _selectedCategory.toLowerCase();
+        print('🏠 Applying filter "$normalizedCategory" to genre books');
+        
+        // Filter books based on the normalized category (same logic as featured books)
+        filteredBooks = allBooks.where((book) {
+          if (normalizedCategory == 'girl') {
+            // For girl category, check if dbCategory is 2 (since category 2 seems to be for girls)
+            return (book.dbCategory != null && book.dbCategory.toString() == '2') ||
+                   (book.genderTarget.toLowerCase() == 'girl') ||
+                   (book.category.toLowerCase().contains('girl'));
+          } else if (normalizedCategory == 'boy') {
+            // For boy category, check if dbCategory is 1 (since category 1 seems to be for boys)
+            return (book.dbCategory != null && book.dbCategory.toString() == '1') ||
+                   (book.genderTarget.toLowerCase() == 'boy') ||
+                   (book.category.toLowerCase().contains('boy'));
+          } else {
+            // For other categories, check category fields
+            return (book.dbCategory?.toString().toLowerCase() == normalizedCategory ||
+                    book.category.toLowerCase() == normalizedCategory ||
+                    book.genderTarget.toLowerCase() == normalizedCategory);
+          }
+        }).toList();
+        
+        print('🏠 Filtered to ${filteredBooks.length} books for category $normalizedCategory');
+      }
+      
       final Map<String, List<Book>> genreBooks = {};
       
       for (String genre in _genreCategories) {
-        var booksInGenre = allBooks.where((book) => book.genre == genre);
+        final booksInGenre = filteredBooks.where((book) => book.genre == genre).take(6).toList();
         
-        // Apply gender filter based on selected category
-        if (_selectedCategory == 'boy' || _selectedCategory == 'girl') {
-          booksInGenre = booksInGenre.where((book) {
-            final bookGender = book.genderTarget.toLowerCase();
-            final selectedGender = _selectedCategory.toLowerCase();
-            
-            // Show book if it matches selected gender or is for 'all' genders
-            return bookGender == selectedGender || 
-                   bookGender == 'all' || 
-                   bookGender == 'any' || 
-                   bookGender == 'both' ||
-                   bookGender.isEmpty;
-          });
-        }
-        
-        final filteredBooks = booksInGenre.take(6).toList();
-        if (filteredBooks.isNotEmpty) {
-          genreBooks[genre] = filteredBooks;
+        if (booksInGenre.isNotEmpty) {
+          genreBooks[genre] = booksInGenre;
         }
       }
       
@@ -535,6 +661,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     
                     // Bestsellers Section
                     _buildBestsellersSection(),
+
+                    const SizedBox(height: 30),
+
+                    // Popular Books section
+                    _buildPopularPlacesSection(),
 
                     const SizedBox(height: 20),
                   ],
@@ -911,19 +1042,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 
                 const SizedBox(height: 10),
                 
-                // Books horizontal scroll
-                Container(
-                  height: _isMobile(context) ? 380 : (_isTablet(context) ? 420 : 450),
-                  child: _isMobile(context)
-                      ? ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: booksInGenre.length > 8 ? 8 : booksInGenre.length,
+                // Books display
+                _isMobile(context) || _isTablet(context)
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: _isTablet(context) ? 0.65 : 0.6,
+                            crossAxisSpacing: _isTablet(context) ? 12 : 16, // Reduced spacing for tablet
+                            mainAxisSpacing: _isTablet(context) ? 16 : 20, // Reduced spacing for tablet
+                          ),
+                          itemCount: booksInGenre.length > 6 ? 6 : booksInGenre.length,
                           itemBuilder: (context, index) {
-                            return _buildBookCard(booksInGenre[index], index);
+                            return _buildMobileBookCard(booksInGenre[index]);
                           },
-                        )
-                      : ScrollConfiguration(
+                        ),
+                      )
+                    : Container(
+                        height: 450,
+                        child: ScrollConfiguration(
                           behavior: ScrollConfiguration.of(context).copyWith(
                             dragDevices: {
                               PointerDeviceKind.touch,
@@ -941,7 +1081,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             },
                           ),
                         ),
-                ),
+                      ),
                 const SizedBox(height: 15),
               ],
             ),
@@ -1094,13 +1234,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'home_page_categories'.tr,
-              style: GoogleFonts.tajawal(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: const Color.fromARGB(221, 0, 0, 0),
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.dashboard,
+                  size: 24,
+                  color: const Color.fromARGB(221, 17, 41, 8),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'age'.tr,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: const Color.fromARGB(221, 0, 0, 0),
+                  ),
+                ),
+              ],
             ),
             Row(
               children: [
@@ -1128,14 +1278,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    // Show Boy and Girl categories as small buttons next to title
-    final displayCategories = _categories.where((c) => c == 'boy' || c == 'girl').toList();
-    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Age title on the left
           Row(
             children: [
               Icon(
@@ -1152,60 +1300,137 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   color: const Color.fromARGB(221, 0, 0, 0),
                 ),
               ),
+              const SizedBox(width: 12),
+              // Show currently selected category display (if not 'all')
+              if (_selectedCategoryDisplay.isNotEmpty && _selectedCategory != 'all')
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF784D9C).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _selectedCategoryDisplay,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF784D9C),
+                    ),
+                  ),
+                ),
             ],
           ),
+          
+          // Categories moved towards right with selection functionality
           Row(
-            children: displayCategories.map((category) {
-              final isSelected = category == _selectedCategory;
-              return Container(
-                margin: const EdgeInsets.only(left: 8),
-                child: GestureDetector(
+            children: [
+              if (_allCategories.isNotEmpty && !_allCategoriesLoading)
+                ...(_allCategories.take(4).map((category) => // Show max 4 categories
+                  GestureDetector(
+                    onTap: () async {
+                      // Set category as selected and filter products
+                      final rawName = category['name']?.toString() ?? '';
+                      final normalized = _normalizeCategoryName(rawName);
+                      print('🏷️ Category selected: $rawName -> $normalized');
+
+                      // Update selected category for filtering and display
+                      setState(() {
+                        _selectedCategory = normalized;
+                        _selectedCategoryDisplay = rawName;
+                      });
+
+                      // Save preference and reload books with category filter
+                      await UserPreferenceService.setSelectedCategory(normalized);
+                      await _loadFeaturedBooks();
+                      await _loadBooksForAllGenres();
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: _selectedCategory == _normalizeCategoryName(category['name']?.toString() ?? '')
+                            ? LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF784D9C), Color(0xFF784D9C)],
+                              )
+                            : null,
+                        color: _selectedCategory == _normalizeCategoryName(category['name']?.toString() ?? '')
+                            ? null
+                            : Color(0xFF784D9C).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _selectedCategory == _normalizeCategoryName(category['name']?.toString() ?? '')
+                              ? Colors.transparent
+                              : Color(0xFF784D9C).withOpacity(0.3),
+                          width: 1,
+                        ),
+                        boxShadow: _selectedCategory == _normalizeCategoryName(category['name']?.toString() ?? '')
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        category['name'] ?? '',
+                        style: GoogleFonts.tajawal(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _selectedCategory == _normalizeCategoryName(category['name']?.toString() ?? '')
+                              ? Colors.white
+                              : Color(0xFF784D9C),
+                        ),
+                      ),
+                    ),
+                  ),
+                )).toList()
+              else
+                // Fallback: Show 'all' option if no categories from database
+                GestureDetector(
                   onTap: () async {
                     setState(() {
-                      _selectedCategory = category;
+                      _selectedCategory = 'all';
+                      _selectedCategoryDisplay = 'all';
                     });
-                    await UserPreferenceService.setSelectedCategory(category);
-                    _loadFeaturedBooks();
-                    _loadBooksForAllGenres(); // Reload genre books with new filter
+                    await UserPreferenceService.setSelectedCategory('all');
+                    await _loadFeaturedBooks();
+                    await _loadBooksForAllGenres();
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      gradient: isSelected
+                      gradient: _selectedCategory == 'all'
                           ? LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [Color(0xFF784D9C), Color(0xFF784D9C)],
                             )
                           : null,
-                      color: isSelected ? null : Colors.white,
+                      color: _selectedCategory == 'all' ? null : Color(0xFF784D9C).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSelected
+                        color: _selectedCategory == 'all'
                             ? Colors.transparent
-                            : Color.fromARGB(255, 200, 200, 200),
-                        width: 1.5,
+                            : Color(0xFF784D9C).withOpacity(0.3),
+                        width: 1,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: Text(
-                      category.tr,
+                      'all'.tr,
                       style: GoogleFonts.tajawal(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : Color.fromARGB(255, 100, 100, 100),
+                        color: _selectedCategory == 'all' ? Colors.white : Color(0xFF784D9C),
                       ),
                     ),
                   ),
                 ),
-              );
-            }).toList(),
+            ],
           ),
         ],
       ),
@@ -1409,7 +1634,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           Container(
             height: 220,
             child: Center(
-              child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+              child: CircularProgressIndicator(color: Color(0xFF784D9C)),
             ),
           )
         else
@@ -1526,11 +1751,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildBooksList() {
-    final booksToShow = _featuredBooks.isNotEmpty
-        ? _featuredBooks
-        : _getDummyBooks();
-
-    if (booksToShow.isEmpty) {
+    if (_featuredBooks.isEmpty) {
       return Container(
         height: 250,
         child: Center(
@@ -1545,37 +1766,223 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    // Mobile: horizontal scroll (unchanged)
-    if (_isMobile(context)) {
-      return Container(
-        height: 380,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount: booksToShow.length,
+    // Mobile and Tablet: Grid layout with 2 columns
+    if (_isMobile(context) || _isTablet(context)) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: _isTablet(context) ? 0.65 : 0.6,
+            crossAxisSpacing: _isTablet(context) ? 12 : 16, // Reduced spacing for tablet
+            mainAxisSpacing: _isTablet(context) ? 16 : 20, // Reduced spacing for tablet
+          ),
+          itemCount: _featuredBooks.length,
           itemBuilder: (context, index) {
-            return _buildBookCard(booksToShow[index], index);
+            return _buildMobileBookCard(_featuredBooks[index]);
           },
         ),
       );
     }
 
-    // Tablet/Desktop: Grid layout
-    return Padding(
-      padding: _getResponsivePaddingNoLeft(context),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _isTablet(context) ? 3 : 4,
-          childAspectRatio: _isTablet(context) ? 0.95 : 0.9,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 20,
+    // Desktop: Horizontal scroll layout
+    return Container(
+      height: 450,
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+          },
+          scrollbars: false,
         ),
-        itemCount: booksToShow.length,
-        itemBuilder: (context, index) {
-          return _buildPopularBookGridCard(booksToShow[index]);
-        },
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: _getResponsivePaddingNoLeft(context),
+          itemCount: _featuredBooks.length,
+          physics: const BouncingScrollPhysics(),
+          itemBuilder: (context, index) {
+            return _buildBookCard(_featuredBooks[index], index);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileBookCard(Book book) {
+    final isFavorite = _favoriteIds.contains(book.id);
+    
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailPage(book: book),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Book Image - standalone without background
+          Expanded(
+            flex: 4,
+            child: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: book.displayImage.isNotEmpty
+                        ? Image.network(
+                            book.displayImage,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF784D9C),
+                                      Color(0xFF784D9C),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.book,
+                                    size: 40,
+                                    color: Colors.white.withOpacity(0.7),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF784D9C),
+                                  Color(0xFF784D9C),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.book,
+                                size: 40,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                // Favorite icon button
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () => _toggleFavorite(book.id),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? Colors.red : Colors.grey[600],
+                        size: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Text content - no background container
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Text(
+                  book.title,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                // Subtitle/Description
+                Text(
+                  book.description.isNotEmpty ? book.description : 'تجربة ممتعة ومشوقة',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                // Personalize button
+                Container(
+                  width: double.infinity,
+                  height: 32,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductDetailPage(book: book),
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF784D9C),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Text(
+                      'شخصي',
+                      style: GoogleFonts.tajawal(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1596,7 +2003,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         );
       },
       child: Container(
-        width: isMobile ? 300 : (isTablet ? 320 : 350), // Fixed widths for all screen sizes
+        width: isMobile ? 240 : (isTablet ? 260 : 280), // Fixed widths for all screen sizes
         margin: EdgeInsets.only(
           right: isRTL ? 0 : 16,
           left: isRTL ? 16 : 0,
@@ -1604,40 +2011,31 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Book cover image
+            // Book cover image - NO BACKGROUND
             Stack(
               children: [
-                Container(
-                  width: isMobile ? 300 : (isTablet ? 320 : 350),
-                  height: isMobile ? 300 : (isTablet ? 320 : 350),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      width: isMobile ? 250 : double.infinity,
-                      height: isMobile ? 250 : null,
-                      color: _getBookColors()[book.hashCode % _getBookColors().length],
-                      child: book.displayImage.isNotEmpty
-                          ? Image.network(
-                              book.displayImage,
-                              fit: BoxFit.cover,
-                              width: 250,
-                              height: 220,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildPlaceholderBookCover(book.hashCode % 6);
-                              },
-                            )
-                          : _buildPlaceholderBookCover(book.hashCode % 6),
-                    ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    height: isMobile ? 240 : (isTablet ? 260 : 280),
+                    color: book.displayImage.isEmpty ? _getBookColors()[book.hashCode % _getBookColors().length] : null,
+                    child: book.displayImage.isNotEmpty
+                        ? Image.network(
+                            book.displayImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: _getBookColors()[book.hashCode % _getBookColors().length],
+                                child: Center(
+                                  child: Icon(Icons.book, size: 60, color: Colors.white.withOpacity(0.7)),
+                                ),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Icon(Icons.book, size: 60, color: Colors.white.withOpacity(0.7)),
+                          ),
                   ),
                 ),
                 // Favorite icon button
@@ -1670,38 +2068,63 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ],
             ),
             const SizedBox(height: 12),
-            // Book title
+            
+            // Book title - NO BACKGROUND
             Text(
-              book.title.isNotEmpty
-                  ? book.title
-                  : _getDummyTitles()[book.hashCode % _getDummyTitles().length],
+              book.title.isNotEmpty ? book.title : book.name,
               style: GoogleFonts.tajawal(
-                color: Colors.black87,
+                color: Color(0xFF2D2D2D),
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
-            // Location
-            // Row(
-            //   children: [
-            //     Icon(
-            //       Icons.location_on,
-            //       size: 14,
-            //       color: Colors.grey.shade600,
-            //     ),
-            //     const SizedBox(width: 4),
-            //     Text(
-            //       'London, UK',
-            //       style: GoogleFonts.tajawal(
-            //         fontSize: 12,
-            //         color: Colors.grey.shade600,
-            //       ),
-            //     ),
-            //   ],
-            // ),
+            const SizedBox(height: 6),
+            
+            // Description - NO BACKGROUND
+            Text(
+              book.description.isNotEmpty ? book.description : book.title,
+              style: GoogleFonts.tajawal(
+                fontSize: 12,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
+            
+            // Customize button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProductDetailPage(book: book),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:  Color(0xFF784D9C),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'تخصيص',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1723,61 +2146,55 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Book cover image
+          // Book cover image with favorite button - NO BACKGROUND
           Expanded(
+            flex: 5,
             child: Stack(
               children: [
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      color: _getBookColors()[book.hashCode % _getBookColors().length],
-                      child: book.displayImage.isNotEmpty
-                          ? Image.network(
-                              book.displayImage,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildPlaceholderBookCover(book.hashCode % 6);
-                              },
-                            )
-                          : _buildPlaceholderBookCover(book.hashCode % 6),
-                    ),
+                // Book cover
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    color: book.displayImage.isEmpty ? _getBookColors()[book.hashCode % _getBookColors().length] : null,
+                    child: book.displayImage.isNotEmpty
+                        ? Image.network(
+                            book.displayImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Color(0xFFF5F5F5),
+                                child: Icon(Icons.book, size: 48, color: Colors.grey[400]),
+                              );
+                            },
+                          )
+                        : Icon(Icons.book, size: 48, color: Colors.white.withOpacity(0.7)),
                   ),
                 ),
-                // Favorite icon button
+                // Favorite button
                 Positioned(
                   top: 8,
                   right: 8,
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: isFavorite ? Colors.red : Colors.grey[600],
-                        size: 16,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -1785,22 +2202,79 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ],
             ),
           ),
+          
+          // Content section - NO BACKGROUND
           const SizedBox(height: 12),
-          // Book title
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              book.title.isNotEmpty ? book.title : book.name,
-              style: GoogleFonts.tajawal(
-                color: Colors.black87,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Book title
+                Text(
+                  book.title.isNotEmpty ? book.title : book.name,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2D2D2D),
+                    height: 1.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                
+                const SizedBox(height: 6),
+                
+                // Description
+                Expanded(
+                  child: Text(
+                    book.description.isNotEmpty ? book.description : book.title,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // Customize button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProductDetailPage(book: book),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:  Color(0xFF784D9C),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'تخصيص',
+                      style: GoogleFonts.tajawal(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
         ],
       ),
     );
@@ -1817,62 +2291,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       ),
     );
   }
-
-  List<Book> _getDummyBooks() {
-    return List.generate(
-      6,
-      (index) => Book(
-        id: 'dummy-$index',
-        name: _getDummyTitles()[index % _getDummyTitles().length],
-        description:
-            _getDummyDescriptions()[index % _getDummyDescriptions().length],
-        price: 19.99,
-        discountPercentage: 0,
-        ageMin: 3,
-        ageMax: 8,
-        genderTarget: 'all',
-        coverImageUrl: '',
-        previewImages: [],
-        images: [],
-        videos: [],
-        availableLanguages: ['English'],
-        isFeatured: true,
-        isBestseller: false,
-        isActive: true,
-        stockQuantity: 10,
-        characters: [], // Required field - empty array for dummy books
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        level: 1,
-        path: '1',
-        sortOrder: index,
-      ),
-    );
-  }
-
-  List<String> _getDummyTitles() {
-    return [
-      'The Book Cellar',
-      'Shakespeare and Company',
-      'Atlantis Books',
-      'Libreria Acqua Alta',
-      'El Ateneo Grand Splendid',
-      'Livraria Lello',
-    ];
-  }
-
-  List<String> _getDummyDescriptions() {
-    return [
-      'An enchanting bookstore filled with literary treasures',
-      'Historic bookshop in the heart of Paris',
-      'A charming bookstore on a Greek island',
-      'Venice\'s most beautiful floating bookshop',
-      'A stunning theatre converted into a bookstore',
-      'One of the world\'s most beautiful bookstores',
-    ];
-  }
-
-
 
   List<Color> _getBookColors() {
     return [
@@ -1940,19 +2358,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             
             const SizedBox(height: 10),
             
-            // Books horizontal scroll
-            Container(
-              height: _isMobile(context) ? 380 : (_isTablet(context) ? 420 : 450),
-              child: _isMobile(context)
-                  ? ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: booksInGenre.length > 8 ? 8 : booksInGenre.length,
+            // Books display
+            _isMobile(context)
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.6,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 20,
+                      ),
+                      itemCount: booksInGenre.length > 6 ? 6 : booksInGenre.length,
                       itemBuilder: (context, index) {
-                        return _buildBookCard(booksInGenre[index], index);
+                        return _buildMobileBookCard(booksInGenre[index]);
                       },
-                    )
-                  : ScrollConfiguration(
+                    ),
+                  )
+                : Container(
+                    height: _isTablet(context) ? 420 : 450,
+                    child: ScrollConfiguration(
                       behavior: ScrollConfiguration.of(context).copyWith(
                         dragDevices: {
                           PointerDeviceKind.touch,
@@ -1970,7 +2397,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         },
                       ),
                     ),
-            ),
+                  ),
             const SizedBox(height: 15),
           ],
         ),
@@ -2046,74 +2473,55 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Book cover image
+          // Book cover image with favorite button - NO BACKGROUND
           Expanded(
+            flex: 5,
             child: Stack(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      width: double.infinity,
-                      color: _getBookColors()[book.hashCode % _getBookColors().length],
-                      child: book.displayImage.isNotEmpty
-                          ? Image.network(
-                              book.displayImage,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Center(
-                                  child: Icon(
-                                    Icons.book,
-                                    size: 50,
-                                    color: Colors.white.withOpacity(0.7),
-                                  ),
-                                );
-                              },
-                            )
-                          : Center(
-                              child: Icon(
-                                Icons.book,
-                                size: 50,
-                                color: Colors.white.withOpacity(0.7),
-                              ),
-                            ),
-                    ),
+                // Book cover
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    color: book.displayImage.isEmpty ? _getBookColors()[book.hashCode % _getBookColors().length] : null,
+                    child: book.displayImage.isNotEmpty
+                        ? Image.network(
+                            book.displayImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Color(0xFFF5F5F5),
+                                child: Icon(Icons.book, size: 48, color: Colors.grey[400]),
+                              );
+                            },
+                          )
+                        : Icon(Icons.book, size: 48, color: Colors.white.withOpacity(0.7)),
                   ),
                 ),
-                // Favorite icon button
+                // Favorite button
                 Positioned(
                   top: 8,
                   right: 8,
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: isFavorite ? Colors.red : Colors.grey[600],
-                        size: 22,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -2121,22 +2529,79 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ],
             ),
           ),
-          const SizedBox(height: 4),
-          // Book title
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              book.title.isNotEmpty ? book.title : book.name,
-              style: GoogleFonts.tajawal(
-                color: Colors.black87,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          
+          // Content section - NO BACKGROUND
+          const SizedBox(height: 12),
+          
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Book title
+                Text(
+                  book.title.isNotEmpty ? book.title : book.name,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2D2D2D),
+                    height: 1.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                
+                const SizedBox(height: 6),
+                
+                // Description
+                Expanded(
+                  child: Text(
+                    book.description.isNotEmpty ? book.description : book.title,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // Customize button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProductDetailPage(book: book),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:  Color(0xFF784D9C),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'تخصيص',
+                      style: GoogleFonts.tajawal(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
         ],
       ),
     );
@@ -2475,11 +2940,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildBestsellersBooksGrid() {
-    final booksToShow = _featuredBooks.isNotEmpty 
-        ? _featuredBooks.take(8).toList() // Show up to 8 books
-        : _getDummyBooks().take(8).toList();
-
-    if (booksToShow.isEmpty) {
+    if (_featuredBooks.isEmpty) {
       return Container(
         height: 200,
         child: Center(
@@ -2494,23 +2955,45 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    // Responsive grid: 2 columns on mobile, 3 on tablet, 4 on desktop
-    final crossAxisCount = _isMobile(context) ? 2 : (_isTablet(context) ? 3 : 4);
-    final childAspectRatio = _isMobile(context) ? 0.55 : (_isTablet(context) ? 0.45 : 0.7); // Keep tablet at 0.45
+    // Mobile and Tablet: Grid layout with 2 columns
+    if (_isMobile(context) || _isTablet(context)) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: _isTablet(context) ? 0.65 : 0.55,
+          crossAxisSpacing: _isTablet(context) ? 12 : 12, // Reduced spacing for tablet
+          mainAxisSpacing: _isTablet(context) ? 16 : 16, // Reduced spacing for tablet
+        ),
+        itemCount: _featuredBooks.take(8).length,
+        itemBuilder: (context, index) {
+          return _buildMobileBookCard(_featuredBooks[index]);
+        },
+      );
+    }
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: _isMobile(context) ? 12 : (_isTablet(context) ? 14 : 18), // Reduced tablet spacing
-        mainAxisSpacing: _isMobile(context) ? 16 : (_isTablet(context) ? 18 : 16), // Reduced tablet spacing
+    // Desktop: Horizontal scroll layout (same as genre categories)
+    return Container(
+      height: 450,
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+          },
+          scrollbars: false,
+        ),
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.zero,
+          itemCount: _featuredBooks.take(8).length,
+          physics: const BouncingScrollPhysics(),
+          itemBuilder: (context, index) {
+            return _buildBookCard(_featuredBooks[index], index);
+          },
+        ),
       ),
-      itemCount: booksToShow.length,
-      itemBuilder: (context, index) {
-        return _buildBestsellerBookCard(booksToShow[index]);
-      },
     );
   }
 
@@ -2529,36 +3012,30 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Book cover with discount badge and favorite button
+          // Book cover with discount badge and favorite button - NO BACKGROUND
           Expanded(
-            flex: 4, // Give more space to the book cover
+            flex: 5,
             child: Stack(
               children: [
                 // Book cover image
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    color: book.coverImageUrl.isEmpty ? Color(0xFFF5F5F5) : null,
                     child: book.coverImageUrl.isNotEmpty
                         ? Image.network(
                             book.coverImageUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return _buildPlaceholderBookCover(0);
+                              return Container(
+                                color: Color(0xFFF5F5F5),
+                                child: Icon(Icons.book, size: 48, color: Colors.grey[400]),
+                              );
                             },
                           )
-                        : _buildPlaceholderBookCover(0),
+                        : Icon(Icons.book, size: 48, color: Colors.grey[400]),
                   ),
                 ),
                 
@@ -2569,7 +3046,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     left: _localizationService.textDirection == TextDirection.rtl ? null : 8,
                     right: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.green,
                         borderRadius: BorderRadius.circular(8),
@@ -2578,7 +3055,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         '-${book.discountPercentage.toInt()}%',
                         style: GoogleFonts.tajawal(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -2595,13 +3072,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     child: Container(
                       padding: EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: isFavorite ? Colors.red : Colors.grey[600],
-                        size: 16,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -2610,74 +3094,76 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ),
           ),
           
-          // Text content outside the book cover (below)
+          // Content section - NO BACKGROUND
+          const SizedBox(height: 12),
+          
           Expanded(
-            flex: 2, // Space for title, description, and button
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Book title
-                  Text(
-                    book.title.isNotEmpty ? book.title : book.name,
-                    style: GoogleFonts.tajawal(
-                      fontSize: _isMobile(context) ? 14 : (_isTablet(context) ? 15 : 16),
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Book title
+                Text(
+                  book.title.isNotEmpty ? book.title : book.name,
+                  style: GoogleFonts.tajawal(
+                    fontSize: _isMobile(context) ? 14 : (_isTablet(context) ? 15 : 16),
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2D2D2D),
+                    height: 1.3,
                   ),
-                  
-                  const SizedBox(height: 6),
-                  
-                  // Book description
-                  Text(
-                    book.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                
+                const SizedBox(height: 6),
+                
+                // Book description
+                Expanded(
+                  child: Text(
+                    book.description.isNotEmpty ? book.description : book.title,
                     style: GoogleFonts.tajawal(
                       fontSize: _isMobile(context) ? 11 : (_isTablet(context) ? 12 : 13),
                       color: Colors.grey[600],
+                      height: 1.4,
                     ),
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  
-                  const Spacer(),
-                  
-                  // Personalise button
-                  SizedBox(
-                    width: double.infinity,
-                    height: _isMobile(context) ? 36 : (_isTablet(context) ? 38 : 40),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ProductDetailPage(book: book),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF784D9C),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // Customize button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProductDetailPage(book: book),
                         ),
-                        padding: EdgeInsets.symmetric(horizontal: 12),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF784D9C),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: _isMobile(context) ? 8 : (_isTablet(context) ? 9 : 10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(
-                        'personalise'.tr,
-                        style: GoogleFonts.tajawal(
-                          fontSize: _isMobile(context) ? 12 : (_isTablet(context) ? 13 : 14),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'تخصيص',
+                      style: GoogleFonts.tajawal(
+                        fontSize: _isMobile(context) ? 12 : (_isTablet(context) ? 13 : 14),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
