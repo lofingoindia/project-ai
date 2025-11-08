@@ -71,23 +71,54 @@ class _MyAccountPageState extends State<MyAccountPage> {
       _profileError = null; 
     });
     
-    // Since there's a database schema mismatch, let's just use auth user data for now
     try {
-      final name = user.userMetadata?['name'] ?? '';
+      // Try to load from app_users table first
+      // Note: Using email to match since app_users.id is integer, not UUID
+      String name = '';
+      String? avatarUrl;
+      
+      if (user.email != null) {
+        final response = await Supabase.instance.client
+            .from('app_users')
+            .select('full_name, avatar_url')
+            .eq('email', user.email!)
+            .maybeSingle();
+      
+        if (response != null) {
+          name = response['full_name'] ?? '';
+          avatarUrl = response['avatar_url'];
+        }
+      }
+      
+      // Fallback to auth user metadata if app_users doesn't have the data
+      if (name.isEmpty) {
+        name = user.userMetadata?['name'] ?? '';
+      }
+      if (avatarUrl == null) {
+        avatarUrl = user.userMetadata?['profile_image_url'];
+      }
+      
       final email = user.email ?? '';
-      final profileImageUrl = user.userMetadata?['profile_image_url'];
       
       setState(() {
         _userName = name;
-        _profileImageUrl = profileImageUrl;
+        _profileImageUrl = avatarUrl;
         _nameController.text = name;
         _emailController.text = email;
       });
     } catch (e) {
       print('Profile loading error: $e');
+      // Fallback to auth user data if database query fails
+      final name = user.userMetadata?['name'] ?? '';
+      final email = user.email ?? '';
+      final profileImageUrl = user.userMetadata?['profile_image_url'];
+      
       setState(() { 
         _profileError = null; // Don't show error to user
-        _userName = '';
+        _userName = name;
+        _profileImageUrl = profileImageUrl;
+        _nameController.text = name;
+        _emailController.text = email;
       });
     } finally {
       setState(() { _profileLoading = false; });
@@ -584,24 +615,81 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                               return;
                                                             }
                                                             try {
-                                                              // Save image path locally if an image was selected
+                                                              String? uploadedAvatarUrl;
+                                                              
+                                                              // Upload image to Supabase Storage if an image was selected
                                                               if (_selectedImage != null) {
-                                                                await _saveImagePath(_selectedImage!.path);
+                                                                try {
+                                                                  final bytes = await _selectedImage!.readAsBytes();
+                                                                  final fileExt = _selectedImage!.path.split('.').last;
+                                                                  final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+                                                                  final filePath = 'avatars/$fileName';
+                                                                  
+                                                                  // Upload to Supabase Storage
+                                                                  await Supabase.instance.client.storage
+                                                                      .from('profile-images')
+                                                                      .uploadBinary(
+                                                                        filePath,
+                                                                        bytes,
+                                                                        fileOptions: FileOptions(
+                                                                          contentType: 'image/${fileExt == 'jpg' ? 'jpeg' : fileExt}',
+                                                                          upsert: true,
+                                                                        ),
+                                                                      );
+                                                                  
+                                                                  // Get public URL
+                                                                  uploadedAvatarUrl = Supabase.instance.client.storage
+                                                                      .from('profile-images')
+                                                                      .getPublicUrl(filePath);
+                                                                  
+                                                                  // Save image path locally
+                                                                  await _saveImagePath(_selectedImage!.path);
+                                                                } catch (e) {
+                                                                  print('Error uploading image: $e');
+                                                                  // Continue with profile update even if image upload fails
+                                                                }
                                                               }
                                                               
-                                                              // Update auth user data directly since profile table has schema issues
+                                                              // Update app_users table with avatar_url and full_name
+                                                              try {
+                                                                final updateData = <String, dynamic>{
+                                                                  'full_name': _nameController.text.trim(),
+                                                                };
+                                                                
+                                                                if (uploadedAvatarUrl != null) {
+                                                                  updateData['avatar_url'] = uploadedAvatarUrl;
+                                                                }
+                                                                
+                                                                if (user.email != null) {
+                                                                  await Supabase.instance.client
+                                                                      .from('app_users')
+                                                                      .update(updateData)
+                                                                      .eq('email', user.email!);
+                                                                }
+                                                              } catch (e) {
+                                                                print('Error updating app_users: $e');
+                                                              }
+                                                              
+                                                              // Update auth user data
+                                                              final authUpdateData = <String, dynamic>{
+                                                                'name': _nameController.text.trim(),
+                                                              };
+                                                              
+                                                              if (uploadedAvatarUrl != null) {
+                                                                authUpdateData['profile_image_url'] = uploadedAvatarUrl;
+                                                              }
+                                                              
                                                               if (_emailController.text.trim() != user.email && _emailController.text.trim().isNotEmpty) {
                                                                 await Supabase.instance.client.auth.updateUser(
                                                                   UserAttributes(
                                                                     email: _emailController.text.trim(),
-                                                                    data: {'name': _nameController.text.trim()},
+                                                                    data: authUpdateData,
                                                                   ),
                                                                 );
                                                               } else {
-                                                                // Just update the user metadata with the name
                                                                 await Supabase.instance.client.auth.updateUser(
                                                                   UserAttributes(
-                                                                    data: {'name': _nameController.text.trim()},
+                                                                    data: authUpdateData,
                                                                   ),
                                                                 );
                                                               }
@@ -610,9 +698,14 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                                 await Supabase.instance.client.auth.updateUser(
                                                                   UserAttributes(password: _passwordController.text),
                                                                 );
-                                                              }                                                              // Update local state
+                                                              }
+                                                              
+                                                              // Update local state
                                                               setState(() {
                                                                 _userName = _nameController.text.trim();
+                                                                if (uploadedAvatarUrl != null) {
+                                                                  _profileImageUrl = uploadedAvatarUrl;
+                                                                }
                                                               });
                                                               
                                                               // Clear password fields

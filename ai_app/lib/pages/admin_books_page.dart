@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/book_service.dart';
 import '../models/book.dart';
 
@@ -31,7 +32,12 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading books: $e')),
+        SnackBar(
+          content: Text(
+            'Error loading books: $e',
+            style: GoogleFonts.tajawal(),
+          ),
+        ),
       );
     }
   }
@@ -40,7 +46,10 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin - Books Management'),
+        title: Text(
+          'Admin - Books Management',
+          style: GoogleFonts.tajawal(),
+        ),
         backgroundColor: const Color(0xFF784D9C),
         foregroundColor: Colors.white,
         actions: [
@@ -55,7 +64,12 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _books.isEmpty
-              ? const Center(child: Text('No books found'))
+              ? Center(
+                  child: Text(
+                    'No books found',
+                    style: GoogleFonts.tajawal(),
+                  ),
+                )
               : ListView.builder(
                   itemCount: _books.length,
                   itemBuilder: (context, index) {
@@ -82,14 +96,29 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
                                 )
                               : const Icon(Icons.book),
                         ),
-                        title: Text(book.title),
+                        title: Text(
+                          book.title,
+                          style: GoogleFonts.tajawal(),
+                        ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(book.description),
-                            Text('Price: ${book.formattedDiscountedPrice}'),
-                            Text('Category: ${book.category}'),
-                            Text('Age: ${book.ageMin}-${book.ageMax}'),
+                            Text(
+                              book.description,
+                              style: GoogleFonts.tajawal(),
+                            ),
+                            Text(
+                              'Price: ${book.formattedDiscountedPrice}',
+                              style: GoogleFonts.tajawal(),
+                            ),
+                            Text(
+                              'Category: ${book.category}',
+                              style: GoogleFonts.tajawal(),
+                            ),
+                            Text(
+                              'Age: ${book.ageMin}-${book.ageMax}',
+                              style: GoogleFonts.tajawal(),
+                            ),
                           ],
                         ),
                         trailing: Row(
@@ -103,9 +132,9 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
                                   color: Colors.orange,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Featured',
-                                  style: TextStyle(
+                                  style: GoogleFonts.tajawal(
                                     color: Colors.white,
                                     fontSize: 10,
                                   ),
@@ -120,9 +149,9 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
                                   color: Colors.green,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Bestseller',
-                                  style: TextStyle(
+                                  style: GoogleFonts.tajawal(
                                     color: Colors.white,
                                     fontSize: 10,
                                   ),
@@ -142,8 +171,11 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add New Book'),
-        content: const Text(
+        title: Text(
+          'Add New Book',
+          style: GoogleFonts.tajawal(),
+        ),
+        content: Text(
           'To add new books, please use the Supabase dashboard or create a web admin interface.\n\n'
           'You can insert data directly into the "books" table with the following structure:\n'
           '• title (text)\n'
@@ -155,11 +187,15 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
           '• gender_target (boy/girl/any)\n'
           '• cover_image_url (text)\n'
           '• is_featured, is_bestseller (boolean)',
+          style: GoogleFonts.tajawal(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(
+              'OK',
+              style: GoogleFonts.tajawal(),
+            ),
           ),
         ],
       ),

@@ -526,7 +526,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     ),
                                     Text(
                                       '📚',
-                                      style: TextStyle(fontSize: _isMobile(context) ? 24 : 32),
+                                      style: GoogleFonts.tajawal(fontSize: _isMobile(context) ? 24 : 32),
                                     ),
                                   ],
                                 ),
@@ -662,10 +662,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     // Bestsellers Section
                     _buildBestsellersSection(),
 
-                    const SizedBox(height: 30),
+                    // const SizedBox(height: 30),
 
-                    // Popular Books section
-                    _buildPopularPlacesSection(),
+                    // // Popular Books section
+                    // _buildPopularPlacesSection(),
 
                     const SizedBox(height: 20),
                   ],
@@ -1061,28 +1061,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           },
                         ),
                       )
-                    : Container(
-                        height: 450,
-                        child: ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context).copyWith(
-                            dragDevices: {
-                              PointerDeviceKind.touch,
-                              PointerDeviceKind.mouse,
-                            },
-                            scrollbars: false,
+                    : Padding(
+                        padding: _getResponsivePaddingNoLeft(context),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            childAspectRatio: 0.6,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 20,
                           ),
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: _getResponsivePaddingNoLeft(context),
-                            itemCount: booksInGenre.length > 8 ? 8 : booksInGenre.length,
-                            physics: const BouncingScrollPhysics(),
-                            itemBuilder: (context, index) {
-                              return _buildBookCard(booksInGenre[index], index);
-                            },
-                          ),
+                          itemCount: booksInGenre.length > 8 ? 8 : booksInGenre.length,
+                          itemBuilder: (context, index) {
+                            return _buildMobileBookCard(booksInGenre[index]);
+                          },
                         ),
                       ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 10),
               ],
             ),
           ),
@@ -1787,26 +1783,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    // Desktop: Horizontal scroll layout
-    return Container(
-      height: 450,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(
-          dragDevices: {
-            PointerDeviceKind.touch,
-            PointerDeviceKind.mouse,
-          },
-          scrollbars: false,
+    // Desktop: Grid layout with 4 columns (no horizontal scrolling)
+    return Padding(
+      padding: _getResponsivePaddingNoLeft(context),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          childAspectRatio: 0.6,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 20,
         ),
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: _getResponsivePaddingNoLeft(context),
-          itemCount: _featuredBooks.length,
-          physics: const BouncingScrollPhysics(),
-          itemBuilder: (context, index) {
-            return _buildBookCard(_featuredBooks[index], index);
-          },
-        ),
+        itemCount: _featuredBooks.length,
+        itemBuilder: (context, index) {
+          return _buildMobileBookCard(_featuredBooks[index]);
+        },
       ),
     );
   }
@@ -1828,7 +1820,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         children: [
           // Book Image - standalone without background
           Expanded(
-            flex: 4,
+            flex: 5,
             child: Stack(
               children: [
                 Container(
@@ -1889,7 +1881,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 // Favorite icon button
                 Positioned(
                   top: 8,
-                  right: 8,
+                  right: _localizationService.textDirection == TextDirection.rtl ? null : 8,
+                  left: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
@@ -1917,43 +1910,46 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ),
           ),
           
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           
           // Text content - no background container
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Title
                 Text(
                   book.title,
                   style: GoogleFonts.tajawal(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 // Subtitle/Description
-                Text(
-                  book.description.isNotEmpty ? book.description : 'تجربة ممتعة ومشوقة',
-                  style: GoogleFonts.tajawal(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.grey[600],
-                    height: 1.4,
+                Flexible(
+                  child: Text(
+                    book.description.isNotEmpty ? book.description : 'تجربة ممتعة ومشوقة',
+                    style: GoogleFonts.tajawal(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[600],
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 // Personalize button
-                Container(
+                SizedBox(
                   width: double.infinity,
-                  height: 32,
+                  height: 30,
                   child: ElevatedButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -1973,7 +1969,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     child: Text(
                       'شخصي',
                       style: GoogleFonts.tajawal(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2041,7 +2037,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 // Favorite icon button
                 Positioned(
                   top: 8,
-                  right: 8,
+                  right: _localizationService.textDirection == TextDirection.rtl ? null : 8,
+                  left: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
@@ -2175,7 +2172,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 // Favorite button
                 Positioned(
                   top: 8,
-                  right: 8,
+                  right: _localizationService.textDirection == TextDirection.rtl ? null : 8,
+                  left: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
@@ -2359,7 +2357,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             const SizedBox(height: 10),
             
             // Books display
-            _isMobile(context)
+            _isMobile(context) || _isTablet(context)
                 ? Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: GridView.builder(
@@ -2367,9 +2365,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        childAspectRatio: 0.6,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 20,
+                        childAspectRatio: _isTablet(context) ? 0.65 : 0.6,
+                        crossAxisSpacing: _isTablet(context) ? 12 : 16,
+                        mainAxisSpacing: _isTablet(context) ? 16 : 20,
                       ),
                       itemCount: booksInGenre.length > 6 ? 6 : booksInGenre.length,
                       itemBuilder: (context, index) {
@@ -2377,25 +2375,21 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       },
                     ),
                   )
-                : Container(
-                    height: _isTablet(context) ? 420 : 450,
-                    child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context).copyWith(
-                        dragDevices: {
-                          PointerDeviceKind.touch,
-                          PointerDeviceKind.mouse,
-                        },
-                        scrollbars: false,
+                : Padding(
+                    padding: _getResponsivePaddingNoLeft(context),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        childAspectRatio: 0.6,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 20,
                       ),
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: _getResponsivePaddingNoLeft(context),
-                        itemCount: booksInGenre.length > 8 ? 8 : booksInGenre.length,
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          return _buildBookCard(booksInGenre[index], index);
-                        },
-                      ),
+                      itemCount: booksInGenre.length > 8 ? 8 : booksInGenre.length,
+                      itemBuilder: (context, index) {
+                        return _buildMobileBookCard(booksInGenre[index]);
+                      },
                     ),
                   ),
             const SizedBox(height: 15),
@@ -2502,7 +2496,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 // Favorite button
                 Positioned(
                   top: 8,
-                  right: 8,
+                  right: _localizationService.textDirection == TextDirection.rtl ? null : 8,
+                  left: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
@@ -2980,27 +2975,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    // Desktop: Horizontal scroll layout (same as genre categories)
-    return Container(
-      height: 450,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(
-          dragDevices: {
-            PointerDeviceKind.touch,
-            PointerDeviceKind.mouse,
-          },
-          scrollbars: false,
-        ),
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.zero,
-          itemCount: _featuredBooks.take(8).length,
-          physics: const BouncingScrollPhysics(),
-          itemBuilder: (context, index) {
-            return _buildBookCard(_featuredBooks[index], index);
-          },
-        ),
+    // Desktop: Grid layout with 4 columns (no horizontal scrolling)
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        childAspectRatio: 0.6,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 20,
       ),
+      itemCount: _featuredBooks.take(8).length,
+      itemBuilder: (context, index) {
+        return _buildMobileBookCard(_featuredBooks[index]);
+      },
     );
   }
 

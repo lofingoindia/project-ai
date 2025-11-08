@@ -180,28 +180,43 @@ class _CustomerSupportPageState extends State<CustomerSupportPage> {
                     ],
                   ),
                 if (isMobile) ...[
-                  _buildContactCard(
-                    icon: FontAwesomeIcons.envelope,
-                    title: 'customer_support_email_us'.tr,
-                    content: 'customer_support_email'.tr,
-                    subtitle: 'customer_support_email_subtitle'.tr,
-                    isMobile: true,
+                  Center(
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 400),
+                      child: _buildContactCard(
+                        icon: FontAwesomeIcons.envelope,
+                        title: 'customer_support_email_us'.tr,
+                        content: 'customer_support_email'.tr,
+                        subtitle: 'customer_support_email_subtitle'.tr,
+                        isMobile: true,
+                      ),
+                    ),
                   ),
                   SizedBox(height: 16),
-                  _buildContactCard(
-                    icon: FontAwesomeIcons.phone,
-                    title: 'customer_support_call_us'.tr,
-                    content: 'customer_support_phone'.tr,
-                    subtitle: 'customer_support_call_subtitle'.tr,
-                    isMobile: true,
+                  Center(
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 400),
+                      child: _buildContactCard(
+                        icon: FontAwesomeIcons.phone,
+                        title: 'customer_support_call_us'.tr,
+                        content: 'customer_support_phone'.tr,
+                        subtitle: 'customer_support_call_subtitle'.tr,
+                        isMobile: true,
+                      ),
+                    ),
                   ),
                   SizedBox(height: 16),
-                  _buildContactCard(
-                    icon: FontAwesomeIcons.clock,
-                    title: 'customer_support_hours'.tr,
-                    content: 'customer_support_hours_time'.tr,
-                    subtitle: 'customer_support_hours_days'.tr,
-                    isMobile: true,
+                  Center(
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 400),
+                      child: _buildContactCard(
+                        icon: FontAwesomeIcons.clock,
+                        title: 'customer_support_hours'.tr,
+                        content: 'customer_support_hours_time'.tr,
+                        subtitle: 'customer_support_hours_days'.tr,
+                        isMobile: true,
+                      ),
+                    ),
                   ),
                 ],
                 SizedBox(height: 40),

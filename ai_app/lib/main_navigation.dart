@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'home_page.dart';
 import 'pages/books_page.dart';
 import 'pages/cart_page.dart';
@@ -458,7 +459,7 @@ class _MainNavigationState extends State<MainNavigation> {
           children: [
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.tajawal(
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color: isSelected ? Color(0xFF784D9C) : Colors.grey[700],
@@ -478,7 +479,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 child: Center(
                   child: Text(
                     badgeCount.toString(),
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[800],
@@ -572,7 +573,7 @@ class _MainNavigationState extends State<MainNavigation> {
                   child: Center(
                     child: Text(
                       badgeCount.toString(),
-                      style: TextStyle(
+                      style: GoogleFonts.tajawal(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -726,7 +727,7 @@ class _MainNavigationState extends State<MainNavigation> {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: GoogleFonts.tajawal(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,

@@ -126,7 +126,10 @@ class _SearchPageState extends State<SearchPage> {
         // Show error message to user
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${'search_page_error_searching'.tr}${e.toString()}'),
+            content: Text(
+              '${'search_page_error_searching'.tr}${e.toString()}',
+              style: GoogleFonts.tajawal(),
+            ),
             backgroundColor: Colors.red,
           ),
         );

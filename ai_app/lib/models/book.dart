@@ -1,3 +1,5 @@
+import '../services/localization_service.dart';
+
 class Book {
   final String id;
   final String name;                // Using 'name' to match Supabase categories table
@@ -155,11 +157,35 @@ class Book {
   }
 
   String get formattedPrice {
-    return 'SYP ${price.toStringAsFixed(2)}';
+    // Use localization to get the correct currency symbol
+    final currencySymbol = _getCurrencySymbol();
+    return '$currencySymbol ${price.toStringAsFixed(2)}';
   }
 
   String get formattedDiscountedPrice {
-    return 'SYP ${discountedPrice.toStringAsFixed(2)}';
+    // Use localization to get the correct currency symbol
+    final currencySymbol = _getCurrencySymbol();
+    return '$currencySymbol ${discountedPrice.toStringAsFixed(2)}';
+  }
+
+  // Helper method to get currency symbol based on current language
+  String _getCurrencySymbol() {
+    try {
+      // Try to get from localization service
+      return 'currency_symbol'.tr;
+    } catch (e) {
+      // Fallback to Arabic currency if localization fails
+      return 'ل.س';
+    }
+  }
+
+  // Alternative method to use with custom currency symbol
+  String getFormattedPrice(String currencySymbol) {
+    return '$currencySymbol ${price.toStringAsFixed(2)}';
+  }
+
+  String getFormattedDiscountedPrice(String currencySymbol) {
+    return '$currencySymbol ${discountedPrice.toStringAsFixed(2)}';
   }
 
   // Get the title (compatibility with existing code)

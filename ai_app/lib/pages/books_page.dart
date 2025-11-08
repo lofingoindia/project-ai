@@ -192,7 +192,12 @@ class _BooksPageState extends State<BooksPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${'books_page_error_loading'.tr}$e')),
+        SnackBar(
+          content: Text(
+            '${'books_page_error_loading'.tr}$e',
+            style: GoogleFonts.tajawal(),
+          ),
+        ),
       );
     }
   }
@@ -415,7 +420,7 @@ class _BooksPageState extends State<BooksPage> {
                                     ),
                                   )
                                 : Image.asset(
-                                    'assets/aibn.png',
+                                    '',
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     errorBuilder: (context, error, stackTrace) {
@@ -933,7 +938,8 @@ class _BooksPageState extends State<BooksPage> {
                 // Favorite icon button
                 Positioned(
                   top: 8,
-                  right: 8,
+                  right: _localizationService.textDirection == TextDirection.rtl ? null : 8,
+                  left: _localizationService.textDirection == TextDirection.rtl ? 8 : null,
                   child: GestureDetector(
                     onTap: () => _toggleFavorite(book.id),
                     child: Container(
@@ -990,7 +996,7 @@ class _BooksPageState extends State<BooksPage> {
                     color: Colors.grey[600],
                     height: 1.4,
                   ),
-                  maxLines: 3,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),

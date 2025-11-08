@@ -5,7 +5,7 @@ import '../services/book_service.dart';
 import '../services/favorite_service.dart';
 import '../services/localization_service.dart';
 import 'product_detail_page.dart';
-import '../widgets/footer.dart';
+// import '../widgets/footer.dart';
 
 class MyBooksPage extends StatefulWidget {
   const MyBooksPage({Key? key}) : super(key: key);
@@ -56,7 +56,10 @@ class _MyBooksPageState extends State<MyBooksPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${'my_books_page_error_loading'.tr}${e.toString()}'),
+            content: Text(
+              '${'my_books_page_error_loading'.tr}${e.toString()}',
+              style: GoogleFonts.tajawal(),
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
