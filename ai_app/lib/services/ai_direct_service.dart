@@ -1,13 +1,19 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 
-/// Simple direct AI service - no queue, direct processing
+/// Simple direct AI service - calls backend API directly
 class AiDirectService {
   final SupabaseClient _client = Supabase.instance.client;
   
-  /// Generate personalized cover directly
+  // Backend API URL - UPDATE THIS WITH YOUR ACTUAL BACKEND URL
+  static const String _backendUrl = 'http://localhost:5000'; // Change to your backend URL
+  // For production: 'https://your-backend.com'
+  // For local development: 'http://localhost:5000' or 'http://10.0.2.2:5000' (Android emulator)
+  
+  /// Generate personalized cover by calling backend API directly
   Future<String> generatePersonalizedCover({
     required String bookId,
     required String bookName,
@@ -17,123 +23,129 @@ class AiDirectService {
     String? childImageMime,
   }) async {
     try {
-      final user = _client.auth.currentUser;
-      
-      // User login is optional - use a guest placeholder if not authenticated
-      final userId = user?.id ?? 'guest-${DateTime.now().millisecondsSinceEpoch}';
+      debugPrint('[AiDirectService] ========================================');
+      debugPrint('[AiDirectService] Calling BACKEND API directly');
+      debugPrint('[AiDirectService] Backend URL: $_backendUrl');
+      debugPrint('[AiDirectService] Book: $bookName (ID: $bookId)');
+      debugPrint('[AiDirectService] Child: $childName');
+      debugPrint('[AiDirectService] ========================================');
 
-      debugPrint('[AiDirectService] Starting direct generation...');
-      debugPrint('[AiDirectService] User authenticated: ${user != null}');
-      debugPrint('[AiDirectService] User ID: $userId');
-      debugPrint('[AiDirectService] Child URL: $childImageUrl');
-      debugPrint('[AiDirectService] Child Name: $childName');
-      debugPrint('[AiDirectService] Has base64 image: ${childImageBase64 != null && childImageBase64.isNotEmpty}');
-
-      // Validate that we have some form of child image (either URL or base64)
-      final hasUrl = childImageUrl.isNotEmpty;
+      // Validate we have child image data
       final hasBase64 = childImageBase64 != null && childImageBase64.isNotEmpty;
-      
-      if (!hasUrl && !hasBase64) {
-        throw Exception('No child image data available (neither URL nor base64)');
+      if (!hasBase64) {
+        throw Exception('Child image base64 is required');
       }
 
-      debugPrint('[AiDirectService] Image source - URL: $hasUrl, Base64: $hasBase64');
+      // Step 1: Get book data from Supabase to get original cover
+      debugPrint('[AiDirectService] Step 1: Fetching book data from database...');
+      final bookData = await _client
+          .from('books')
+          .select('id, title, name, cover_image_url, genre, age_range, description, characters, ideal_for')
+          .eq('id', int.parse(bookId))
+          .single();
 
-      // Prepare request body with child image data
-      // If we have base64 but no URL, create a data URI that backend might accept
-      String effectiveChildImageUrl = childImageUrl;
-      if (childImageUrl.isEmpty && hasBase64) {
-        // Create a proper data URI
-        effectiveChildImageUrl = 'data:${childImageMime ?? 'image/jpeg'};base64,$childImageBase64';
-        debugPrint('[AiDirectService] Using data URI instead of empty URL');
+      if (bookData == null) {
+        throw Exception('Book not found with ID: $bookId');
       }
-      
+
+      debugPrint('[AiDirectService] ✓ Book data fetched');
+      debugPrint('[AiDirectService]   Title: ${bookData['title'] ?? bookData['name']}');
+      debugPrint('[AiDirectService]   Cover URL: ${bookData['cover_image_url']}');
+
+      // Step 2: Download original book cover
+      debugPrint('[AiDirectService] Step 2: Downloading original book cover...');
+      final coverUrl = bookData['cover_image_url'] as String?;
+      if (coverUrl == null || coverUrl.isEmpty) {
+        throw Exception('Book cover URL not found');
+      }
+
+      final coverResponse = await http.get(Uri.parse(coverUrl));
+      if (coverResponse.statusCode != 200) {
+        throw Exception('Failed to download book cover: ${coverResponse.statusCode}');
+      }
+
+      final originalCoverBase64 = base64Encode(coverResponse.bodyBytes);
+      debugPrint('[AiDirectService] ✓ Book cover downloaded (${coverResponse.bodyBytes.length} bytes)');
+
+      // Step 3: Prepare request for backend API
+      debugPrint('[AiDirectService] Step 3: Preparing backend API request...');
       final requestBody = {
-        'bookId': bookId.toString(), // Ensure string format
-        'bookName': bookName,
-        'childName': childName,
-        'userId': userId, // Always include userId (real or guest)
-        'childImageUrl': effectiveChildImageUrl, // Use data URI if no URL available
-        // Also send base64 separately in case backend prefers it
-        if (childImageBase64 != null && childImageBase64.isNotEmpty) ...{
-          'childImageBase64': childImageBase64,
-          'childImageMime': childImageMime ?? 'image/jpeg',
+        'originalCoverImage': originalCoverBase64,
+        'childImage': childImageBase64,
+        'bookData': {
+          'name': bookData['title'] ?? bookData['name'] ?? bookName,
+          'description': bookData['description'] ?? '',
+          'genre': bookData['genre'] ?? 'Children\'s Book',
+          'ageRange': bookData['age_range'] ?? '3-12 years',
+          'characters': bookData['characters'] ?? '',
+          'idealFor': bookData['ideal_for'] ?? '',
+        },
+        'childData': {
+          'name': childName,
+          'age': 5, // Default age if not provided
+          'gender': 'unknown', // Can be enhanced later
         },
       };
 
-      debugPrint('[AiDirectService] ============ REQUEST DETAILS ============');
-      debugPrint('[AiDirectService] Request body keys: ${requestBody.keys.toList()}');
-      debugPrint('[AiDirectService] bookId: "${requestBody['bookId']}" (type: ${requestBody['bookId'].runtimeType})');
-      debugPrint('[AiDirectService] bookName: "${requestBody['bookName']}"');
-      debugPrint('[AiDirectService] childName: "${requestBody['childName']}"');
-      debugPrint('[AiDirectService] userId: "${requestBody['userId']}"');
-      
-      final urlValue = requestBody['childImageUrl'] as String;
-      final isDataUri = urlValue.startsWith('data:');
-      debugPrint('[AiDirectService] childImageUrl type: ${isDataUri ? 'DATA_URI' : 'HTTP_URL'}');
-      if (isDataUri) {
-        debugPrint('[AiDirectService] childImageUrl: data URI (${urlValue.length} chars total)');
-      } else {
-        debugPrint('[AiDirectService] childImageUrl: "$urlValue"');
-      }
-      
-      debugPrint('[AiDirectService] childImageBase64 present: ${requestBody.containsKey('childImageBase64')}');
-      if (requestBody.containsKey('childImageBase64')) {
-        final base64Data = requestBody['childImageBase64'] as String;
-        debugPrint('[AiDirectService] childImageBase64 length: ${base64Data.length} chars');
-      }
-      debugPrint('[AiDirectService] ======================================');
+      debugPrint('[AiDirectService] Request prepared:');
+      debugPrint('[AiDirectService]   Original cover: ${originalCoverBase64.length} chars');
+      debugPrint('[AiDirectService]   Child image: ${childImageBase64.length} chars');
+      debugPrint('[AiDirectService]   Book name: ${requestBody['bookData']['name']}');
+      debugPrint('[AiDirectService]   Child name: ${requestBody['childData']['name']}');
 
-      // Call Supabase Edge Function directly
-      final response = await _client.functions.invoke(
-        'bright-service',
-        body: requestBody,
+      // Step 4: Call backend API
+      debugPrint('[AiDirectService] Step 4: Calling backend API: $_backendUrl/generate-cover');
+      final response = await http.post(
+        Uri.parse('$_backendUrl/generate-cover'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      ).timeout(
+        const Duration(seconds: 60), // 60 second timeout for AI processing
+        onTimeout: () {
+          throw Exception('Backend API timeout (60 seconds). Please check if the backend is running.');
+        },
       );
 
-      debugPrint('[AiDirectService] Raw response: ${response.toString()}');
-      debugPrint('[AiDirectService] Response status: ${response.status}');
-      debugPrint('[AiDirectService] Response data: ${response.data}');
+      debugPrint('[AiDirectService] Response received:');
+      debugPrint('[AiDirectService]   Status: ${response.statusCode}');
+      debugPrint('[AiDirectService]   Body length: ${response.body.length} chars');
 
-      if (response.status != 200) {
-        final errorMsg = response.data != null ? response.data.toString() : 'Unknown error';
-        throw Exception('Function call failed with status ${response.status}: $errorMsg');
+      if (response.statusCode != 200) {
+        final errorMsg = response.body.isNotEmpty ? response.body : 'Unknown error';
+        throw Exception('Backend API error (${response.statusCode}): $errorMsg');
       }
 
-      if (response.data == null) {
-        throw Exception('Function returned null data');
-      }
-
-      final data = response.data as Map<String, dynamic>?;
-      if (data == null) {
-        throw Exception('Function returned invalid data format');
-      }
-
+      // Step 5: Parse response
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      
       if (data['success'] != true) {
-        final errorMsg = data['error'] ?? 'Unknown error from function';
-        throw Exception('Function reported error: $errorMsg');
+        final errorMsg = data['error'] ?? 'Unknown error from backend';
+        throw Exception('Backend reported error: $errorMsg');
       }
 
-      // Check if we have base64 image data
-      final generatedImageBase64 = data['generated_image_base64'] as String?;
-      if (generatedImageBase64 != null && generatedImageBase64.isNotEmpty) {
-        // Return base64 data URL that Flutter can handle
-        final dataUrl = 'data:image/jpeg;base64,$generatedImageBase64';
-        debugPrint('[AiDirectService] Generated image as base64 data URL');
-        return dataUrl;
+      final generatedImageBase64 = data['coverImage'] as String?;
+      if (generatedImageBase64 == null || generatedImageBase64.isEmpty) {
+        throw Exception('Backend did not return cover image');
       }
 
-      // Fallback to URL if available
-      final generatedImageUrl = data['generated_image_url'] as String?;
-      if (generatedImageUrl != null && generatedImageUrl.isNotEmpty) {
-        debugPrint('[AiDirectService] Generated image URL: $generatedImageUrl');
-        return generatedImageUrl;
+      debugPrint('[AiDirectService] ✓ Cover generated successfully!');
+      debugPrint('[AiDirectService]   Generated image: ${generatedImageBase64.length} chars');
+      debugPrint('[AiDirectService] ========================================');
+
+      // Return as data URL for Flutter to display
+      return 'data:image/jpeg;base64,$generatedImageBase64';
+
+    } catch (e, stackTrace) {
+      debugPrint('[AiDirectService] ❌ ERROR: $e');
+      debugPrint('[AiDirectService] Stack trace: $stackTrace');
+      
+      // Provide helpful error messages
+      if (e.toString().contains('SocketException') || e.toString().contains('Connection refused')) {
+        throw Exception('Cannot connect to backend API at $_backendUrl. Is the backend running?');
       }
-
-      throw Exception('Function did not return image data or URL');
-
-    } catch (e) {
-      debugPrint('[AiDirectService] Detailed error: $e');
-      debugPrint('[AiDirectService] Error type: ${e.runtimeType}');
+      
       rethrow;
     }
   }

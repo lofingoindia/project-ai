@@ -47,14 +47,14 @@ class CoverImageGenerator {
       );
       console.log("✅ Child features extracted");
 
-      // Step 3: Generate dynamic prompt based on analysis
-      const prompt = this._generateDynamicPrompt(
+      // Step 3: Generate dynamic prompt based on analysis (AI-powered)
+      const prompt = await this._generateDynamicPrompt(
         coverAnalysis,
         childFeatures,
         bookData,
         childData
       );
-      console.log("📝 Dynamic prompt created");
+      console.log("📝 AI-generated prompt created");
 
       // Step 4: Generate the personalized cover
       const generatedCover = await this._generateCoverImage(
@@ -185,23 +185,90 @@ Provide detailed but natural descriptions suitable for creating an illustrated c
   }
 
   /**
-   * Generate dynamic prompt based on analysis (no hardcoded prompts)
+   * Generate dynamic prompt based on analysis - AI generates the prompt!
+   * This makes the prompt truly adaptive and intelligent
    */
-  _generateDynamicPrompt(coverAnalysis, childFeatures, bookData, childData) {
+  async _generateDynamicPrompt(coverAnalysis, childFeatures, bookData, childData) {
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.0-flash-exp",
+      });
+
+      const bookName = bookData.name || "Adventure Book";
+      const childName = childFeatures.name;
+      const genre = bookData.genre || "adventure";
+
+      // Use AI to create the perfect prompt based on analysis
+      const metaPrompt = `You are an expert AI prompt engineer specializing in children's book cover personalization.
+
+Based on the following analysis data, create a precise and detailed prompt for an AI image generator to create a personalized book cover.
+
+ORIGINAL COVER ANALYSIS:
+${coverAnalysis.rawAnalysis}
+
+Key extracted elements:
+- Art Style: ${coverAnalysis.style}
+- Color Palette: ${coverAnalysis.colorPalette}
+- Composition: ${coverAnalysis.composition}
+- Character Position: ${coverAnalysis.characterPosition}
+
+CHILD'S APPEARANCE:
+${childFeatures.appearance}
+- Name: ${childName}
+- Age: ${childFeatures.age || "Not specified"}
+- Gender: ${childFeatures.gender || "Not specified"}
+- Key Features: ${childFeatures.features}
+
+BOOK DETAILS:
+- Title: "${bookName}"
+- Genre: ${genre}
+- Target Age: ${bookData.ageRange || `${bookData.ageMin || 3}-${bookData.ageMax || 12} years old`}
+- Description: ${bookData.description || "Not provided"}
+
+TASK:
+Generate a detailed prompt for creating a personalized book cover where ${childName} replaces the main character. The prompt should:
+
+1. Specify EXACTLY how to maintain the original cover's artistic style, mood, and composition
+2. Describe precisely how to integrate ${childName}'s appearance into the illustration style
+3. Detail which elements to keep identical (background, setting, typography, layout)
+4. Explain how the child's features should be adapted to match the illustration style
+5. Ensure the personalization feels natural and professional
+6. Maintain age-appropriate content for the target audience
+
+Generate a comprehensive, technical prompt that an AI image generator can use to create a seamless personalized cover. Be specific about colors, positioning, lighting, and artistic techniques.
+
+Respond ONLY with the prompt itself - no explanations or meta-text.`;
+
+      const result = await model.generateContent(metaPrompt);
+      const response = await result.response;
+      const generatedPrompt = response.text().trim();
+
+      console.log("🤖 AI-Generated Prompt:");
+      console.log(generatedPrompt.substring(0, 200) + "...");
+
+      return generatedPrompt;
+    } catch (error) {
+      console.error("AI prompt generation failed, using fallback:", error);
+      
+      // Fallback to template-based prompt if AI fails
+      return this._generateFallbackPrompt(coverAnalysis, childFeatures, bookData, childData);
+    }
+  }
+
+  /**
+   * Fallback template-based prompt (used if AI prompt generation fails)
+   */
+  _generateFallbackPrompt(coverAnalysis, childFeatures, bookData, childData) {
     const bookName = bookData.name || "Adventure Book";
     const childName = childFeatures.name;
     const genre = bookData.genre || "adventure";
 
-    // Build prompt dynamically based on analysis
-    const prompt = `Create a personalized children's book cover with the following specifications:
+    return `Create a personalized children's book cover with the following specifications:
 
 BOOK INFORMATION:
 - Title: "${bookName}"
 - Genre: ${genre}
-- Target Age: ${
-      bookData.ageRange ||
-      `${bookData.ageMin || 3}-${bookData.ageMax || 12} years old`
-    }
+- Target Age: ${bookData.ageRange || `${bookData.ageMin || 3}-${bookData.ageMax || 12} years old`}
 
 VISUAL STYLE (from original cover):
 - Art Style: ${coverAnalysis.style}
@@ -210,9 +277,7 @@ VISUAL STYLE (from original cover):
 - Character Position: ${coverAnalysis.characterPosition}
 
 MAIN CHARACTER (personalized for ${childName}):
-- Replace the main character with this child's appearance: ${
-      childFeatures.appearance
-    }
+- Replace the main character with this child's appearance: ${childFeatures.appearance}
 - Key features to maintain: ${childFeatures.features}
 - Name: ${childName}
 ${childFeatures.age ? `- Age: ${childFeatures.age} years old` : ""}
@@ -229,8 +294,6 @@ REQUIREMENTS:
 8. Make it look like the child was always meant to be the story's hero
 
 The result should be a professional children's book cover where ${childName} is the main character, seamlessly integrated into the original cover's style and setting.`;
-
-    return prompt;
   }
 
   /**
