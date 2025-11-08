@@ -1,10 +1,12 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'signed_url_service.dart';
 
 /// Service for managing book generation status and downloads
 class BookGenerationService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final SignedUrlService _signedUrlService = SignedUrlService();
 
   /// Update generation status for an order item
   Future<void> updateGenerationStatus({
@@ -96,15 +98,31 @@ class BookGenerationService {
     }
   }
 
-  /// Download completed book PDF
+  /// Download completed book PDF with automatic URL refresh
   /// This opens the PDF in the browser/default viewer
   Future<bool> downloadBook({
     required String pdfUrl,
     required String bookTitle,
     required String childName,
+    String? orderItemId, // Optional: for refreshing expired URLs
   }) async {
     try {
-      final uri = Uri.parse(pdfUrl);
+      String urlToUse = pdfUrl;
+      
+      // If order item ID provided and URL seems invalid, try refreshing
+      if (orderItemId != null && (pdfUrl.isEmpty || !pdfUrl.startsWith('http'))) {
+        debugPrint('⚠️  Invalid PDF URL, attempting to refresh...');
+        final refreshResult = await _signedUrlService.refreshOrderUrls(orderItemId);
+        
+        if (refreshResult.success && refreshResult.pdfUrl != null) {
+          urlToUse = refreshResult.pdfUrl!;
+          debugPrint('✅ Using refreshed PDF URL');
+        } else {
+          debugPrint('❌ Failed to refresh URL, using original');
+        }
+      }
+      
+      final uri = Uri.parse(urlToUse);
       
       if (await canLaunchUrl(uri)) {
         final launched = await launchUrl(
@@ -117,10 +135,30 @@ class BookGenerationService {
           return true;
         } else {
           debugPrint('Failed to launch PDF URL');
+          
+          // If launch failed and we have order item ID, try refreshing
+          if (orderItemId != null) {
+            debugPrint('⚠️  Launch failed, attempting URL refresh...');
+            final refreshResult = await _signedUrlService.refreshOrderUrls(orderItemId);
+            
+            if (refreshResult.success && refreshResult.pdfUrl != null) {
+              final refreshedUri = Uri.parse(refreshResult.pdfUrl!);
+              final retryLaunched = await launchUrl(
+                refreshedUri,
+                mode: LaunchMode.externalApplication,
+              );
+              
+              if (retryLaunched) {
+                debugPrint('✅ Successfully opened PDF with refreshed URL');
+                return true;
+              }
+            }
+          }
+          
           return false;
         }
       } else {
-        debugPrint('Cannot launch URL: $pdfUrl');
+        debugPrint('Cannot launch URL: $urlToUse');
         return false;
       }
     } catch (e) {

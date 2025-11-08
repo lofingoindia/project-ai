@@ -4,6 +4,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const CoverImageGenerator = require("./cover-image-generator");
 const CompleteBookPersonalizationService = require("./complete-book-processor");
+const S3Service = require("./s3-service");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -20,6 +21,20 @@ class OrderMonitor {
     this.supabase = createClient(this.supabaseUrl, this.supabaseKey);
     this.coverGenerator = new CoverImageGenerator(config.geminiApiKey);
     this.bookProcessor = new CompleteBookPersonalizationService();
+
+    // Initialize S3 service
+    try {
+      this.s3Service = new S3Service({
+        region: process.env.AWS_REGION,
+        bucketName: process.env.AWS_S3_BUCKET_NAME,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      });
+    } catch (error) {
+      console.warn("⚠️  S3 service initialization failed:", error.message);
+      console.warn("   File uploads will fail. Set AWS credentials to enable S3.");
+      this.s3Service = null;
+    }
 
     this.processingOrders = new Set(); // Track orders being processed
     this.pollInterval = config.pollInterval || 10000; // Poll every 10 seconds
@@ -223,18 +238,23 @@ class OrderMonitor {
         });
       console.log("✅ Personalized cover generated");
 
-      // Upload cover to Supabase Storage
-      const coverUrl = await this._uploadToStorage(
+      // Upload cover to S3 and get signed URL
+      const coverKey = `covers/order_${orderItem.order_id}_item_${orderItemId}_cover.jpg`;
+      const coverUploadResult = await this._uploadToS3(
         coverImageBase64,
-        `covers/order_${orderItem.order_id}_item_${orderItemId}_cover.jpg`,
+        coverKey,
         "image/jpeg"
       );
-      console.log(`✅ Cover uploaded: ${coverUrl}`);
+      console.log(`✅ Cover uploaded to S3: ${coverKey}`);
+      console.log(`✅ Cover signed URL generated (valid for 7 days)`);
 
-      // Update order item with cover URL
+      // Store S3 key (permanent) and signed URL (temporary) in database
       await this.supabase
         .from("order_items")
-        .update({ cover_image_url: coverUrl })
+        .update({
+          cover_s3_key: coverKey,
+          cover_image_url: coverUploadResult.signedUrl,
+        })
         .eq("id", orderItemId);
 
       // Step 2: Process complete book with all pages
@@ -263,8 +283,8 @@ class OrderMonitor {
         `🔄 Character replacements: ${bookResult.characterReplacements}`
       );
 
-      // Step 3: Generate PDF from processed pages
-      console.log("📄 Generating PDF...");
+      // Step 3: Generate PDF from processed pages (using Gemini-generated images)
+      console.log("📄 Generating PDF from Gemini-generated images...");
       const pdfBuffer = await this._generatePDF(bookResult.personalizedBook, {
         bookName: bookData.title,
         childName:
@@ -273,20 +293,24 @@ class OrderMonitor {
       });
       console.log("✅ PDF generated");
 
-      // Upload PDF to Supabase Storage
-      const pdfUrl = await this._uploadToStorage(
+      // Upload PDF to S3 and get signed URL
+      const pdfKey = `books/order_${orderItem.order_id}_item_${orderItemId}_book.pdf`;
+      const pdfUploadResult = await this._uploadToS3(
         pdfBuffer,
-        `books/order_${orderItem.order_id}_item_${orderItemId}_book.pdf`,
-        "application/pdf"
+        pdfKey,
+        "application/pdf",
+        604800 // 7 days = 604800 seconds
       );
-      console.log(`✅ PDF uploaded: ${pdfUrl}`);
+      console.log(`✅ PDF uploaded to S3: ${pdfKey}`);
+      console.log(`✅ PDF signed URL generated (valid for 7 days)`);
 
-      // Step 4: Update order item with success
+      // Step 4: Update order item with success (store S3 keys and signed URLs)
       await this.supabase
         .from("order_items")
         .update({
           generation_status: "completed",
-          pdf_url: pdfUrl,
+          pdf_s3_key: pdfKey,
+          pdf_url: pdfUploadResult.signedUrl,
           generated_at: new Date().toISOString(),
           generation_error: null,
           updated_at: new Date().toISOString(),
@@ -294,7 +318,11 @@ class OrderMonitor {
         .eq("id", orderItemId);
 
       // Step 5: Send notification to user
-      await this._sendNotification(orderItem, pdfUrl, coverUrl);
+      await this._sendNotification(
+        orderItem,
+        pdfUploadResult.signedUrl,
+        coverUploadResult.signedUrl
+      );
 
       console.log(`\n✅ Order item ${orderItemId} completed successfully!\n`);
     } catch (error) {
@@ -365,14 +393,10 @@ class OrderMonitor {
   }
 
   /**
-   * Generate PDF from processed book pages
+   * Generate PDF from processed book pages using Gemini-generated images
+   * Uses PDFKit library to combine images into a PDF
    */
   async _generatePDF(personalizedBook, metadata) {
-    // For now, we'll use a simple approach - in production you'd use a proper PDF library
-    // This is a placeholder that creates a PDF with the processed images
-
-    // TODO: Implement proper PDF generation with PDFKit or similar
-    // For now, return a simple buffer
     const PDFDocument = require("pdfkit");
 
     return new Promise((resolve, reject) => {
@@ -384,21 +408,65 @@ class OrderMonitor {
         doc.on("end", () => resolve(Buffer.concat(chunks)));
         doc.on("error", reject);
 
-        // Add cover page with metadata
+        // Add cover page (generated by Gemini)
         if (metadata.coverImage) {
-          const coverBuffer = Buffer.from(metadata.coverImage, "base64");
-          doc.image(coverBuffer, 0, 0, { width: 595.28, height: 841.89 });
+          try {
+            const coverBuffer = Buffer.from(metadata.coverImage, "base64");
+            doc.image(coverBuffer, 0, 0, {
+              width: 595.28, // A4 width in points
+              height: 841.89, // A4 height in points
+              fit: [595.28, 841.89], // Fit to page
+            });
+            console.log("✅ Cover image added to PDF");
+          } catch (error) {
+            console.error("❌ Failed to add cover to PDF:", error);
+            // Continue without cover if it fails
+          }
         }
 
-        // Add each processed page
-        if (personalizedBook.pages) {
+        // Add each processed page (images generated by Gemini)
+        if (personalizedBook.pages && personalizedBook.pages.length > 0) {
           for (const page of personalizedBook.pages) {
             if (page.processedImage) {
-              doc.addPage();
-              const pageBuffer = Buffer.from(page.processedImage, "base64");
-              doc.image(pageBuffer, 0, 0, { width: 595.28, height: 841.89 });
+              try {
+                doc.addPage();
+                const pageBuffer = Buffer.from(page.processedImage, "base64");
+                doc.image(pageBuffer, 0, 0, {
+                  width: 595.28,
+                  height: 841.89,
+                  fit: [595.28, 841.89],
+                });
+                console.log(`✅ Page ${page.pageNumber} added to PDF`);
+              } catch (error) {
+                console.error(
+                  `❌ Failed to add page ${page.pageNumber} to PDF:`,
+                  error
+                );
+                // Continue with next page if one fails
+              }
+            } else if (page.pageImage) {
+              // Fallback: use original page if processed image is not available
+              try {
+                doc.addPage();
+                const pageBuffer = Buffer.from(page.pageImage, "base64");
+                doc.image(pageBuffer, 0, 0, {
+                  width: 595.28,
+                  height: 841.89,
+                  fit: [595.28, 841.89],
+                });
+                console.log(
+                  `⚠️  Page ${page.pageNumber} added (using original, processing failed)`
+                );
+              } catch (error) {
+                console.error(
+                  `❌ Failed to add original page ${page.pageNumber}:`,
+                  error
+                );
+              }
             }
           }
+        } else {
+          console.warn("⚠️  No pages found in personalizedBook");
         }
 
         doc.end();
@@ -409,39 +477,103 @@ class OrderMonitor {
   }
 
   /**
-   * Upload file to Supabase Storage
+   * Upload file to S3 and return signed URL
+   * @param {Buffer|string} data - File data
+   * @param {string} key - S3 object key
+   * @param {string} contentType - MIME type
+   * @param {number} expiresIn - Signed URL expiration in seconds (default: 7 days)
+   * @returns {Promise<{key: string, signedUrl: string}>}
    */
-  async _uploadToStorage(dataBufferOrBase64, filePath, contentType) {
+  async _uploadToS3(data, key, contentType, expiresIn = 604800) {
+    if (!this.s3Service) {
+      throw new Error(
+        "S3 service not initialized. Please set AWS credentials in environment variables."
+      );
+    }
+
     try {
-      let buffer;
+      // Upload to S3 and get signed URL (expires in 7 days by default)
+      const result = await this.s3Service.uploadAndGetSignedUrl(
+        data,
+        key,
+        contentType,
+        expiresIn
+      );
 
-      if (typeof dataBufferOrBase64 === "string") {
-        // Convert base64 to buffer
-        buffer = Buffer.from(dataBufferOrBase64, "base64");
-      } else {
-        buffer = dataBufferOrBase64;
-      }
-
-      // Upload to Supabase Storage bucket 'books'
-      const { data, error } = await this.supabase.storage
-        .from("books")
-        .upload(filePath, buffer, {
-          contentType: contentType,
-          upsert: true,
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      // Get public URL
-      const {
-        data: { publicUrl },
-      } = this.supabase.storage.from("books").getPublicUrl(filePath);
-
-      return publicUrl;
+      return result;
     } catch (error) {
-      console.error("Upload to storage failed:", error);
+      console.error("❌ S3 upload failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate a new signed URL for an existing S3 object
+   * Useful when the stored URL has expired
+   * @param {string} s3Key - S3 object key
+   * @param {number} expiresIn - Expiration time in seconds (default: 7 days)
+   * @returns {Promise<string>} - Signed URL
+   */
+  async _getSignedUrlForS3Key(s3Key, expiresIn = 604800) {
+    if (!this.s3Service) {
+      throw new Error("S3 service not initialized");
+    }
+
+    try {
+      return await this.s3Service.getSignedUrl(s3Key, expiresIn);
+    } catch (error) {
+      console.error("❌ Failed to generate signed URL:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh signed URLs for an order item (when URLs expire)
+   * @param {string} orderItemId - Order item ID
+   * @returns {Promise<{pdfUrl: string, coverUrl: string}>}
+   */
+  async refreshSignedUrls(orderItemId) {
+    try {
+      // Get order item with S3 keys
+      const { data: orderItem, error } = await this.supabase
+        .from("order_items")
+        .select("pdf_s3_key, cover_s3_key")
+        .eq("id", orderItemId)
+        .single();
+
+      if (error) throw error;
+
+      if (!orderItem.pdf_s3_key && !orderItem.cover_s3_key) {
+        throw new Error("No S3 keys found for this order item");
+      }
+
+      const result = {};
+
+      // Generate fresh signed URLs
+      if (orderItem.pdf_s3_key) {
+        result.pdfUrl = await this._getSignedUrlForS3Key(orderItem.pdf_s3_key);
+      }
+
+      if (orderItem.cover_s3_key) {
+        result.coverUrl = await this._getSignedUrlForS3Key(
+          orderItem.cover_s3_key
+        );
+      }
+
+      // Update database with fresh URLs
+      const updateData = { updated_at: new Date().toISOString() };
+      if (result.pdfUrl) updateData.pdf_url = result.pdfUrl;
+      if (result.coverUrl) updateData.cover_image_url = result.coverUrl;
+
+      await this.supabase
+        .from("order_items")
+        .update(updateData)
+        .eq("id", orderItemId);
+
+      console.log(`✅ Refreshed signed URLs for order item ${orderItemId}`);
+      return result;
+    } catch (error) {
+      console.error("❌ Failed to refresh signed URLs:", error);
       throw error;
     }
   }

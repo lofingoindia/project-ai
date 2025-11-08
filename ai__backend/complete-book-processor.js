@@ -10,6 +10,8 @@ class CompleteBookPersonalizationService {
   constructor() {
     this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || "AIzaSyDQ_IImJ2MNZ-IgI9dm35PZwXWDEFBW76g");
     this.model = "gemini-2.5-flash-image-preview";
+    this.maxRetries = 3; // Retry failed image generation
+    this.retryDelay = 2000; // 2 seconds between retries
   }
 
   /**
@@ -125,58 +127,85 @@ class CompleteBookPersonalizationService {
 
   /**
    * Analyze a single page for character detection and scene understanding
+   * Improved with better prompting for character detection
    */
   async analyzePage(pageImage, pageNumber) {
     const analysisPrompt = `
-    Analyze this children's book page (page ${pageNumber + 1}) and provide detailed information:
+    You are an expert at analyzing children's book illustrations. Analyze this book page (page ${pageNumber + 1}) with extreme precision:
     
-    1. CHARACTER DETECTION:
-       - How many characters are visible on this page?
-       - Which character appears to be the main protagonist?
-       - Describe each character's appearance, pose, and emotion
+    1. CHARACTER DETECTION (MOST IMPORTANT):
+       - Count ALL characters visible (humans, animals, creatures)
+       - Identify the MAIN PROTAGONIST (usually appears most frequently, is central to the story)
+       - For EACH character, describe:
+         * Physical appearance (age, gender, hair color, clothing, distinctive features)
+         * Position in the image (specific location: top-left, center, bottom-right, etc.)
+         * Size relative to page (large/medium/small/tiny)
+         * Facial expression and body language
+         * Is this likely the story's hero/main character? (yes/no/maybe)
     
     2. SCENE ANALYSIS:
-       - What is happening in this scene?
-       - What is the setting/background?
-       - What is the mood or atmosphere?
+       - What is happening in this scene? (action, interaction, event)
+       - Setting/location (indoor/outdoor, specific place)
+       - Time of day and lighting
+       - Mood and atmosphere
+       - Important objects or props
     
     3. TEXT CONTENT:
-       - What text is visible on this page?
-       - Are there any character names mentioned?
-       - What is the story context?
+       - Extract ALL visible text word-for-word
+       - List any character names mentioned
+       - Story context and narrative
     
-    4. LAYOUT ANALYSIS:
-       - How is the page composed?
-       - Where are the characters positioned?
-       - What is the visual hierarchy?
+    4. LAYOUT & STYLE:
+       - Artistic style (watercolor, digital, cartoon, realistic, etc.)
+       - Page composition (where elements are placed)
+       - Color palette (dominant colors)
+       - Visual hierarchy (what draws attention first)
     
-    Provide analysis in JSON format:
+    5. REPLACEMENT GUIDANCE:
+       - Which character(s) should be replaced with the child's face?
+       - Difficulty level for replacement (easy/medium/hard)
+       - Special considerations for replacement
+    
+    Return ONLY valid JSON (no markdown, no extra text):
     {
       "pageNumber": ${pageNumber + 1},
+      "hasCharacters": true/false,
+      "mainCharacterDetected": true/false,
       "characters": [
         {
           "isMainCharacter": true/false,
-          "description": "detailed description",
-          "position": "left/center/right",
+          "confidence": 0.9,
+          "description": "detailed physical description",
+          "position": "specific position",
           "size": "large/medium/small",
-          "emotion": "happy/sad/excited/etc",
-          "pose": "standing/sitting/running/etc"
+          "emotion": "specific emotion",
+          "pose": "specific pose/action",
+          "replaceWithChild": true/false,
+          "replacementDifficulty": "easy/medium/hard"
         }
       ],
       "scene": {
         "action": "what's happening",
         "setting": "where it takes place",
-        "mood": "exciting/calm/mysterious/etc"
+        "timeOfDay": "morning/afternoon/evening/night",
+        "mood": "specific mood",
+        "objects": ["list of important objects"]
       },
       "text": {
-        "content": "visible text",
-        "characterNames": ["name1", "name2"],
+        "content": "exact text",
+        "characterNames": ["names"],
         "context": "story context"
       },
       "layout": {
+        "artStyle": "specific style",
         "composition": "description",
-        "characterPositions": ["left", "center"],
+        "colorPalette": ["colors"],
         "visualFocus": "main focus area"
+      },
+      "replacementGuidance": {
+        "shouldReplace": true/false,
+        "targetCharacter": "which character to replace",
+        "considerations": "special notes for replacement"
       }
     }
     `;
@@ -395,109 +424,151 @@ class CompleteBookPersonalizationService {
   }
 
   /**
-   * Process a single page with character replacement
+   * Process a single page with character replacement (with retry logic)
    */
   async processPage(characterMapping, childImage, childName) {
-    try {
-      const { character, pageImage, pageNumber } = characterMapping;
-      const prompt = this.generatePagePrompt(characterMapping, childName);
-      
-      console.log(`🎨 Processing page ${pageNumber}...`);
-      
-      const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
-      const result = await generativeModel.generateContent({
-        contents: [{
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                data: childImage,
-                mimeType: "image/jpeg"
-              }
-            },
-            {
-              inlineData: {
-                data: pageImage,
-                mimeType: "image/jpeg"
-              }
-            },
-            { text: prompt }
-          ]
-        }],
-        generationConfig: {
-          responseModalities: ["IMAGE"]
-        }
-      });
-      
-      const response = await result.response;
-      let generatedImageData = null;
-      
-      if (response.candidates) {
-        for (const candidate of response.candidates) {
-          if (candidate.content && candidate.content.parts) {
-            for (const part of candidate.content.parts) {
-              if (part.inlineData && part.inlineData.data) {
-                generatedImageData = part.inlineData.data;
-                break;
+    const { character, pageImage, pageNumber } = characterMapping;
+    
+    // Retry logic for failed image generation
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const prompt = this.generatePagePrompt(characterMapping, childName);
+        
+        console.log(`🎨 Processing page ${pageNumber} (attempt ${attempt}/${this.maxRetries})...`);
+        
+        const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
+        const result = await generativeModel.generateContent({
+          contents: [{
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  data: childImage,
+                  mimeType: "image/jpeg"
+                }
+              },
+              {
+                inlineData: {
+                  data: pageImage,
+                  mimeType: "image/jpeg"
+                }
+              },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: {
+            responseModalities: ["IMAGE"]
+          }
+        });
+        
+        const response = await result.response;
+        let generatedImageData = null;
+        
+        if (response.candidates) {
+          for (const candidate of response.candidates) {
+            if (candidate.content && candidate.content.parts) {
+              for (const part of candidate.content.parts) {
+                if (part.inlineData && part.inlineData.data) {
+                  generatedImageData = part.inlineData.data;
+                  break;
+                }
               }
             }
           }
         }
+        
+        if (generatedImageData) {
+          console.log(`✅ Page ${pageNumber} processed successfully${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+          return {
+            pageNumber,
+            processedImage: generatedImageData,
+            success: true,
+            character: character.description,
+            attempts: attempt
+          };
+        } else {
+          throw new Error('No image generated in response');
+        }
+        
+      } catch (error) {
+        console.error(`❌ Page ${pageNumber} processing failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        
+        // If this was the last attempt, return with original image
+        if (attempt === this.maxRetries) {
+          console.warn(`⚠️  Using original page ${pageNumber} after ${this.maxRetries} failed attempts`);
+          return {
+            pageNumber: characterMapping.pageNumber,
+            processedImage: characterMapping.pageImage, // Use original as fallback
+            success: false,
+            error: error.message,
+            character: characterMapping.character.description,
+            attempts: attempt
+          };
+        }
+        
+        // Wait before retrying
+        console.log(`⏳ Waiting ${this.retryDelay}ms before retry...`);
+        await this.sleep(this.retryDelay);
       }
-      
-      if (generatedImageData) {
-        console.log(`✅ Page ${pageNumber} processed successfully`);
-        return {
-          pageNumber,
-          processedImage: generatedImageData,
-          success: true,
-          character: character.description
-        };
-      } else {
-        throw new Error('No image generated');
-      }
-      
-    } catch (error) {
-      console.error(`❌ Page ${characterMapping.pageNumber} processing failed:`, error);
-      return {
-        pageNumber: characterMapping.pageNumber,
-        processedImage: characterMapping.pageImage, // Use original as fallback
-        success: false,
-        error: error.message,
-        character: characterMapping.character.description
-      };
     }
   }
 
   /**
-   * Generate prompt for page processing
+   * Generate improved prompt for page processing
    */
   generatePagePrompt(characterMapping, childName) {
-    const { character, replacementStrategy } = characterMapping;
+    const { character, replacementStrategy, replacementGuidance } = characterMapping;
     
     return `
-    Replace the main character in this book page with ${childName}'s face.
+    You are an expert at seamlessly replacing characters in children's book illustrations.
     
-    CHARACTER REPLACEMENT:
-    - Replace the character that is ${character.description}
-    - Maintain the character's position: ${character.position}
-    - Keep the character's size: ${character.size}
-    - Preserve the character's emotion: ${character.emotion}
-    - Maintain the character's pose: ${character.pose}
+    TASK: Replace the main character in this illustration with ${childName}'s face/appearance while maintaining perfect artistic consistency.
     
-    REPLACEMENT STRATEGY:
-    - Face replacement: ${replacementStrategy.faceReplacement}
-    - Full body replacement: ${replacementStrategy.fullBodyReplacement}
-    - Style adaptation: ${replacementStrategy.styleAdaptation}
-    - Position preservation: ${replacementStrategy.positionPreservation}
+    TARGET CHARACTER TO REPLACE:
+    - Description: ${character.description}
+    - Position: ${character.position}
+    - Size: ${character.size}
+    - Current emotion: ${character.emotion}
+    - Current pose: ${character.pose}
+    - Replacement difficulty: ${character.replacementDifficulty || 'medium'}
     
-    TECHNICAL REQUIREMENTS:
-    - The child's face should be clearly recognizable as ${childName}
-    - Maintain the same artistic style as the original
-    - Keep all other elements unchanged
-    - Preserve text and layout exactly
-    - Ensure natural-looking integration
-    - The final image should look like ${childName} is the original character in this book
+    CHILD'S APPEARANCE (from reference photo):
+    - Use the child's actual facial features, hair color, hair style, skin tone
+    - Maintain the child's distinctive characteristics
+    - Make ${childName} look natural in this illustration style
+    
+    REPLACEMENT REQUIREMENTS:
+    1. FACE REPLACEMENT:
+       - Replace the character's face with ${childName}'s face
+       - Match facial proportions to the illustration style
+       - Keep the same expression and emotion
+       - Ensure the face looks natural in the art style
+    
+    2. BODY & POSE:
+       - Keep the exact same body pose as the original character
+       - Maintain the same clothing style (adapt colors if needed)
+       - Preserve all body language and gestures
+       - Same size and position on the page
+    
+    3. ARTISTIC CONSISTENCY:
+       - Match the EXACT artistic style of the original (watercolor/digital/cartoon/etc.)
+       - Use the same color palette and lighting
+       - Maintain the same level of detail
+       - Keep the same line work and shading style
+    
+    4. SCENE PRESERVATION:
+       - Keep ALL background elements exactly the same
+       - Preserve ALL text exactly as it appears
+       - Maintain ALL other characters unchanged
+       - Keep ALL props and objects in their original positions
+    
+    5. NATURAL INTEGRATION:
+       - The replacement should be seamless and undetectable
+       - ${childName} should look like they were always part of this illustration
+       - No obvious editing artifacts or inconsistencies
+       - Professional quality result
+    
+    CRITICAL: Generate an image where ${childName} is the main character, looking natural and perfectly integrated into the scene's artistic style.
     `;
   }
 

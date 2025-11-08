@@ -428,6 +428,72 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Generate signed URL for S3 object (for refreshing expired URLs)
+app.post("/generate-signed-url", async (req, res) => {
+  try {
+    const { s3Key, expiresIn } = req.body;
+
+    if (!s3Key) {
+      return res.status(400).json({ error: "s3Key is required" });
+    }
+
+    if (!orderMonitor || !orderMonitor.s3Service) {
+      return res.status(500).json({
+        error: "S3 service not initialized",
+      });
+    }
+
+    const signedUrl = await orderMonitor._getSignedUrlForS3Key(
+      s3Key,
+      expiresIn || 604800 // 7 days default
+    );
+
+    return res.json({
+      success: true,
+      signedUrl: signedUrl,
+      expiresIn: expiresIn || 604800,
+    });
+  } catch (error) {
+    console.error("Failed to generate signed URL:", error);
+    return res.status(500).json({
+      success: false,
+      error: `Failed to generate signed URL: ${error.message}`,
+    });
+  }
+});
+
+// Refresh signed URLs for an order item
+app.post("/refresh-order-urls", async (req, res) => {
+  try {
+    const { orderItemId } = req.body;
+
+    if (!orderItemId) {
+      return res.status(400).json({ error: "orderItemId is required" });
+    }
+
+    if (!orderMonitor) {
+      return res.status(500).json({
+        error: "Order monitor not initialized",
+      });
+    }
+
+    const result = await orderMonitor.refreshSignedUrls(orderItemId);
+
+    return res.json({
+      success: true,
+      pdfUrl: result.pdfUrl,
+      coverUrl: result.coverUrl,
+      message: "Signed URLs refreshed successfully",
+    });
+  } catch (error) {
+    console.error("Failed to refresh order URLs:", error);
+    return res.status(500).json({
+      success: false,
+      error: `Failed to refresh URLs: ${error.message}`,
+    });
+  }
+});
+
 // ============================================================================
 // SERVER STARTUP
 // ============================================================================
@@ -446,6 +512,8 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log("  POST /generate-cover - Personalized cover generation");
   console.log("  POST /process-complete-book - Complete book processing");
   console.log("  POST /analyze-book - Book analysis");
+  console.log("  POST /generate-signed-url - Generate S3 signed URL");
+  console.log("  POST /refresh-order-urls - Refresh signed URLs for order");
   console.log("  POST /monitor/start - Start order monitoring");
   console.log("  POST /monitor/stop - Stop order monitoring");
   console.log("  GET  /monitor/status - Monitor status");
