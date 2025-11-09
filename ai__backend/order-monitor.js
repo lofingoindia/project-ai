@@ -4,7 +4,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const CoverImageGenerator = require("./cover-image-generator");
 const CompleteBookPersonalizationService = require("./complete-book-processor");
-const S3Service = require("./s3-service");
+const LocalStorageService = require("./local-storage-service");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -22,18 +22,16 @@ class OrderMonitor {
     this.coverGenerator = new CoverImageGenerator(config.geminiApiKey);
     this.bookProcessor = new CompleteBookPersonalizationService();
 
-    // Initialize S3 service
+    // Initialize Local Storage service
     try {
-      this.s3Service = new S3Service({
-        region: process.env.AWS_REGION,
-        bucketName: process.env.AWS_S3_BUCKET_NAME,
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      this.storageService = new LocalStorageService({
+        baseDir: config.storageDir || path.join(__dirname, "uploads"),
+        baseUrl: config.baseUrl || process.env.BASE_URL || "http://localhost:5000",
       });
     } catch (error) {
-      console.warn("⚠️  S3 service initialization failed:", error.message);
-      console.warn("   File uploads will fail. Set AWS credentials to enable S3.");
-      this.s3Service = null;
+      console.warn("⚠️  Local storage service initialization failed:", error.message);
+      console.warn("   File uploads will fail.");
+      this.storageService = null;
     }
 
     this.processingOrders = new Set(); // Track orders being processed
@@ -238,21 +236,21 @@ class OrderMonitor {
         });
       console.log("✅ Personalized cover generated");
 
-      // Upload cover to S3 and get signed URL
+      // Upload cover to local storage and get URL
       const coverKey = `covers/order_${orderItem.order_id}_item_${orderItemId}_cover.jpg`;
-      const coverUploadResult = await this._uploadToS3(
+      const coverUploadResult = await this._uploadToStorage(
         coverImageBase64,
         coverKey,
         "image/jpeg"
       );
-      console.log(`✅ Cover uploaded to S3: ${coverKey}`);
-      console.log(`✅ Cover signed URL generated (valid for 7 days)`);
+      console.log(`✅ Cover uploaded locally: ${coverKey}`);
+      console.log(`✅ Cover URL generated: ${coverUploadResult.signedUrl}`);
 
-      // Store S3 key (permanent) and signed URL (temporary) in database
+      // Store file key and URL in database
       await this.supabase
         .from("order_items")
         .update({
-          cover_s3_key: coverKey,
+          cover_s3_key: coverKey, // Keep column name for compatibility
           cover_image_url: coverUploadResult.signedUrl,
         })
         .eq("id", orderItemId);
@@ -293,23 +291,22 @@ class OrderMonitor {
       });
       console.log("✅ PDF generated");
 
-      // Upload PDF to S3 and get signed URL
+      // Upload PDF to local storage and get URL
       const pdfKey = `books/order_${orderItem.order_id}_item_${orderItemId}_book.pdf`;
-      const pdfUploadResult = await this._uploadToS3(
+      const pdfUploadResult = await this._uploadToStorage(
         pdfBuffer,
         pdfKey,
-        "application/pdf",
-        604800 // 7 days = 604800 seconds
+        "application/pdf"
       );
-      console.log(`✅ PDF uploaded to S3: ${pdfKey}`);
-      console.log(`✅ PDF signed URL generated (valid for 7 days)`);
+      console.log(`✅ PDF uploaded locally: ${pdfKey}`);
+      console.log(`✅ PDF URL generated: ${pdfUploadResult.signedUrl}`);
 
-      // Step 4: Update order item with success (store S3 keys and signed URLs)
+      // Step 4: Update order item with success (store file keys and URLs)
       await this.supabase
         .from("order_items")
         .update({
           generation_status: "completed",
-          pdf_s3_key: pdfKey,
+          pdf_s3_key: pdfKey, // Keep column name for compatibility
           pdf_url: pdfUploadResult.signedUrl,
           generated_at: new Date().toISOString(),
           generation_error: null,
@@ -477,23 +474,23 @@ class OrderMonitor {
   }
 
   /**
-   * Upload file to S3 and return signed URL
+   * Upload file to local storage and return URL
    * @param {Buffer|string} data - File data
-   * @param {string} key - S3 object key
+   * @param {string} key - File path key
    * @param {string} contentType - MIME type
-   * @param {number} expiresIn - Signed URL expiration in seconds (default: 7 days)
+   * @param {number} expiresIn - Not used for local storage (API compatibility)
    * @returns {Promise<{key: string, signedUrl: string}>}
    */
-  async _uploadToS3(data, key, contentType, expiresIn = 604800) {
-    if (!this.s3Service) {
+  async _uploadToStorage(data, key, contentType, expiresIn = 604800) {
+    if (!this.storageService) {
       throw new Error(
-        "S3 service not initialized. Please set AWS credentials in environment variables."
+        "Storage service not initialized."
       );
     }
 
     try {
-      // Upload to S3 and get signed URL (expires in 7 days by default)
-      const result = await this.s3Service.uploadAndGetSignedUrl(
+      // Upload to local storage and get public URL
+      const result = await this.storageService.uploadAndGetSignedUrl(
         data,
         key,
         contentType,
@@ -502,39 +499,38 @@ class OrderMonitor {
 
       return result;
     } catch (error) {
-      console.error("❌ S3 upload failed:", error);
+      console.error("❌ Storage upload failed:", error);
       throw error;
     }
   }
 
   /**
-   * Generate a new signed URL for an existing S3 object
-   * Useful when the stored URL has expired
-   * @param {string} s3Key - S3 object key
-   * @param {number} expiresIn - Expiration time in seconds (default: 7 days)
-   * @returns {Promise<string>} - Signed URL
+   * Generate a new URL for an existing stored file
+   * @param {string} fileKey - File path key
+   * @param {number} expiresIn - Not used for local storage (API compatibility)
+   * @returns {Promise<string>} - Public URL
    */
-  async _getSignedUrlForS3Key(s3Key, expiresIn = 604800) {
-    if (!this.s3Service) {
-      throw new Error("S3 service not initialized");
+  async _getPublicUrlForKey(fileKey, expiresIn = 604800) {
+    if (!this.storageService) {
+      throw new Error("Storage service not initialized");
     }
 
     try {
-      return await this.s3Service.getSignedUrl(s3Key, expiresIn);
+      return await this.storageService.getPublicUrl(fileKey, expiresIn);
     } catch (error) {
-      console.error("❌ Failed to generate signed URL:", error);
+      console.error("❌ Failed to generate public URL:", error);
       throw error;
     }
   }
 
   /**
-   * Refresh signed URLs for an order item (when URLs expire)
+   * Refresh URLs for an order item
    * @param {string} orderItemId - Order item ID
    * @returns {Promise<{pdfUrl: string, coverUrl: string}>}
    */
   async refreshSignedUrls(orderItemId) {
     try {
-      // Get order item with S3 keys
+      // Get order item with file keys
       const { data: orderItem, error } = await this.supabase
         .from("order_items")
         .select("pdf_s3_key, cover_s3_key")
@@ -544,18 +540,18 @@ class OrderMonitor {
       if (error) throw error;
 
       if (!orderItem.pdf_s3_key && !orderItem.cover_s3_key) {
-        throw new Error("No S3 keys found for this order item");
+        throw new Error("No file keys found for this order item");
       }
 
       const result = {};
 
-      // Generate fresh signed URLs
+      // Generate fresh public URLs
       if (orderItem.pdf_s3_key) {
-        result.pdfUrl = await this._getSignedUrlForS3Key(orderItem.pdf_s3_key);
+        result.pdfUrl = await this._getPublicUrlForKey(orderItem.pdf_s3_key);
       }
 
       if (orderItem.cover_s3_key) {
-        result.coverUrl = await this._getSignedUrlForS3Key(
+        result.coverUrl = await this._getPublicUrlForKey(
           orderItem.cover_s3_key
         );
       }
@@ -570,10 +566,10 @@ class OrderMonitor {
         .update(updateData)
         .eq("id", orderItemId);
 
-      console.log(`✅ Refreshed signed URLs for order item ${orderItemId}`);
+      console.log(`✅ Refreshed URLs for order item ${orderItemId}`);
       return result;
     } catch (error) {
-      console.error("❌ Failed to refresh signed URLs:", error);
+      console.error("❌ Failed to refresh URLs:", error);
       throw error;
     }
   }

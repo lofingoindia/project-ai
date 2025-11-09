@@ -3,6 +3,7 @@
 
 require("dotenv").config();
 const express = require("express");
+const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const CompleteBookPersonalizationService = require("./complete-book-processor");
 const CoverImageGenerator = require("./cover-image-generator");
@@ -26,6 +27,11 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// Serve static files from uploads directory
+const uploadsPath = path.join(__dirname, "uploads");
+app.use("/uploads", express.static(uploadsPath));
+console.log(`📁 Serving static files from: ${uploadsPath}`);
 
 // Initialize services
 const bookPersonalizationService = new CompleteBookPersonalizationService();

@@ -1,0 +1,573 @@
+{
+  "info": {
+    "name": "AI Book Personalization Backend - Complete Flow",
+    "description": "Complete Postman collection for testing the AI Book Personalization Backend API. Includes all endpoints with sample data and environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "sampleImage",
+      "value": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCRAFmH/9k=",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health & Monitor",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the API is running and get monitor status"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Monitor Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/monitor/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["monitor", "status"]
+            },
+            "description": "Get the current status of the order monitor including running state, processing orders count, and poll interval"
+          },
+          "response": []
+        },
+        {
+          "name": "Start Order Monitor",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/monitor/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["monitor", "start"]
+            },
+            "description": "Start the order monitor to begin automatic processing of paid orders"
+          },
+          "response": []
+        },
+        {
+          "name": "Stop Order Monitor",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/monitor/stop",
+              "host": ["{{baseUrl}}"],
+              "path": ["monitor", "stop"]
+            },
+            "description": "Stop the order monitor to pause automatic order processing"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check and order monitor control endpoints"
+    },
+    {
+      "name": "2. Image Generation",
+      "item": [
+        {
+          "name": "Generate Single Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"A magical forest scene with a friendly dragon and a brave child holding a sword. The child has brown hair and is wearing a red cape. Cartoon style, bright colors, suitable for children aged 5-8.\",\n  \"image\": \"{{sampleImage}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/generate-image",
+              "host": ["{{baseUrl}}"],
+              "path": ["generate-image"]
+            },
+            "description": "Generate a single image from a prompt and input image using Gemini AI. The input image is used as a reference for style and character features."
+          },
+          "response": []
+        }
+      ],
+      "description": "Single image generation endpoint for testing basic AI image generation"
+    },
+    {
+      "name": "3. Cover Generation",
+      "item": [
+        {
+          "name": "Generate Personalized Cover",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originalCoverImage\": \"{{sampleImage}}\",\n  \"childImage\": \"{{sampleImage}}\",\n  \"bookData\": {\n    \"name\": \"The Magical Adventure\",\n    \"description\": \"A thrilling adventure story where the child becomes a hero in a magical world\",\n    \"genre\": \"Fantasy Adventure\",\n    \"ageRange\": \"5-8 years\"\n  },\n  \"childData\": {\n    \"name\": \"Emma\",\n    \"age\": 6,\n    \"gender\": \"girl\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/generate-cover",
+              "host": ["{{baseUrl}}"],
+              "path": ["generate-cover"]
+            },
+            "description": "Generate a personalized book cover by analyzing the original cover and child's photo. The system dynamically creates prompts based on book data and child features - no hardcoded prompts!"
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Cover - Boy Character",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originalCoverImage\": \"{{sampleImage}}\",\n  \"childImage\": \"{{sampleImage}}\",\n  \"bookData\": {\n    \"name\": \"Space Explorer Chronicles\",\n    \"description\": \"An exciting journey through space where the child discovers new planets and meets alien friends\",\n    \"genre\": \"Science Fiction\",\n    \"ageRange\": \"6-10 years\"\n  },\n  \"childData\": {\n    \"name\": \"Alex\",\n    \"age\": 8,\n    \"gender\": \"boy\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/generate-cover",
+              "host": ["{{baseUrl}}"],
+              "path": ["generate-cover"]
+            },
+            "description": "Example of generating a cover for a boy character with different book theme"
+          },
+          "response": []
+        }
+      ],
+      "description": "Personalized cover generation with dynamic AI-powered prompts"
+    },
+    {
+      "name": "4. Book Analysis & Processing",
+      "item": [
+        {
+          "name": "Analyze Book (Preview)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookPages\": [\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/analyze-book",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyze-book"]
+            },
+            "description": "Analyze a book without processing it. Returns information about character detection, page analysis, and estimated processing time. Useful for preview before full processing."
+          },
+          "response": []
+        },
+        {
+          "name": "Process Complete Book - Small (3 pages)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookPages\": [\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\"\n  ],\n  \"childImage\": \"{{sampleImage}}\",\n  \"childName\": \"Emma\",\n  \"bookTitle\": \"Emma's Magical Adventure\",\n  \"processingOptions\": {\n    \"batchSize\": 3,\n    \"quality\": \"high\",\n    \"styleConsistency\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process-complete-book",
+              "host": ["{{baseUrl}}"],
+              "path": ["process-complete-book"]
+            },
+            "description": "Process a small 3-page book for testing. Replaces generic characters with the child's personalized character throughout the book."
+          },
+          "response": []
+        },
+        {
+          "name": "Process Complete Book - Medium (10 pages)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookPages\": [\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\"\n  ],\n  \"childImage\": \"{{sampleImage}}\",\n  \"childName\": \"Alex\",\n  \"bookTitle\": \"Alex's Space Adventure\",\n  \"processingOptions\": {\n    \"batchSize\": 5,\n    \"quality\": \"high\",\n    \"styleConsistency\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process-complete-book",
+              "host": ["{{baseUrl}}"],
+              "path": ["process-complete-book"]
+            },
+            "description": "Process a medium-sized 10-page book with larger batch size for better performance"
+          },
+          "response": []
+        },
+        {
+          "name": "Process Complete Book - Custom Quality",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookPages\": [\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\"\n  ],\n  \"childImage\": \"{{sampleImage}}\",\n  \"childName\": \"Sophie\",\n  \"bookTitle\": \"Sophie's Enchanted Forest\",\n  \"processingOptions\": {\n    \"batchSize\": 2,\n    \"quality\": \"ultra\",\n    \"styleConsistency\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process-complete-book",
+              "host": ["{{baseUrl}}"],
+              "path": ["process-complete-book"]
+            },
+            "description": "Process a book with custom quality settings. Lower batch size with ultra quality for best results."
+          },
+          "response": []
+        }
+      ],
+      "description": "Book analysis and complete book processing endpoints"
+    },
+    {
+      "name": "5. URL Management (S3)",
+      "item": [
+        {
+          "name": "Generate Signed URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"s3Key\": \"books/user-123/order-456/book-789.pdf\",\n  \"expiresIn\": 604800\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/generate-signed-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["generate-signed-url"]
+            },
+            "description": "Generate a signed URL for accessing a file in S3 storage. Default expiration is 7 days (604800 seconds). Use this when existing signed URLs have expired."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Order URLs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderItemId\": \"550e8400-e29b-41d4-a716-446655440000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/refresh-order-urls",
+              "host": ["{{baseUrl}}"],
+              "path": ["refresh-order-urls"]
+            },
+            "description": "Refresh all signed URLs for a specific order item (both PDF and cover image). Returns new signed URLs that are valid for 7 days. Replace the orderItemId with an actual UUID from your database."
+          },
+          "response": []
+        }
+      ],
+      "description": "S3 signed URL generation and refresh endpoints"
+    },
+    {
+      "name": "6. Complete Flow Test Scenarios",
+      "item": [
+        {
+          "name": "Scenario 1: Quick Health Check",
+          "item": [
+            {
+              "name": "1.1 - Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/health",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["health"]
+                }
+              }
+            },
+            {
+              "name": "1.2 - Monitor Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/monitor/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["monitor", "status"]
+                }
+              }
+            }
+          ],
+          "description": "Quick test to verify server is running and check monitor status"
+        },
+        {
+          "name": "Scenario 2: Single Image Test",
+          "item": [
+            {
+              "name": "2.1 - Generate Test Image",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prompt\": \"Test image: A simple cartoon character, friendly and smiling\",\n  \"image\": \"{{sampleImage}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/generate-image",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["generate-image"]
+                }
+              }
+            }
+          ],
+          "description": "Test basic image generation functionality"
+        },
+        {
+          "name": "Scenario 3: Cover Generation Flow",
+          "item": [
+            {
+              "name": "3.1 - Analyze Book First",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bookPages\": [\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/analyze-book",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["analyze-book"]
+                }
+              }
+            },
+            {
+              "name": "3.2 - Generate Cover",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"originalCoverImage\": \"{{sampleImage}}\",\n  \"childImage\": \"{{sampleImage}}\",\n  \"bookData\": {\n    \"name\": \"Test Book\",\n    \"genre\": \"Adventure\",\n    \"ageRange\": \"5-8\"\n  },\n  \"childData\": {\n    \"name\": \"Test Child\",\n    \"age\": 6,\n    \"gender\": \"boy\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/generate-cover",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["generate-cover"]
+                }
+              }
+            }
+          ],
+          "description": "Test the cover generation workflow: analyze then generate"
+        },
+        {
+          "name": "Scenario 4: Complete Book Processing",
+          "item": [
+            {
+              "name": "4.1 - Analyze Book",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bookPages\": [\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/analyze-book",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["analyze-book"]
+                }
+              }
+            },
+            {
+              "name": "4.2 - Process Book",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bookPages\": [\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\",\n    \"{{sampleImage}}\"\n  ],\n  \"childImage\": \"{{sampleImage}}\",\n  \"childName\": \"Test Child\",\n  \"bookTitle\": \"Test Book\",\n  \"processingOptions\": {\n    \"batchSize\": 3,\n    \"quality\": \"high\",\n    \"styleConsistency\": true\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/process-complete-book",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["process-complete-book"]
+                }
+              }
+            }
+          ],
+          "description": "Complete flow: analyze book structure then process with personalization"
+        },
+        {
+          "name": "Scenario 5: Order Monitor Flow",
+          "item": [
+            {
+              "name": "5.1 - Check Initial Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/monitor/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["monitor", "status"]
+                }
+              }
+            },
+            {
+              "name": "5.2 - Start Monitor",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/monitor/start",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["monitor", "start"]
+                }
+              }
+            },
+            {
+              "name": "5.3 - Verify Running",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/monitor/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["monitor", "status"]
+                }
+              }
+            },
+            {
+              "name": "5.4 - Stop Monitor",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/monitor/stop",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["monitor", "stop"]
+                }
+              }
+            },
+            {
+              "name": "5.5 - Verify Stopped",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/monitor/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["monitor", "status"]
+                }
+              }
+            }
+          ],
+          "description": "Test order monitor lifecycle: check status, start, verify running, stop, verify stopped"
+        }
+      ],
+      "description": "Complete test scenarios to verify entire workflows"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script to set up any dynamic variables",
+          "console.log('Running request to:', pm.request.url.toString());"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test script",
+          "pm.test('Response time is less than 60 seconds', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(60000);",
+          "});",
+          "",
+          "pm.test('Response should be JSON', function () {",
+          "    pm.response.to.have.jsonBody();",
+          "});",
+          "",
+          "// Log response for debugging",
+          "console.log('Status:', pm.response.code);",
+          "console.log('Response:', pm.response.json());"
+        ]
+      }
+    }
+  ]
+}
+
