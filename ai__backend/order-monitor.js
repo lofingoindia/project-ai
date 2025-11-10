@@ -112,6 +112,7 @@ class OrderMonitor {
             genre,
             age_range,
             cover_image_url,
+            pdf_url,
             images,
             characters,
             ideal_for
@@ -206,9 +207,12 @@ class OrderMonitor {
         bookData.cover_image_url
       );
 
-      // Get all book page images
-      const bookPageImages = await this._getBookPageImages(bookData);
+      // Validate PDF URL exists
+      if (!bookData.pdf_url) {
+        throw new Error("Book PDF URL not found in database");
+      }
 
+      console.log(`📄 Using PDF from database: ${bookData.pdf_url}`);
       console.log("✅ All images retrieved");
 
       // Step 1: Generate personalized cover
@@ -255,10 +259,10 @@ class OrderMonitor {
         })
         .eq("id", orderItemId);
 
-      // Step 2: Process complete book with all pages
-      console.log("📚 Processing complete book...");
+      // Step 2: Process complete book using PDF URL
+      console.log("📚 Processing complete book from PDF...");
       const bookResult = await this.bookProcessor.processCompleteBook({
-        bookPages: bookPageImages,
+        pdfUrl: bookData.pdf_url,
         childImage: childImageBase64,
         childName:
           personalizationData.childName || personalizationData.child_name,
@@ -369,7 +373,8 @@ class OrderMonitor {
   }
 
   /**
-   * Get all book page images
+   * Get all book page images (DEPRECATED - now using PDF URL)
+   * Kept for backward compatibility
    */
   async _getBookPageImages(bookData) {
     const images = bookData.images || [];

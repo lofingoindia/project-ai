@@ -268,6 +268,7 @@ app.post("/generate-image", async (req, res) => {
 app.post("/process-complete-book", async (req, res) => {
   try {
     const {
+      pdfUrl,
       bookPages,
       childImage,
       childName,
@@ -275,10 +276,13 @@ app.post("/process-complete-book", async (req, res) => {
       processingOptions = {},
     } = req.body;
 
-    if (!bookPages || !Array.isArray(bookPages) || bookPages.length === 0) {
+    // Validate: either pdfUrl or bookPages must be provided
+    if (!pdfUrl && (!bookPages || !Array.isArray(bookPages) || bookPages.length === 0)) {
       return res
         .status(400)
-        .json({ error: "bookPages array is required and must not be empty" });
+        .json({ 
+          error: "Either pdfUrl or bookPages array is required. pdfUrl is preferred." 
+        });
     }
 
     if (!childImage || !childName) {
@@ -290,8 +294,14 @@ app.post("/process-complete-book", async (req, res) => {
     console.log(
       `📚 Processing complete book: ${bookTitle || "Personalized Book"}`
     );
+    if (pdfUrl) {
+      console.log(`📄 Using PDF URL: ${pdfUrl}`);
+    } else {
+      console.log(`📄 Using ${bookPages.length} book pages`);
+    }
 
     const result = await bookPersonalizationService.processCompleteBook({
+      pdfUrl,
       bookPages,
       childImage,
       childName,

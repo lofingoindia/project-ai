@@ -5,6 +5,7 @@ const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const path = require('path');
+const PDFExtractor = require('./pdf-extractor');
 
 class CompleteBookPersonalizationService {
   constructor() {
@@ -12,12 +13,15 @@ class CompleteBookPersonalizationService {
     this.model = "gemini-2.5-flash-image-preview";
     this.maxRetries = 3; // Retry failed image generation
     this.retryDelay = 2000; // 2 seconds between retries
+    this.pdfExtractor = new PDFExtractor();
   }
 
   /**
    * Main entry point for complete book processing
+   * Accepts either pdfUrl or bookPages (for backward compatibility)
    */
   async processCompleteBook({
+    pdfUrl,
     bookPages,
     childImage,
     childName,
@@ -28,24 +32,37 @@ class CompleteBookPersonalizationService {
       console.log('📚 Starting complete book personalization...');
       console.log(`📖 Book: ${bookTitle}`);
       console.log(`👶 Child: ${childName}`);
-      console.log(`📄 Total pages: ${bookPages.length}`);
       
       const startTime = Date.now();
       
+      // Step 0: Extract pages from PDF if pdfUrl is provided
+      let pagesToProcess = bookPages;
+      if (pdfUrl) {
+        console.log('📄 Extracting pages from PDF...');
+        pagesToProcess = await this.pdfExtractor.extractPagesFromPDF(pdfUrl);
+        console.log(`✅ Extracted ${pagesToProcess.length} pages from PDF`);
+      }
+      
+      if (!pagesToProcess || pagesToProcess.length === 0) {
+        throw new Error('No book pages provided. Either pdfUrl or bookPages must be provided.');
+      }
+      
+      console.log(`📄 Total pages: ${pagesToProcess.length}`);
+      
       // Step 1: Analyze all pages
       console.log('🔍 Step 1: Analyzing all book pages...');
-      const bookAnalysis = await this.analyzeCompleteBook(bookPages);
+      const bookAnalysis = await this.analyzeCompleteBook(pagesToProcess);
       console.log('✅ Book analysis complete');
       
       // Step 2: Map characters across pages
       console.log('👤 Step 2: Mapping characters across pages...');
-      const characterMapping = await this.mapCharacterAcrossPages(bookPages, bookAnalysis);
+      const characterMapping = await this.mapCharacterAcrossPages(pagesToProcess, bookAnalysis);
       console.log(`✅ Character mapping complete: ${characterMapping.length} replacements needed`);
       
       // Step 3: Process pages in batches
       console.log('🔄 Step 3: Processing pages in batches...');
       const processedPages = await this.processPagesInBatches(
-        bookPages,
+        pagesToProcess,
         characterMapping,
         childImage,
         childName,
