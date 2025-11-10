@@ -301,7 +301,10 @@ class CompleteBookPersonalizationService {
     });
     
     const response = await result.response;
-    const analysisText = response.text();
+    let analysisText = response.text();
+    
+    // Clean up the response text - remove markdown code blocks if present
+    analysisText = this._cleanJsonResponse(analysisText);
     
     // Parse JSON response
     try {
@@ -310,6 +313,7 @@ class CompleteBookPersonalizationService {
       return analysis;
     } catch (parseError) {
       console.error('❌ Failed to parse analysis JSON:', parseError);
+      console.error('Raw response text (first 500 chars):', analysisText.substring(0, 500));
       throw new Error(`JSON parsing failed: ${parseError.message}`);
     }
   }
@@ -702,6 +706,35 @@ class CompleteBookPersonalizationService {
       pages: processedPages.sort((a, b) => a.pageNumber - b.pageNumber),
       success: successfulPages.length > 0
     };
+  }
+
+  /**
+   * Clean JSON response by removing markdown code blocks
+   * @param {string} text - Raw response text from AI
+   * @returns {string} - Cleaned JSON string
+   */
+  _cleanJsonResponse(text) {
+    if (!text) return text;
+    
+    // Remove markdown code blocks (```json ... ``` or ``` ... ```)
+    let cleaned = text.trim();
+    
+    // Remove opening code block markers
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '');
+    
+    // Remove closing code block markers
+    cleaned = cleaned.replace(/\s*```$/i, '');
+    
+    // Remove any leading/trailing whitespace
+    cleaned = cleaned.trim();
+    
+    // Try to find JSON object/array boundaries if still wrapped
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+    }
+    
+    return cleaned;
   }
 
   /**
