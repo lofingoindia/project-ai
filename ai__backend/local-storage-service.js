@@ -8,7 +8,7 @@ class LocalStorageService {
   constructor(config = {}) {
     // Base directory for uploads (defaults to ./uploads in the backend folder)
     this.baseDir = config.baseDir || path.join(__dirname, "uploads");
-    this.baseUrl = config.baseUrl || process.env.BASE_URL || "http://localhost:5000";
+    this.baseUrl = config.baseUrl || process.env.BASE_URL || "https://api.hero-kids.net";
     
     // Create uploads directory if it doesn't exist
     this._ensureDirectoryExists(this.baseDir);

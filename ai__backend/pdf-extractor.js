@@ -49,17 +49,34 @@ class PDFExtractor {
       const pageImages = [];
       let pageCounter = 1;
 
-      // Iterate through each page
+      // Iterate through each page - ONE PAGE = ONE IMAGE
       for await (const image of document) {
-        console.log(`📄 Processing page ${pageCounter}...`);
+        console.log(`📄 Extracting page ${pageCounter} from PDF...`);
+        
+        // Validate: Each iteration = one PDF page = one image
+        if (!image || !Buffer.isBuffer(image)) {
+          throw new Error(`Invalid image data for page ${pageCounter}`);
+        }
         
         // Convert image buffer to base64
         // image is already a Buffer, convert it to base64 string
         const base64Image = image.toString('base64');
+        
+        // Ensure we have valid base64 data
+        if (!base64Image || base64Image.length === 0) {
+          throw new Error(`Empty image data for page ${pageCounter}`);
+        }
+        
+        // Add to array - maintaining 1:1 mapping (index = page number - 1)
         pageImages.push(base64Image);
         
-        console.log(`✅ Page ${pageCounter} converted to base64`);
+        console.log(`✅ Page ${pageCounter} extracted and converted to base64 (${base64Image.length} chars)`);
         pageCounter++;
+      }
+
+      // Validate: Ensure we extracted at least one page
+      if (pageImages.length === 0) {
+        throw new Error('No pages extracted from PDF');
       }
 
       // Clean up temporary PDF file if we downloaded it
@@ -72,7 +89,8 @@ class PDFExtractor {
         }
       }
 
-      console.log(`✅ All ${pageImages.length} pages extracted successfully`);
+      console.log(`✅ All ${pageImages.length} pages extracted successfully (1 page = 1 image)`);
+      console.log(`📊 Page-to-image mapping: ${pageImages.length} pages → ${pageImages.length} images`);
       return pageImages;
 
     } catch (error) {

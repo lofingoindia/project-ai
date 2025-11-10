@@ -5,12 +5,13 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class CoverImageGenerator {
   constructor(apiKey) {
-    this.genAI = new GoogleGenerativeAI(
-      apiKey ||
-        process.env.GOOGLE_AI_API_KEY ||
-        "AIzaSyDQ_IImJ2MNZ-IgI9dm35PZwXWDEFBW76g"
-    );
-    this.model = "gemini-2.5-flash-image-preview";
+    const finalApiKey = apiKey || process.env.GOOGLE_AI_API_KEY;
+    if (!finalApiKey) {
+      throw new Error('GOOGLE_AI_API_KEY environment variable or apiKey parameter is required');
+    }
+    this.genAI = new GoogleGenerativeAI(finalApiKey);
+    // Using Gemini 2.0 Flash Experimental for better image quality
+    this.model = "gemini-2.0-flash-exp";
   }
 
   /**

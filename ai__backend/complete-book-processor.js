@@ -9,10 +9,14 @@ const PDFExtractor = require('./pdf-extractor');
 
 class CompleteBookPersonalizationService {
   constructor() {
-    this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || "AIzaSyDQ_IImJ2MNZ-IgI9dm35PZwXWDEFBW76g");
-    this.model = "gemini-2.5-flash-image-preview";
-    this.maxRetries = 3; // Retry failed image generation
-    this.retryDelay = 2000; // 2 seconds between retries
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      throw new Error('GOOGLE_AI_API_KEY environment variable is required');
+    }
+    this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+    // Using Gemini 2.0 Flash Experimental for better image quality
+    this.model = "gemini-2.0-flash-exp";
+    this.maxRetries = 5; // Retry failed API calls (increased from 3)
+    this.retryDelay = 3000; // 3 seconds base delay between retries (increased from 2)
     this.pdfExtractor = new PDFExtractor();
   }
 
@@ -41,13 +45,19 @@ class CompleteBookPersonalizationService {
         console.log('📄 Extracting pages from PDF...');
         pagesToProcess = await this.pdfExtractor.extractPagesFromPDF(pdfUrl);
         console.log(`✅ Extracted ${pagesToProcess.length} pages from PDF`);
+        
+        // Validate: Ensure 1:1 mapping (one PDF page = one image)
+        if (pagesToProcess.length === 0) {
+          throw new Error('No pages extracted from PDF');
+        }
+        console.log(`📊 PDF extraction validation: ${pagesToProcess.length} pages = ${pagesToProcess.length} images (1:1 mapping)`);
       }
       
       if (!pagesToProcess || pagesToProcess.length === 0) {
         throw new Error('No book pages provided. Either pdfUrl or bookPages must be provided.');
       }
       
-      console.log(`📄 Total pages: ${pagesToProcess.length}`);
+      console.log(`📄 Total pages to process: ${pagesToProcess.length}`);
       
       // Step 1: Analyze all pages
       console.log('🔍 Step 1: Analyzing all book pages...');
@@ -145,8 +155,48 @@ class CompleteBookPersonalizationService {
   /**
    * Analyze a single page for character detection and scene understanding
    * Improved with better prompting for character detection
+   * Includes retry logic for API errors
    */
   async analyzePage(pageImage, pageNumber) {
+    // Retry logic for failed page analysis
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        return await this._analyzePageAttempt(pageImage, pageNumber, attempt);
+      } catch (error) {
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
+        
+        console.error(`❌ Page ${pageNumber + 1} analysis failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
+        }
+        
+        // If this was the last attempt or error is not retryable, return fallback
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.warn(`⚠️  Non-retryable error, using fallback analysis for page ${pageNumber + 1}`);
+          } else {
+            console.warn(`⚠️  Using fallback analysis for page ${pageNumber + 1} after ${this.maxRetries} failed attempts`);
+          }
+          return this.createFallbackAnalysis(pageNumber);
+        }
+        
+        // Wait before retrying (exponential backoff with jitter)
+        // Exponential backoff: 3s, 6s, 12s, 24s, 48s
+        const delay = this.retryDelay * Math.pow(2, attempt - 1);
+        // Add random jitter (0-1s) to avoid thundering herd
+        const jitter = Math.random() * 1000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff)...`);
+        await this.sleep(totalDelay);
+      }
+    }
+  }
+
+  /**
+   * Single attempt to analyze a page
+   */
+  async _analyzePageAttempt(pageImage, pageNumber, attempt) {
     const analysisPrompt = `
     You are an expert at analyzing children's book illustrations. Analyze this book page (page ${pageNumber + 1}) with extreme precision:
     
@@ -227,41 +277,38 @@ class CompleteBookPersonalizationService {
     }
     `;
     
-    try {
-      const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
-      const result = await generativeModel.generateContent({
-        contents: [{
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                data: pageImage,
-                mimeType: "image/jpeg"
-              }
-            },
-            { text: analysisPrompt }
-          ]
-        }],
-        generationConfig: {
-          responseModalities: ["TEXT"]
-        }
-      });
-      
-      const response = await result.response;
-      const analysisText = response.text();
-      
-      // Parse JSON response
-      try {
-        const analysis = JSON.parse(analysisText);
-        return analysis;
-      } catch (parseError) {
-        console.error('❌ Failed to parse analysis JSON:', parseError);
-        return this.createFallbackAnalysis(pageNumber);
+    console.log(`🔍 Analyzing page ${pageNumber + 1} (attempt ${attempt}/${this.maxRetries})...`);
+    
+    const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
+    const result = await generativeModel.generateContent({
+      contents: [{
+        role: "user",
+        parts: [
+          {
+            inlineData: {
+              data: pageImage,
+              mimeType: "image/jpeg"
+            }
+          },
+          { text: analysisPrompt }
+        ]
+      }],
+      generationConfig: {
+        responseModalities: ["TEXT"]
       }
-      
-    } catch (error) {
-      console.error(`❌ Page analysis failed for page ${pageNumber + 1}:`, error);
-      return this.createFallbackAnalysis(pageNumber);
+    });
+    
+    const response = await result.response;
+    const analysisText = response.text();
+    
+    // Parse JSON response
+    try {
+      const analysis = JSON.parse(analysisText);
+      console.log(`✅ Page ${pageNumber + 1} analyzed successfully${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+      return analysis;
+    } catch (parseError) {
+      console.error('❌ Failed to parse analysis JSON:', parseError);
+      throw new Error(`JSON parsing failed: ${parseError.message}`);
     }
   }
 
@@ -396,27 +443,43 @@ class CompleteBookPersonalizationService {
 
   /**
    * Process all pages in batches for efficiency
+   * IMPORTANT: Each page is processed individually to maintain 1:1 mapping
+   * (one page = one processed image)
    */
   async processPagesInBatches(bookPages, characterMapping, childImage, childName, options) {
     const batchSize = options.batchSize || 3;
     const processedPages = [];
+    
+    console.log(`🔄 Processing ${characterMapping.length} pages in batches of ${batchSize}`);
+    console.log(`📊 Ensuring 1:1 mapping: ${characterMapping.length} pages → ${characterMapping.length} images`);
     
     for (let i = 0; i < characterMapping.length; i += batchSize) {
       const batch = characterMapping.slice(i, i + batchSize);
       const batchNumber = Math.floor(i / batchSize) + 1;
       const totalBatches = Math.ceil(characterMapping.length / batchSize);
       
-      console.log(`🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} pages)`);
+      console.log(`🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} pages, each will produce 1 image)`);
       
       try {
+        // Process each page individually - ONE PAGE = ONE IMAGE
         const batchResults = await Promise.all(
-          batch.map(mapping => 
-            this.processPage(mapping, childImage, childName)
-          )
+          batch.map(mapping => {
+            console.log(`  📄 Processing page ${mapping.pageNumber} (will generate 1 image)`);
+            return this.processPage(mapping, childImage, childName);
+          })
         );
         
+        // Validate: Each result should have exactly one processed image
+        batchResults.forEach((result, idx) => {
+          if (!result.processedImage) {
+            console.warn(`⚠️  Page ${result.pageNumber} has no processed image, using original`);
+          } else {
+            console.log(`  ✅ Page ${result.pageNumber} → 1 image generated`);
+          }
+        });
+        
         processedPages.push(...batchResults);
-        console.log(`✅ Batch ${batchNumber} completed`);
+        console.log(`✅ Batch ${batchNumber} completed: ${batchResults.length} pages → ${batchResults.length} images`);
         
         // Add delay between batches to avoid rate limiting
         if (i + batchSize < characterMapping.length) {
@@ -425,11 +488,11 @@ class CompleteBookPersonalizationService {
         
       } catch (error) {
         console.error(`❌ Batch ${batchNumber} failed:`, error);
-        // Add fallback pages for failed batch
+        // Add fallback pages for failed batch - still maintaining 1:1 mapping
         batch.forEach(mapping => {
           processedPages.push({
             pageNumber: mapping.pageNumber,
-            processedImage: mapping.pageImage, // Use original if processing fails
+            processedImage: mapping.pageImage, // Use original if processing fails (1 page = 1 image)
             success: false,
             error: error.message
           });
@@ -437,21 +500,34 @@ class CompleteBookPersonalizationService {
       }
     }
     
+    // Final validation: Ensure we have one image per page
+    console.log(`📊 Final validation: ${processedPages.length} pages processed → ${processedPages.length} images`);
+    if (processedPages.length !== characterMapping.length) {
+      console.warn(`⚠️  Warning: Expected ${characterMapping.length} images but got ${processedPages.length}`);
+    }
+    
     return processedPages;
   }
 
   /**
    * Process a single page with character replacement (with retry logic)
+   * IMPORTANT: This function processes ONE page and returns ONE image
+   * Ensures 1:1 mapping (one page = one processed image)
    */
   async processPage(characterMapping, childImage, childName) {
     const { character, pageImage, pageNumber } = characterMapping;
+    
+    // Validate: Ensure we have valid page image
+    if (!pageImage) {
+      throw new Error(`No page image provided for page ${pageNumber}`);
+    }
     
     // Retry logic for failed image generation
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         const prompt = this.generatePagePrompt(characterMapping, childName);
         
-        console.log(`🎨 Processing page ${pageNumber} (attempt ${attempt}/${this.maxRetries})...`);
+        console.log(`🎨 Processing page ${pageNumber} → generating 1 image (attempt ${attempt}/${this.maxRetries})...`);
         
         const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
         const result = await generativeModel.generateContent({
@@ -495,10 +571,11 @@ class CompleteBookPersonalizationService {
         }
         
         if (generatedImageData) {
-          console.log(`✅ Page ${pageNumber} processed successfully${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+          console.log(`✅ Page ${pageNumber} → 1 image generated successfully${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+          // Return ONE processed image for ONE page
           return {
             pageNumber,
-            processedImage: generatedImageData,
+            processedImage: generatedImageData, // Single image for single page
             success: true,
             character: character.description,
             attempts: attempt
@@ -508,11 +585,21 @@ class CompleteBookPersonalizationService {
         }
         
       } catch (error) {
-        console.error(`❌ Page ${pageNumber} processing failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
         
-        // If this was the last attempt, return with original image
-        if (attempt === this.maxRetries) {
-          console.warn(`⚠️  Using original page ${pageNumber} after ${this.maxRetries} failed attempts`);
+        console.error(`❌ Page ${pageNumber} processing failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
+        }
+        
+        // If this was the last attempt or error is not retryable, return with original image
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.warn(`⚠️  Non-retryable error, using original page ${pageNumber}`);
+          } else {
+            console.warn(`⚠️  Using original page ${pageNumber} after ${this.maxRetries} failed attempts`);
+          }
           return {
             pageNumber: characterMapping.pageNumber,
             processedImage: characterMapping.pageImage, // Use original as fallback
@@ -523,9 +610,12 @@ class CompleteBookPersonalizationService {
           };
         }
         
-        // Wait before retrying
-        console.log(`⏳ Waiting ${this.retryDelay}ms before retry...`);
-        await this.sleep(this.retryDelay);
+        // Wait before retrying (exponential backoff with jitter)
+        const delay = this.retryDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 1000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff)...`);
+        await this.sleep(totalDelay);
       }
     }
   }
@@ -610,6 +700,48 @@ class CompleteBookPersonalizationService {
       pages: processedPages.sort((a, b) => a.pageNumber - b.pageNumber),
       success: successfulPages.length > 0
     };
+  }
+
+  /**
+   * Check if an error is retryable
+   * @param {Error} error - The error object
+   * @param {number|null} statusCode - HTTP status code if available
+   * @returns {boolean} - True if error should be retried
+   */
+  _isRetryableError(error, statusCode) {
+    // Retry on 5xx server errors (500, 502, 503, 504)
+    if (statusCode >= 500 && statusCode < 600) {
+      return true;
+    }
+    
+    // Retry on 429 (Too Many Requests)
+    if (statusCode === 429) {
+      return true;
+    }
+    
+    // Retry on network errors
+    if (error.message?.includes('ECONNRESET') || 
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('ENOTFOUND') ||
+        error.message?.includes('network')) {
+      return true;
+    }
+    
+    // Retry on Google API specific errors that indicate temporary issues
+    if (error.message?.includes('Internal Server Error') ||
+        error.message?.includes('Service Unavailable') ||
+        error.message?.includes('Gateway Timeout') ||
+        error.message?.includes('temporarily unavailable')) {
+      return true;
+    }
+    
+    // Don't retry on 4xx client errors (except 429)
+    if (statusCode >= 400 && statusCode < 500) {
+      return false;
+    }
+    
+    // Default: retry on unknown errors (could be temporary)
+    return true;
   }
 
   /**

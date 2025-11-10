@@ -7,7 +7,7 @@ SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 
 # Server Configuration
 PORT=5000
-BASE_URL=http://localhost:5000
+BASE_URL=https://api.hero-kids.net
 
 # Order Monitor Configuration
 AUTO_START_MONITOR=true

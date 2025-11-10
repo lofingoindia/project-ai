@@ -26,7 +26,7 @@ class OrderMonitor {
     try {
       this.storageService = new LocalStorageService({
         baseDir: config.storageDir || path.join(__dirname, "uploads"),
-        baseUrl: config.baseUrl || process.env.BASE_URL || "http://localhost:5000",
+        baseUrl: config.baseUrl || process.env.BASE_URL || "https://api.hero-kids.net",
       });
     } catch (error) {
       console.warn("⚠️  Local storage service initialization failed:", error.message);

@@ -129,15 +129,17 @@ async function callGenerateStreamWithRetries(
 // Image generation function
 async function generateImageFromPrompt(prompt, inputImageBase64) {
   try {
-    const genAI = new GoogleGenerativeAI(
-      process.env.GOOGLE_AI_API_KEY || "AIzaSyDQ_IImJ2MNZ-IgI9dm35PZwXWDEFBW76g"
-    );
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      throw new Error('GOOGLE_AI_API_KEY environment variable is required');
+    }
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
 
     console.log(
       `🎨 Generating image with prompt: ${prompt.substring(0, 100)}...`
     );
 
-    const model = "gemini-2.5-flash-image-preview";
+    // Using Gemini 2.0 Flash Experimental for better image quality
+    const model = "gemini-2.0-flash-exp";
 
     const contents = [
       {
