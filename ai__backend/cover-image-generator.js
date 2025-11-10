@@ -10,8 +10,7 @@ class CoverImageGenerator {
       throw new Error('GOOGLE_AI_API_KEY environment variable or apiKey parameter is required');
     }
     this.genAI = new GoogleGenerativeAI(finalApiKey);
-    // Using Gemini 2.0 Flash Experimental for better image quality
-    this.model = "gemini-2.0-flash-exp";
+    this.model = "gemini-2.5-flash-image-preview";
   }
 
   /**
@@ -78,7 +77,7 @@ class CoverImageGenerator {
   async _analyzeOriginalCover(coverImageBase64, bookData) {
     try {
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash-image-preview",
       });
 
       const analysisPrompt = `Analyze this book cover image in detail. Describe:
@@ -136,7 +135,7 @@ Provide a structured analysis that can be used to recreate a similar style.`;
   async _analyzeChildImage(childImageBase64, childData) {
     try {
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash-image-preview",
       });
 
       const analysisPrompt = `Analyze this child's photo and describe:
@@ -192,7 +191,7 @@ Provide detailed but natural descriptions suitable for creating an illustrated c
   async _generateDynamicPrompt(coverAnalysis, childFeatures, bookData, childData) {
     try {
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash-image-preview",
       });
 
       const bookName = bookData.name || "Adventure Book";

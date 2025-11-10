@@ -13,8 +13,7 @@ class CompleteBookPersonalizationService {
       throw new Error('GOOGLE_AI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-    // Using Gemini 2.0 Flash Experimental for better image quality
-    this.model = "gemini-2.0-flash-exp";
+    this.model = "gemini-2.5-flash-image-preview";
     this.maxRetries = 5; // Retry failed API calls (increased from 3)
     this.retryDelay = 3000; // 3 seconds base delay between retries (increased from 2)
     this.pdfExtractor = new PDFExtractor();

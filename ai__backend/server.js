@@ -138,8 +138,7 @@ async function generateImageFromPrompt(prompt, inputImageBase64) {
       `🎨 Generating image with prompt: ${prompt.substring(0, 100)}...`
     );
 
-    // Using Gemini 2.0 Flash Experimental for better image quality
-    const model = "gemini-2.0-flash-exp";
+    const model = "gemini-2.5-flash-image-preview";
 
     const contents = [
       {
