@@ -87,11 +87,7 @@ class AiDirectService {
         },
       };
 
-      debugPrint('[AiDirectService] Request prepared:');
-      debugPrint('[AiDirectService]   Original cover: ${originalCoverBase64.length} chars');
-      debugPrint('[AiDirectService]   Child image: ${childImageBase64.length} chars');
-      debugPrint('[AiDirectService]   Book name: ${requestBody['bookData']['name']}');
-      debugPrint('[AiDirectService]   Child name: ${requestBody['childData']['name']}');
+      
 
       // Step 4: Call backend API
       debugPrint('[AiDirectService] Step 4: Calling backend API: $_backendUrl/generate-cover');
