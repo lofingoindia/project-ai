@@ -54,8 +54,8 @@ class PDFExtractor {
         console.log(`📄 Processing page ${pageCounter}...`);
         
         // Convert image buffer to base64
-        // image is a Buffer, convert it to base64 string
-        const base64Image = Buffer.from(image).toString('base64');
+        // image is already a Buffer, convert it to base64 string
+        const base64Image = image.toString('base64');
         pageImages.push(base64Image);
         
         console.log(`✅ Page ${pageCounter} converted to base64`);
