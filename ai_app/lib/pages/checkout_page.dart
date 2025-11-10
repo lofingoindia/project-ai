@@ -1066,7 +1066,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       // Simulate credit card processing
       await Future.delayed(const Duration(seconds: 3));
       
-      await _createOrder();
+      final orderId = await _createOrder();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1075,7 +1075,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
             backgroundColor: Colors.green,
           ),
         );
-        final orderId = await _createOrder();
         _navigateToThankYou(orderId);
       }
     } catch (e) {

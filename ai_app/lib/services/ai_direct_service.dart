@@ -9,7 +9,7 @@ class AiDirectService {
   final SupabaseClient _client = Supabase.instance.client;
   
   // Backend API URL - UPDATE THIS WITH YOUR ACTUAL BACKEND URL
-  static const String _backendUrl = 'http://localhost:5000'; // Change to your backend URL
+  static const String _backendUrl = 'https://api.hero-kids.net'; // Change to your backend URL
   // For production: 'https://your-backend.com'
   // For local development: 'http://localhost:5000' or 'http://10.0.2.2:5000' (Android emulator)
   
@@ -40,7 +40,7 @@ class AiDirectService {
       debugPrint('[AiDirectService] Step 1: Fetching book data from database...');
       final bookData = await _client
           .from('books')
-          .select('id, title, name, cover_image_url, genre, age_range, description, characters, ideal_for')
+          .select('id, title, cover_image_url, genre, age_range, description, characters, ideal_for')
           .eq('id', int.parse(bookId))
           .single();
 
@@ -49,7 +49,7 @@ class AiDirectService {
       }
 
       debugPrint('[AiDirectService] ✓ Book data fetched');
-      debugPrint('[AiDirectService]   Title: ${bookData['title'] ?? bookData['name']}');
+      debugPrint('[AiDirectService]   Title: ${bookData['title']}');
       debugPrint('[AiDirectService]   Cover URL: ${bookData['cover_image_url']}');
 
       // Step 2: Download original book cover
@@ -73,7 +73,7 @@ class AiDirectService {
         'originalCoverImage': originalCoverBase64,
         'childImage': childImageBase64,
         'bookData': {
-          'name': bookData['title'] ?? bookData['name'] ?? bookName,
+          'name': bookData['title'] ?? bookName,
           'description': bookData['description'] ?? '',
           'genre': bookData['genre'] ?? 'Children\'s Book',
           'ageRange': bookData['age_range'] ?? '3-12 years',

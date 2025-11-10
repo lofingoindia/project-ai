@@ -8,7 +8,7 @@ class SignedUrlService {
   final SupabaseClient _supabase = Supabase.instance.client;
   
   // Backend API base URL - update with your actual backend URL
-  static const String _backendUrl = 'http://localhost:5000'; // TODO: Update for production
+  static const String _backendUrl = 'https://api.hero-kids.net'; // TODO: Update for production
   
   /// Check if a URL has expired (or is about to expire)
   /// S3 signed URLs are valid for 7 days by default
