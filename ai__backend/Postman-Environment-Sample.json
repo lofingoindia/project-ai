@@ -1,0 +1,100 @@
+{
+  "id": "ai-backend-local-env",
+  "name": "AI Backend - Local Development",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "sampleImage",
+      "value": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCRAFmH/9k=",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "childImage",
+      "value": "REPLACE_WITH_YOUR_CHILD_PHOTO_BASE64",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "bookCoverImage",
+      "value": "REPLACE_WITH_YOUR_BOOK_COVER_BASE64",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "bookPage1",
+      "value": "REPLACE_WITH_BOOK_PAGE_1_BASE64",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "bookPage2",
+      "value": "REPLACE_WITH_BOOK_PAGE_2_BASE64",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "bookPage3",
+      "value": "REPLACE_WITH_BOOK_PAGE_3_BASE64",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "orderItemId",
+      "value": "550e8400-e29b-41d4-a716-446655440000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "s3Key",
+      "value": "books/test-user/test-order/test-book.pdf",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "childName",
+      "value": "Emma",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "childAge",
+      "value": "6",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "childGender",
+      "value": "girl",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "bookTitle",
+      "value": "The Magical Adventure",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "bookGenre",
+      "value": "Fantasy Adventure",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "bookAgeRange",
+      "value": "5-8 years",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2025-11-09T00:00:00.000Z",
+  "_postman_exported_using": "Postman/10.0.0"
+}
+
