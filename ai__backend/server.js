@@ -33,6 +33,13 @@ const uploadsPath = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(uploadsPath));
 console.log(`📁 Serving static files from: ${uploadsPath}`);
 
+// Import PDF upload routes
+const pdfUploadsRouter = require('./pdf-uploads');
+
+// Use PDF upload routes
+app.use('/api', pdfUploadsRouter);
+console.log(`📄 PDF upload endpoints registered at /api`);
+
 // Initialize services
 const bookPersonalizationService = new CompleteBookPersonalizationService();
 const coverImageGenerator = new CoverImageGenerator();
@@ -524,6 +531,11 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log("  POST /monitor/stop - Stop order monitoring");
   console.log("  GET  /monitor/status - Monitor status");
   console.log("  GET  /health - Health check");
+  console.log("  📄 PDF Upload Endpoints:");
+  console.log("  POST /api/upload-pdf - Upload PDF files for products");
+  console.log("  GET  /api/pdf-info/:filename - Get PDF file information");
+  console.log("  DELETE /api/pdf/:filename - Delete PDF file");
+  console.log("  GET  /api/health - PDF service health check");
   console.log("=".repeat(80) + "\n");
 
   // Auto-start order monitor if credentials are available

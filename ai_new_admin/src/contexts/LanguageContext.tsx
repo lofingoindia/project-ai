@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import en from '../locales/en.json';
 import ar from '../locales/ar.json';
 import { RTLClassGenerator } from '../utils/rtl';
+import { masterRTL } from '../utils/masterRTL';
+import { getCurrentDocumentLanguage, updateLanguagePreference } from '../utils/earlyLanguageInit';
 
 interface LanguageContextType {
   language: 'en' | 'ar';
@@ -28,29 +30,44 @@ interface LanguageProviderProps {
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
   const [language, setLanguage] = useState<'en' | 'ar'>(() => {
-    const saved = localStorage.getItem('language');
-    return (saved === 'ar' || saved === 'en') ? saved : 'ar';
+    // Get language from document (set by early initialization)
+    try {
+      return getCurrentDocumentLanguage();
+    } catch (error) {
+      // Fallback to localStorage if early init hasn't run
+      const saved = localStorage.getItem('language');
+      return (saved === 'ar' || saved === 'en') ? saved : 'ar';
+    }
   });
 
   const isRTL = language === 'ar';
   const rtl = new RTLClassGenerator(isRTL);
 
   useEffect(() => {
-    localStorage.setItem('language', language);
-    
-    // Update document direction and lang attribute
-    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = language;
-    
-    // Add/remove RTL class to body
-    if (language === 'ar') {
-      document.body.classList.add('rtl');
-    } else {
-      document.body.classList.remove('rtl');
-    }
+    // Listen for language changes from outside React (like early init updates)
+    const handleLanguageChange = (event: CustomEvent) => {
+      const { language: newLanguage } = event.detail;
+      if (newLanguage !== language) {
+        setLanguage(newLanguage);
+      }
+    };
 
+    window.addEventListener('languageChanged', handleLanguageChange as EventListener);
+    return () => window.removeEventListener('languageChanged', handleLanguageChange as EventListener);
+  }, [language]);
+
+  useEffect(() => {
+    // Use master RTL controller to handle all RTL logic immediately
+    masterRTL.setRTL(language === 'ar');
+    
+    // Force immediate DOM update
+    requestAnimationFrame(() => {
+      // Ensure all components are updated after render
+      masterRTL.applyGlobalRTL();
+    });
+    
     // Debug log
-    console.log('Language changed:', language, 'Direction:', document.documentElement.dir);
+    console.log('Language changed:', language, 'RTL:', language === 'ar');
   }, [language]);
 
   const t = (key: string): string => {
@@ -61,11 +78,27 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
       value = value?.[k];
     }
     
+    // Debug logging for admin translations
+    if (key.startsWith('admin.')) {
+      console.log(`🌐 Translation Debug: ${key} = "${value}" (Language: ${language})`);
+    }
+    
     return value || key;
   };
 
   const toggleLanguage = () => {
-    setLanguage(prev => prev === 'en' ? 'ar' : 'en');
+    const newLanguage = language === 'en' ? 'ar' : 'en';
+    
+    console.log('🌐 Toggling language from', language, 'to', newLanguage);
+    
+    // Update React state immediately
+    setLanguage(newLanguage);
+    
+    // Apply changes immediately through master RTL
+    masterRTL.setRTL(newLanguage === 'ar');
+    
+    // Also update through early language preference
+    updateLanguagePreference(newLanguage);
   };
 
   const getDirection = (): 'rtl' | 'ltr' => isRTL ? 'rtl' : 'ltr';

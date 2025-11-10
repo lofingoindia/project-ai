@@ -332,9 +332,9 @@ const OrderDetails: React.FC = () => {
                         <div key={item.id || index} className="flex items-center space-x-4 rtl:space-x-reverse p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           {/* Book Image */}
                           <div className="w-16 h-20 bg-gray-200 dark:bg-gray-600 rounded-lg overflow-hidden flex-shrink-0">
-                            {book && (book.thumbnail_image || book.cover_image_url) ? (
+                            {book && book.cover_image_url ? (
                               <img
-                                src={book.thumbnail_image || book.cover_image_url}
+                                src={book.cover_image_url}
                                 alt={book.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -347,7 +347,7 @@ const OrderDetails: React.FC = () => {
                             ) : null}
                             <div 
                               className="w-full h-full flex items-center justify-center" 
-                              style={{ display: (book && (book.thumbnail_image || book.cover_image_url)) ? 'none' : 'flex' }}
+                              style={{ display: (book && book.cover_image_url) ? 'none' : 'flex' }}
                             >
                               <Package size={24} className="text-gray-400" />
                             </div>
@@ -449,9 +449,9 @@ const OrderDetails: React.FC = () => {
                             {/* Book Info */}
                             <div className="flex-shrink-0">
                               <div className="w-16 h-20 bg-gray-200 dark:bg-gray-600 rounded-lg overflow-hidden">
-                                {book && (book.thumbnail_image || book.cover_image_url) ? (
+                                {book && book.cover_image_url ? (
                                   <img
-                                    src={book.thumbnail_image || book.cover_image_url}
+                                    src={book.cover_image_url}
                                     alt={book.title}
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
@@ -464,7 +464,7 @@ const OrderDetails: React.FC = () => {
                                 ) : null}
                                 <div 
                                   className="w-full h-full flex items-center justify-center" 
-                                  style={{ display: (book && (book.thumbnail_image || book.cover_image_url)) ? 'none' : 'flex' }}
+                                  style={{ display: (book && book.cover_image_url) ? 'none' : 'flex' }}
                                 >
                                   <Package size={16} className="text-gray-400" />
                                 </div>

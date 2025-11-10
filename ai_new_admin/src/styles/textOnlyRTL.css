@@ -1,0 +1,141 @@
+/* Text-Only RTL Styles for Dashboard
+ * These styles apply RTL only to text flow and alignment
+ * WITHOUT changing layout positions, component placement, or mirroring
+ * Enhanced for immediate updates without page reload
+ */
+
+/* Text alignment only - no layout changes */
+[dir="rtl"] .rtl-text-only,
+.rtl-active .rtl-text-only {
+  text-align: right !important;
+  direction: rtl !important;
+  transition: all 0.2s ease-in-out;
+}
+
+[dir="ltr"] .rtl-text-only,
+.ltr-active .rtl-text-only {
+  text-align: left !important;
+  direction: ltr !important;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Margin utilities that only affect text spacing, not layout */
+[dir="rtl"] .rtl-text-margin-start-2,
+.rtl-active .rtl-text-margin-start-2 {
+  margin-right: 0.5rem !important;
+  margin-left: 0 !important;
+  transition: margin 0.2s ease-in-out;
+}
+
+[dir="ltr"] .rtl-text-margin-start-2,
+.ltr-active .rtl-text-margin-start-2 {
+  margin-left: 0.5rem !important;
+  margin-right: 0 !important;
+  transition: margin 0.2s ease-in-out;
+}
+
+[dir="rtl"] .rtl-text-margin-end-2,
+.rtl-active .rtl-text-margin-end-2 {
+  margin-left: 0.5rem !important;
+  margin-right: 0 !important;
+  transition: margin 0.2s ease-in-out;
+}
+
+[dir="ltr"] .rtl-text-margin-end-2,
+.ltr-active .rtl-text-margin-end-2 {
+  margin-right: 0.5rem !important;
+  margin-left: 0 !important;
+  transition: margin 0.2s ease-in-out;
+}
+
+/* Icon positioning for text elements only */
+[dir="rtl"] .rtl-text-icon-spacing,
+.rtl-active .rtl-text-icon-spacing {
+  margin-right: 0.5rem !important;
+  margin-left: 0 !important;
+  transition: margin 0.2s ease-in-out;
+}
+
+[dir="ltr"] .rtl-text-icon-spacing,
+.ltr-active .rtl-text-icon-spacing {
+  margin-left: 0.5rem !important;
+  margin-right: 0 !important;
+  transition: margin 0.2s ease-in-out;
+}
+
+/* Input text direction */
+[dir="rtl"] .rtl-input-text {
+  text-align: right;
+  direction: rtl;
+}
+
+[dir="ltr"] .rtl-input-text {
+  text-align: left;
+  direction: ltr;
+}
+
+/* Preserve layout positioning for components */
+.no-rtl-layout {
+  /* Explicitly prevent any layout mirroring */
+  flex-direction: row !important;
+  text-align: inherit !important;
+}
+
+/* Content sections that should only change text direction */
+[dir="rtl"] .rtl-content-text,
+.rtl-active .rtl-content-text {
+  direction: rtl !important;
+  font-family: 'Tajawal', system-ui, Arial, sans-serif !important;
+  line-height: 1.6 !important;
+}
+
+[dir="ltr"] .rtl-content-text,
+.ltr-active .rtl-content-text {
+  direction: ltr !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  line-height: 1.5 !important;
+}
+
+[dir="rtl"] .rtl-content-text p,
+[dir="rtl"] .rtl-content-text h1,
+[dir="rtl"] .rtl-content-text h2,
+[dir="rtl"] .rtl-content-text h3,
+[dir="rtl"] .rtl-content-text h4,
+[dir="rtl"] .rtl-content-text h5,
+[dir="rtl"] .rtl-content-text h6,
+[dir="rtl"] .rtl-content-text span,
+[dir="rtl"] .rtl-content-text div:not(.no-rtl-layout),
+.rtl-active .rtl-content-text p,
+.rtl-active .rtl-content-text h1,
+.rtl-active .rtl-content-text h2,
+.rtl-active .rtl-content-text h3,
+.rtl-active .rtl-content-text h4,
+.rtl-active .rtl-content-text h5,
+.rtl-active .rtl-content-text h6,
+.rtl-active .rtl-content-text span,
+.rtl-active .rtl-content-text div:not(.no-rtl-layout) {
+  text-align: right !important;
+  direction: rtl !important;
+}
+
+[dir="ltr"] .rtl-content-text p,
+[dir="ltr"] .rtl-content-text h1,
+[dir="ltr"] .rtl-content-text h2,
+[dir="ltr"] .rtl-content-text h3,
+[dir="ltr"] .rtl-content-text h4,
+[dir="ltr"] .rtl-content-text h5,
+[dir="ltr"] .rtl-content-text h6,
+[dir="ltr"] .rtl-content-text span,
+[dir="ltr"] .rtl-content-text div:not(.no-rtl-layout),
+.ltr-active .rtl-content-text p,
+.ltr-active .rtl-content-text h1,
+.ltr-active .rtl-content-text h2,
+.ltr-active .rtl-content-text h3,
+.ltr-active .rtl-content-text h4,
+.ltr-active .rtl-content-text h5,
+.ltr-active .rtl-content-text h6,
+.ltr-active .rtl-content-text span,
+.ltr-active .rtl-content-text div:not(.no-rtl-layout) {
+  text-align: left !important;
+  direction: ltr !important;
+}

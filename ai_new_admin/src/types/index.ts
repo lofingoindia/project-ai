@@ -125,16 +125,13 @@ export interface Product {
   price: number;
   discount_price?: number;
   image_url?: string;
-  thumbnail_image?: string; // books table field
   images?: string[];
   videos?: string[];
   cover_image_url?: string; // books table field
-  preview_video?: string; // books table field
+  pdf_url?: string; // PDF file URL for this product
   status: 'active' | 'inactive' | 'out_of_stock';
   is_active?: boolean; // books table field
   featured?: boolean;
-  stock?: number;
-  stock_quantity?: number; // books table field
   tags?: string[];
   // New metadata fields
   ideal_for?: string; // Target audience (e.g., "Boys", "Girls", "Kids", "Everyone")

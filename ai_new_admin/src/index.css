@@ -6,6 +6,9 @@
 /* Import RTL Global Utilities */
 @import './styles/rtl.css';
 
+/* Import Text-Only RTL Styles for better control */
+@import './styles/textOnlyRTL.css';
+
 /* Global Font Configuration - Apply Tajawal globally */
 @layer base {
   body {

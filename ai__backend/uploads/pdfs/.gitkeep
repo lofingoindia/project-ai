@@ -1,0 +1,4 @@
+# This directory stores uploaded PDF files for products
+
+*.pdf
+!.gitkeep

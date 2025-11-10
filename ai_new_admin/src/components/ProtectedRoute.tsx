@@ -13,9 +13,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('🔒 ProtectedRoute: Checking authentication...');
         const user = await adminAuth.getCurrentUser();
+        console.log('🔒 ProtectedRoute: User check result:', user ? '✅ Authenticated' : '❌ Not authenticated');
         setIsAuthenticated(!!user);
       } catch (error) {
+        console.log('🔒 ProtectedRoute: Auth check error:', error);
         setIsAuthenticated(false);
       } finally {
         setLoading(false);

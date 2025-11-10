@@ -18,11 +18,13 @@ import { toast } from 'react-toastify';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDashboardRTL } from '../hooks/useDashboardRTL';
 import { db } from '../lib/supabase';
 import type { Category } from '../types';
 
 const Categories: React.FC = () => {
-  const { t, isRTL } = useLanguage();
+  const { t, language, isRTL } = useLanguage();
+  const rtl = useDashboardRTL();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -30,6 +32,7 @@ const Categories: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [renderKey, setRenderKey] = useState(0);
   
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -37,17 +40,17 @@ const Categories: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
-    name_ar: string;
     description: string;
-    description_ar: string;
-    status: 'active' | 'inactive';
   }>({
     name: '',
-    name_ar: '',
-    description: '',
-    description_ar: '',
-    status: 'active'
+    description: ''
   });
+
+  // Force re-render when language changes
+  useEffect(() => {
+    console.log('🔄 Categories language changed:', language, 'isRTL:', isRTL);
+    setRenderKey(prev => prev + 1);
+  }, [language, rtl]);
 
   const statusOptions = [
     { value: 'all', label: t('categories.allCategories') },
@@ -70,7 +73,7 @@ const Categories: React.FC = () => {
       setCategories(data || []);
     } catch (error) {
       console.error('Error loading categories:', error);
-      toast.error('Failed to load categories');
+      toast.error(t('categories.failedToLoadCategories'));
       setCategories([]);
     } finally {
       setLoading(false);
@@ -90,9 +93,7 @@ const Categories: React.FC = () => {
       const searchLower = searchQuery.toLowerCase();
       filtered = filtered.filter(category => 
         category.name.toLowerCase().includes(searchLower) ||
-        (category.name_ar && category.name_ar.toLowerCase().includes(searchLower)) ||
-        (category.description && category.description.toLowerCase().includes(searchLower)) ||
-        (category.description_ar && category.description_ar.toLowerCase().includes(searchLower))
+        (category.description && category.description.toLowerCase().includes(searchLower))
       );
     }
 
@@ -101,7 +102,7 @@ const Categories: React.FC = () => {
 
   const handleRefresh = () => {
     loadCategories();
-    toast.success('Categories refreshed');
+    toast.success(t('categories.categoriesRefreshed'));
   };
 
   const openModal = (type: 'add' | 'edit' | 'view' | 'delete', category?: Category) => {
@@ -111,18 +112,12 @@ const Categories: React.FC = () => {
     if (type === 'add') {
       setFormData({
         name: '',
-        name_ar: '',
-        description: '',
-        description_ar: '',
-        status: 'active'
+        description: ''
       });
     } else if (category && (type === 'edit' || type === 'view')) {
       setFormData({
         name: category.name,
-        name_ar: category.name_ar || '',
-        description: category.description || '',
-        description_ar: category.description_ar || '',
-        status: category.status
+        description: category.description || ''
       });
     }
     
@@ -134,10 +129,7 @@ const Categories: React.FC = () => {
     setSelectedCategory(null);
     setFormData({
       name: '',
-      name_ar: '',
-      description: '',
-      description_ar: '',
-      status: 'active'
+      description: ''
     });
   };
 
@@ -145,7 +137,7 @@ const Categories: React.FC = () => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      toast.error('Category name is required');
+      toast.error(t('categories.categoryNameRequired'));
       return;
     }
 
@@ -153,31 +145,26 @@ const Categories: React.FC = () => {
       if (modalType === 'add') {
         await db.createCategory({
           name: formData.name.trim(),
-          name_ar: formData.name_ar.trim() || undefined,
           description: formData.description.trim() || undefined,
-          description_ar: formData.description_ar.trim() || undefined,
-          status: formData.status,
+          is_active: true, // Use is_active (boolean) column that exists in database
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        });
-        toast.success('Category created successfully');
+        } as any); // Cast to any to bypass TypeScript interface mismatch
+        toast.success(t('categories.categoryCreatedSuccessfully'));
       } else if (modalType === 'edit' && selectedCategory) {
         await db.updateCategory(selectedCategory.id, {
           name: formData.name.trim(),
-          name_ar: formData.name_ar.trim() || undefined,
           description: formData.description.trim() || undefined,
-          description_ar: formData.description_ar.trim() || undefined,
-          status: formData.status,
           updated_at: new Date().toISOString()
-        });
-        toast.success('Category updated successfully');
+        } as any); // Cast to any to bypass TypeScript interface mismatch
+        toast.success(t('categories.categoryUpdatedSuccessfully'));
       }
       
       await loadCategories();
       closeModal();
     } catch (error) {
       console.error('Error saving category:', error);
-      toast.error(`Failed to ${modalType} category`);
+      toast.error(t(`categories.failedTo${modalType === 'add' ? 'Create' : 'Update'}Category`));
     }
   };
 
@@ -186,12 +173,12 @@ const Categories: React.FC = () => {
 
     try {
       await db.deleteCategory(selectedCategory.id);
-      toast.success('Category deleted successfully');
+      toast.success(t('categories.categoryDeletedSuccessfully'));
       await loadCategories();
       closeModal();
     } catch (error) {
       console.error('Error deleting category:', error);
-      toast.error('Failed to delete category');
+      toast.error(t('categories.failedToDeleteCategory'));
     }
   };
 
@@ -207,7 +194,7 @@ const Categories: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
+        <div className={rtl.text.bodyText}>
           <RefreshCw className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
         </div>
@@ -216,7 +203,7 @@ const Categories: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 main-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div key={renderKey} className={rtl.layout.mainContainer} dir={isRTL ? 'rtl' : 'ltr'}>
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
@@ -229,39 +216,43 @@ const Categories: React.FC = () => {
           onSidebarToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
         
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className={rtl.layout.contentArea} style={{ 
+          fontFamily: rtl.utils.fontFamily,
+          direction: isRTL ? 'rtl' : 'ltr',
+          textAlign: isRTL ? 'right' : 'left'
+        }}>
           {/* Header Actions */}
-          <div className={`flex items-center justify-between mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className={rtl.layout.headerSection}>
+            <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
+              <h2 className={rtl.text.title}>
                 {t('categories.allCategories')}
               </h2>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Showing {filteredCategories.length} of {categories.length} categories
+              <p className={rtl.text.subtitle}>
+                {`${t('common.showing')} ${filteredCategories.length} ${t('common.of')} ${categories.length} ${t('categories.allCategories').toLowerCase()}`}
               </p>
             </div>
-            <div className={`flex items-center space-x-3 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div className={rtl.flex.spaceBetween}>
               <button
                 onClick={() => openModal('add')}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200"
+                className={`${rtl.components.button} ${rtl.flex.row}`}
               >
-                <Plus size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
+                <Plus size={16} className={rtl.spacing.iconSpacing} />
                 {t('categories.addCategory')}
               </button>
               <button
                 onClick={handleRefresh}
-                className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg font-medium transition-colors duration-200"
+                className={`${rtl.components.button} ${rtl.flex.row} bg-gray-600`}
               >
-                <RefreshCw size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
-                Refresh
+                <RefreshCw size={16} className={rtl.spacing.iconSpacing} />
+                {t('categories.refresh')}
               </button>
             </div>
           </div>
 
           {/* Filters and View Controls */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
-            <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <div className={`flex items-center space-x-4 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <div className={`${rtl.components.card} p-6 mb-6`}>
+            <div className={rtl.flex.justifyBetween}>
+              <div className={rtl.flex.spaceBetween}>
                 {/* Search */}
                 <div className="relative">
                   <Search 
@@ -270,7 +261,7 @@ const Categories: React.FC = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Search categories..."
+                    placeholder={t('categories.searchCategories')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={`
@@ -281,7 +272,7 @@ const Categories: React.FC = () => {
                       transition-colors duration-200
                       ${isRTL ? 'pr-10 text-right' : 'pl-10'}
                     `}
-                    dir={isRTL ? 'rtl' : 'ltr'}
+                    dir={rtl.forms.inputDir}
                   />
                 </div>
 
@@ -301,7 +292,7 @@ const Categories: React.FC = () => {
                       transition-colors duration-200
                       ${isRTL ? 'pr-10 text-right' : 'pl-10'}
                     `}
-                    dir={isRTL ? 'rtl' : 'ltr'}
+                    dir={rtl.forms.inputDir}
                   >
                     {statusOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -340,24 +331,24 @@ const Categories: React.FC = () => {
 
           {/* Categories Display */}
           {filteredCategories.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className={rtl.components.card}>
               <div className="text-center py-12">
                 <Folder size={64} className="mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  {categories.length === 0 ? 'No categories yet' : 'No categories found'}
+                <h3 className={`text-lg font-medium text-gray-900 dark:text-white mb-2 ${rtl.text.sectionHeader}`}>
+                  {categories.length === 0 ? t('categories.noCategoriesYet') : t('categories.noCategoriesFound')}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                <p className={`${rtl.text.bodyText} mb-6`}>
                   {categories.length === 0 
-                    ? 'Create your first category to organize your products'
-                    : 'Try adjusting your search or filter criteria'
+                    ? t('categories.createFirstCategory')
+                    : t('categories.tryAdjustingSearch')
                   }
                 </p>
                 {categories.length === 0 && (
                   <button
                     onClick={() => openModal('add')}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200"
+                    className={`${rtl.components.button} ${rtl.flex.row}`}
                   >
-                    <Plus size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
+                    <Plus size={16} className={rtl.spacing.iconSpacing} />
                     {t('categories.addCategory')}
                   </button>
                 )}
@@ -367,8 +358,8 @@ const Categories: React.FC = () => {
             /* Grid View */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredCategories.map((category) => (
-                <div key={category.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-                  <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div key={category.id} className={rtl.components.statCard}>
+                  <div className={rtl.flex.justifyBetween}>
                     <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                       <Folder size={24} className="text-blue-600 dark:text-blue-400" />
                     </div>
@@ -377,63 +368,58 @@ const Categories: React.FC = () => {
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                         : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                     }`}>
-                      {category.status}
+                      {category.status === 'active' ? t('categories.active') : t('categories.inactive')}
                     </span>
                   </div>
                   
-                  <div className={`${isRTL ? 'text-right' : ''}`}>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                    <h3 className={`text-lg font-semibold text-gray-900 dark:text-white mb-2 ${rtl.text.sectionHeader}`}>
                       {category.name}
                     </h3>
-                    {category.name_ar && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {category.name_ar}
-                      </p>
-                    )}
                     {category.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                      <p className={`${rtl.text.bodyText} mb-4 line-clamp-2`}>
                         {category.description}
                       </p>
                     )}
                     
-                    <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                      <div className="flex items-center">
+                    <div className={rtl.flex.justifyBetween + ' mb-4'}>
+                      <div className={rtl.flex.itemsCenter}>
                         <Package size={16} className="text-gray-400" />
-                        <span className={`text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'mr-2' : 'ml-2'}`}>
-                          {(category.subcategories?.length || 0)} subcategories
+                        <span className={`${rtl.text.bodyText} ${rtl.spacing.textMarginStart}`}>
+                          {(category.subcategories?.length || 0)} {t('categories.subcategories')}
                         </span>
                       </div>
-                      <div className="flex items-center">
+                      <div className={rtl.flex.itemsCenter}>
                         <Calendar size={16} className="text-gray-400" />
-                        <span className={`text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'mr-2' : 'ml-2'}`}>
+                        <span className={`${rtl.text.bodyText} ${rtl.spacing.textMarginStart}`}>
                           {formatDate(category.created_at)}
                         </span>
                       </div>
                     </div>
                     
-                    <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className={rtl.flex.justifyBetween}>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         ID: #{typeof category.id === 'string' ? category.id.slice(0, 8) : category.id}
                       </span>
-                      <div className={`flex space-x-2 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+                      <div className={rtl.lists.itemActions}>
                         <button
                           onClick={() => openModal('view', category)}
                           className="p-2 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors duration-200"
-                          title="View category"
+                          title={t('categories.viewCategoryAction')}
                         >
                           <Eye size={16} />
                         </button>
                         <button
                           onClick={() => openModal('edit', category)}
                           className="p-2 text-gray-600 dark:text-gray-400 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-200"
-                          title="Edit category"
+                          title={t('categories.editCategoryAction')}
                         >
                           <Edit size={16} />
                         </button>
                         <button
                           onClick={() => openModal('delete', category)}
                           className="p-2 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 transition-colors duration-200"
-                          title="Delete category"
+                          title={t('categories.deleteCategoryAction')}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -445,47 +431,42 @@ const Categories: React.FC = () => {
             </div>
           ) : (
             /* List View */
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <div className={rtl.components.sectionCard + ' overflow-hidden'}>
               {/* Table Header */}
-              <div className={`grid grid-cols-6 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${isRTL ? 'text-right' : ''}`}>
-                <div className="font-medium text-gray-700 dark:text-gray-300">
-                  Category
+              <div className={`grid grid-cols-6 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600`} style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                <div className={`font-medium text-gray-700 dark:text-gray-300 ${rtl.text.sectionHeader}`}>
+                  {t('categories.category')}
                 </div>
-                <div className="font-medium text-gray-700 dark:text-gray-300">
-                  Description
+                <div className={`font-medium text-gray-700 dark:text-gray-300 ${rtl.text.sectionHeader}`}>
+                  {t('categories.description')}
                 </div>
-                <div className="font-medium text-gray-700 dark:text-gray-300">
-                  Subcategories
+                <div className={`font-medium text-gray-700 dark:text-gray-300 ${rtl.text.sectionHeader}`}>
+                  {t('categories.subcategoriesCount')}
                 </div>
-                <div className="font-medium text-gray-700 dark:text-gray-300">
-                  Status
+                <div className={`font-medium text-gray-700 dark:text-gray-300 ${rtl.text.sectionHeader}`}>
+                  {t('categories.status')}
                 </div>
-                <div className="font-medium text-gray-700 dark:text-gray-300">
-                  Created
+                <div className={`font-medium text-gray-700 dark:text-gray-300 ${rtl.text.sectionHeader}`}>
+                  {t('categories.created')}
                 </div>
-                <div className="font-medium text-gray-700 dark:text-gray-300">
-                  Actions
+                <div className={`font-medium text-gray-700 dark:text-gray-300 ${rtl.text.sectionHeader}`}>
+                  {t('categories.actions')}
                 </div>
               </div>
 
               {/* Table Body */}
               <div className="divide-y divide-gray-200 dark:divide-gray-600">
                 {filteredCategories.map((category) => (
-                  <div key={category.id} className={`grid grid-cols-6 gap-4 p-4 ${isRTL ? 'text-right' : ''}`}>
+                  <div key={category.id} className="grid grid-cols-6 gap-4 p-4" style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {/* Category Name */}
-                    <div className="flex items-center">
+                    <div className={rtl.flex.itemsCenter}>
                       <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                         <Folder size={20} className="text-blue-600 dark:text-blue-400" />
                       </div>
-                      <div className={`${isRTL ? 'mr-3' : 'ml-3'}`}>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <div className={rtl.spacing.contentSpacing} style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                        <p className={`text-sm font-medium text-gray-900 dark:text-white ${rtl.text.sectionHeader}`}>
                           {category.name}
                         </p>
-                        {category.name_ar && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {category.name_ar}
-                          </p>
-                        )}
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           ID: #{typeof category.id === 'string' ? category.id.slice(0, 8) : category.id}
                         </p>
@@ -494,20 +475,15 @@ const Categories: React.FC = () => {
 
                     {/* Description */}
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                        {category.description || 'No description'}
+                      <p className={`${rtl.text.bodyText} line-clamp-2`}>
+                        {category.description || t('categories.noDescription')}
                       </p>
-                      {category.description_ar && (
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          {category.description_ar}
-                        </p>
-                      )}
                     </div>
 
                     {/* Subcategories */}
-                    <div className="flex items-center">
+                    <div className={rtl.flex.itemsCenter}>
                       <Package size={16} className="text-gray-400" />
-                      <span className={`text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'mr-2' : 'ml-2'}`}>
+                      <span className={`${rtl.text.bodyText} ${rtl.spacing.textMarginStart}`}>
                         {(category.subcategories?.length || 0)}
                       </span>
                     </div>
@@ -519,38 +495,38 @@ const Categories: React.FC = () => {
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                           : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                       }`}>
-                        {category.status}
+                        {category.status === 'active' ? t('categories.active') : t('categories.inactive')}
                       </span>
                     </div>
 
                     {/* Created Date */}
-                    <div className="flex items-center">
+                    <div className={rtl.flex.itemsCenter}>
                       <Calendar size={16} className="text-gray-400" />
-                      <span className={`text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'mr-2' : 'ml-2'}`}>
+                      <span className={`${rtl.text.bodyText} ${rtl.spacing.textMarginStart}`}>
                         {formatDate(category.created_at)}
                       </span>
                     </div>
 
                     {/* Actions */}
-                    <div className={`flex space-x-2 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className={rtl.lists.itemActions}>
                       <button
                         onClick={() => openModal('view', category)}
                         className="p-2 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors duration-200"
-                        title="View category"
+                        title={t('categories.viewCategoryAction')}
                       >
                         <Eye size={16} />
                       </button>
                       <button
                         onClick={() => openModal('edit', category)}
                         className="p-2 text-gray-600 dark:text-gray-400 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-200"
-                        title="Edit category"
+                        title={t('categories.editCategoryAction')}
                       >
                         <Edit size={16} />
                       </button>
                       <button
                         onClick={() => openModal('delete', category)}
                         className="p-2 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 transition-colors duration-200"
-                        title="Delete category"
+                        title={t('categories.deleteCategoryAction')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -572,8 +548,8 @@ const Categories: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {modalType === 'add' && t('categories.addCategory')}
                 {modalType === 'edit' && t('categories.editCategory')}
-                {modalType === 'view' && 'View Category'}
-                {modalType === 'delete' && 'Delete Category'}
+                {modalType === 'view' && t('categories.viewCategory')}
+                {modalType === 'delete' && t('categories.deleteCategory')}
               </h3>
               <button
                 onClick={closeModal}
@@ -588,7 +564,7 @@ const Categories: React.FC = () => {
               {modalType === 'delete' ? (
                 <div className={`${isRTL ? 'text-right' : ''}`}>
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Are you sure you want to delete this category?
+                    {t('categories.areYouSureDelete')}
                   </p>
                   <p className="text-lg font-medium text-gray-900 dark:text-white mb-6">
                     {selectedCategory?.name}
@@ -616,41 +592,13 @@ const Categories: React.FC = () => {
                     </label>
                     <p className="text-gray-900 dark:text-white">{selectedCategory?.name}</p>
                   </div>
-                  {selectedCategory?.name_ar && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('categories.categoryNameAr')}
-                      </label>
-                      <p className="text-gray-900 dark:text-white">{selectedCategory.name_ar}</p>
-                    </div>
-                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('categories.description')}
                     </label>
                     <p className="text-gray-900 dark:text-white">
-                      {selectedCategory?.description || 'No description'}
+                      {selectedCategory?.description || t('categories.noDescription')}
                     </p>
-                  </div>
-                  {selectedCategory?.description_ar && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('categories.descriptionAr')}
-                      </label>
-                      <p className="text-gray-900 dark:text-white">{selectedCategory.description_ar}</p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('categories.status')}
-                    </label>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedCategory?.status === 'active'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-                    }`}>
-                      {selectedCategory?.status}
-                    </span>
                   </div>
                 </div>
               ) : (
@@ -664,23 +612,9 @@ const Categories: React.FC = () => {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                      placeholder="Enter category name"
+                      placeholder={t('categories.enterCategoryName')}
                       required
                       dir={isRTL ? 'rtl' : 'ltr'}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('categories.categoryNameAr')}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name_ar}
-                      onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                      placeholder="أدخل اسم الفئة بالعربية"
-                      dir="rtl"
                     />
                   </div>
                   
@@ -693,38 +627,9 @@ const Categories: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                      placeholder="Enter category description"
+                      placeholder={t('categories.enterCategoryDescription')}
                       dir={isRTL ? 'rtl' : 'ltr'}
                     />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('categories.descriptionAr')}
-                    </label>
-                    <textarea
-                      value={formData.description_ar}
-                      onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                      placeholder="أدخل وصف الفئة بالعربية"
-                      dir="rtl"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('categories.status')}
-                    </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                      dir={isRTL ? 'rtl' : 'ltr'}
-                    >
-                      <option value="active">{t('categories.active')}</option>
-                      <option value="inactive">{t('categories.inactive')}</option>
-                    </select>
                   </div>
                   
                   <div className={`flex space-x-3 rtl:space-x-reverse pt-4 ${isRTL ? 'flex-row-reverse' : ''}`}>

@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import AdminList from '../components/AdminList';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDashboardRTL } from '../hooks/useDashboardRTL';
 
 const Settings: React.FC = () => {
-  const { t, isRTL } = useLanguage();
+  const { t, language, isRTL } = useLanguage();
+  const rtl = useDashboardRTL();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [renderKey, setRenderKey] = useState(0);
+
+  // Force re-render when language changes
+  useEffect(() => {
+    console.log('🔄 Settings language changed:', language, 'isRTL:', isRTL);
+    setRenderKey(prev => prev + 1);
+  }, [language, isRTL]);
 
   const handleSuccess = (text: string) => {
     setMessage({ type: 'success', text });
@@ -20,7 +29,7 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div key={renderKey} className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex">
         <Sidebar 
           isCollapsed={isSidebarCollapsed} 
@@ -34,7 +43,11 @@ const Settings: React.FC = () => {
             onSidebarToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
           />
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6" style={{ 
+            fontFamily: rtl.utils.fontFamily,
+            direction: isRTL ? 'rtl' : 'ltr',
+            textAlign: isRTL ? 'right' : 'left'
+          }}>
             <div className="max-w-6xl mx-auto">
               {/* Message Display */}
               {message && (
@@ -44,7 +57,7 @@ const Settings: React.FC = () => {
                     : 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-400'
                 }`}>
                   <div className="flex items-center">
-                    <div className={`flex-shrink-0 w-5 h-5 mr-3 ${
+                    <div className={`flex-shrink-0 w-5 h-5 ${isRTL ? 'ml-3' : 'mr-3'} ${
                       message.type === 'success' ? 'text-green-400' : 'text-red-400'
                     }`}>
                       {message.type === 'success' ? (
@@ -57,7 +70,9 @@ const Settings: React.FC = () => {
                         </svg>
                       )}
                     </div>
-                    <p className="text-sm font-medium">{message.text}</p>
+                    <p className={`text-sm font-medium ${isRTL ? 'text-right' : 'text-left'}`}>
+                      {message.text}
+                    </p>
                   </div>
                 </div>
               )}

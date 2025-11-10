@@ -71,31 +71,6 @@ export const testTableAccess = async () => {
   return results;
 };
 
-// Admin-specific functions
-export const adminAuth = {
-  signIn: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) throw error;
-    
-    return { user: data.user };
-  },
-
-  signOut: async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  },
-
-  getCurrentUser: async () => {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error) throw error;
-    return user;
-  }
-};
-
 // Database functions
 export const db = {
   // Dashboard stats
@@ -366,8 +341,10 @@ export const db = {
       if (error) throw error;
 
       // Return categories with a basic subcategory count of 0 if subcategory table doesn't exist
+      // Map is_active (boolean) to status ('active' | 'inactive') for UI compatibility
       return (data || []).map(category => ({
         ...category,
+        status: category.is_active ? 'active' : 'inactive', // Map boolean to string
         subcategory_count: 0 // Simple fallback - you can enhance this later
       }));
 
@@ -470,13 +447,11 @@ export const db = {
         price,
         category,
         subcategory_id,
-        thumbnail_image,
         cover_image_url,
-        preview_video,
         images,
         videos,
+        pdf_url,
         is_active,
-        stock_quantity,
         ideal_for,
         age_range,
         characters,
@@ -500,16 +475,13 @@ export const db = {
       category: book.category,
       category_id: book.category, // Map category to category_id for frontend
       subcategory_id: book.subcategory_id,
-      image_url: book.thumbnail_image || book.cover_image_url,
-      thumbnail_image: book.thumbnail_image,
+      image_url: book.cover_image_url,
       cover_image_url: book.cover_image_url,
-      preview_video: book.preview_video,
       images: book.images || [],
       videos: book.videos || [],
+      pdf_url: book.pdf_url, // Include PDF URL
       status: book.is_active ? 'active' : 'inactive',
       is_active: book.is_active,
-      stock: book.stock_quantity,
-      stock_quantity: book.stock_quantity,
       // Include new metadata fields
       ideal_for: book.ideal_for,
       age_range: book.age_range,
@@ -534,13 +506,11 @@ export const db = {
       description: product.description || null,
       price: product.price,
       category: product.category_id || product.category || 'General',
-      stock_quantity: product.stock || product.stock_quantity || 0,
       is_active: product.status === 'active' || product.is_active !== false,
-      thumbnail_image: product.image_url || product.thumbnail_image || null,
-      cover_image_url: product.cover_image_url || null,
-      preview_video: product.preview_video || null,
+      cover_image_url: product.cover_image_url || product.image_url || null,
       images: product.images || [],
       videos: product.videos || [],
+      pdf_url: product.pdf_url || null, // Include PDF URL
       // Include new metadata fields
       ideal_for: product.ideal_for || null,
       age_range: product.age_range || null,
@@ -576,9 +546,8 @@ export const db = {
       category: data.category,
       category_id: data.category,
       subcategory_id: data.subcategory_id,
-      image_url: data.thumbnail_image,
+      image_url: data.cover_image_url,
       status: data.is_active ? 'active' : 'inactive',
-      stock: data.stock_quantity,
       created_at: data.created_at,
       updated_at: data.updated_at
     };
@@ -595,19 +564,15 @@ export const db = {
       bookData.category = product.category_id || product.category;
     }
     if (product.subcategory_id !== undefined) bookData.subcategory_id = product.subcategory_id;
-    if (product.stock !== undefined || product.stock_quantity !== undefined) {
-      bookData.stock_quantity = product.stock || product.stock_quantity;
-    }
     if (product.status !== undefined || product.is_active !== undefined) {
       bookData.is_active = product.status === 'active' || product.is_active !== false;
     }
-    if (product.image_url !== undefined || product.thumbnail_image !== undefined) {
-      bookData.thumbnail_image = product.image_url || product.thumbnail_image;
+    if (product.image_url !== undefined || product.cover_image_url !== undefined) {
+      bookData.cover_image_url = product.cover_image_url || product.image_url;
     }
-    if (product.cover_image_url !== undefined) bookData.cover_image_url = product.cover_image_url;
-    if (product.preview_video !== undefined) bookData.preview_video = product.preview_video;
     if (product.images !== undefined) bookData.images = product.images;
     if (product.videos !== undefined) bookData.videos = product.videos;
+    if (product.pdf_url !== undefined) bookData.pdf_url = product.pdf_url; // Handle PDF URL updates
     // Handle new metadata fields
     if (product.ideal_for !== undefined) bookData.ideal_for = product.ideal_for;
     if (product.age_range !== undefined) bookData.age_range = product.age_range;
@@ -640,9 +605,8 @@ export const db = {
       category: data.category,
       category_id: data.category,
       subcategory_id: data.subcategory_id,
-      image_url: data.thumbnail_image,
+      image_url: data.cover_image_url,
       status: data.is_active ? 'active' : 'inactive',
-      stock: data.stock_quantity,
       created_at: data.created_at,
       updated_at: data.updated_at
     };

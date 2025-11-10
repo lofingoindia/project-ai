@@ -17,20 +17,21 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Upload,
-  Video,
-  XCircle
+  FileText
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDataCache } from '../contexts/DataCacheContext';
+import { useDashboardRTL } from '../hooks/useDashboardRTL';
 import { db, supabase } from '../lib/supabase';
 import type { Product, Category } from '../types';
 
 const Products = () => {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const { state, actions } = useDataCache();
+  const rtl = useDashboardRTL();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -38,6 +39,7 @@ const Products = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [renderKey, setRenderKey] = useState(0);
   
   // Form states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -53,14 +55,12 @@ const Products = () => {
     price: string;
     category_id: string;
     image_url: string;
-    thumbnail_image: string;
     cover_image_url: string;
-    preview_video: string;
     images: string[];
     videos: string[];
+    pdf_url: string; // Add PDF URL field
     status: 'active' | 'inactive' | 'out_of_stock';
     featured: boolean;
-    stock: string;
     // New metadata fields
     ideal_for: string;
     age_range: string;
@@ -75,14 +75,12 @@ const Products = () => {
     price: '',
     category_id: '',
     image_url: '',
-    thumbnail_image: '',
     cover_image_url: '',
-    preview_video: '',
     images: [],
     videos: [],
+    pdf_url: '', // Initialize PDF URL
     status: 'active',
     featured: false,
-    stock: '',
     // Initialize new fields
     ideal_for: '',
     age_range: '',
@@ -98,6 +96,17 @@ const Products = () => {
     { value: 'active', label: t('products.active') },
     { value: 'inactive', label: t('products.inactive') }
   ];
+
+  // Force re-render when language changes
+  useEffect(() => {
+    console.log('🔄 Products language changed:', language, 'isRTL:', isRTL);
+    console.log('🔄 RTL hook values:', {
+      title: rtl.text.title,
+      isRTL: rtl.isRTL,
+      dir: rtl.dir
+    });
+    setRenderKey(prev => prev + 1);
+  }, [language, rtl]);
 
   useEffect(() => {
     loadProductsFromCache();
@@ -228,29 +237,21 @@ const Products = () => {
   // Handle single file upload
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    fieldName: 'thumbnail_image' | 'cover_image_url' | 'preview_video'
+    fieldName: 'cover_image_url'
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    const isImage = fieldName !== 'preview_video';
-    const isVideo = fieldName === 'preview_video';
-    
-    if (isImage && !file.type.startsWith('image/')) {
+    if (!file.type.startsWith('image/')) {
       toast.error(t('messages.error.selectImageFile'));
       return;
     }
-    
-    if (isVideo && !file.type.startsWith('video/')) {
-      toast.error(t('messages.error.selectVideoFile'));
-      return;
-    }
 
-    // Validate file size (max 10MB for images, 50MB for videos)
-    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    // Validate file size (max 10MB for images)
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error(`${t('messages.error.fileTooLarge').replace('{size}', isVideo ? '50MB' : '10MB')}`);
+      toast.error(`${t('messages.error.fileTooLarge').replace('{size}', '10MB')}`);
       return;
     }
 
@@ -265,8 +266,7 @@ const Products = () => {
       });
       
       toast.info(t('messages.info.uploadingFile'));
-      const folder = isVideo ? 'videos' : 'images';
-      const url = await uploadFile(file, folder);
+      const url = await uploadFile(file, 'images');
       
       console.log(`Upload successful for ${fieldName}:`, url);
       
@@ -369,6 +369,92 @@ const Products = () => {
     }
   };
 
+  // Handle PDF upload to Node.js backend
+  const handlePDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      toast.error('Please select a PDF file');
+      return;
+    }
+
+    // Validate file size (max 50MB for PDFs)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      toast.error('PDF file size must be less than 50MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadProgress({ pdf: 0 });
+
+      console.log('Starting PDF upload:', {
+        fileName: file.name,
+        fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+        fileType: file.type
+      });
+
+      toast.info('Uploading PDF file...');
+
+      // Create FormData for PDF upload
+      const pdfFormData = new FormData();
+      pdfFormData.append('pdf', file);
+
+      // Upload to backend - replace with your actual backend URL
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+      const response = await fetch(`${backendUrl}/api/upload-pdf`, {
+        method: 'POST',
+        body: pdfFormData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload PDF');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.pdf_url) {
+        console.log('PDF upload successful:', result.data);
+        
+        setFormData({ ...formData, pdf_url: result.data.pdf_url });
+        setUploadProgress({ pdf: 100 });
+        toast.success('PDF uploaded successfully');
+      } else {
+        throw new Error('Invalid response from server');
+      }
+
+    } catch (error) {
+      console.error('Error uploading PDF:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          toast.error('Cannot connect to server. Please check if the backend is running.');
+        } else if (error.message.includes('File size')) {
+          toast.error('PDF file is too large. Maximum size is 50MB.');
+        } else if (error.message.includes('PDF files')) {
+          toast.error('Only PDF files are allowed.');
+        } else {
+          toast.error(`PDF upload failed: ${error.message}`);
+        }
+      } else {
+        toast.error('PDF upload failed. Please try again.');
+      }
+    } finally {
+      setUploading(false);
+      setTimeout(() => setUploadProgress({}), 2000);
+    }
+  };
+
+  // Clear PDF file
+  const clearPDFFile = () => {
+    setFormData({ ...formData, pdf_url: '' });
+    toast.success('PDF file removed');
+  };
+
   // Remove uploaded file
   const removeFile = (fieldName: 'images' | 'videos', index: number) => {
     const newFiles = [...formData[fieldName]];
@@ -378,7 +464,7 @@ const Products = () => {
   };
 
   // Clear single file
-  const clearSingleFile = (fieldName: 'thumbnail_image' | 'cover_image_url' | 'preview_video') => {
+  const clearSingleFile = (fieldName: 'cover_image_url') => {
     setFormData({ ...formData, [fieldName]: '' });
     toast.success(t('messages.success.fileRemoved'));
   };
@@ -405,14 +491,12 @@ const Products = () => {
         price: '',
         category_id: '',
         image_url: '',
-        thumbnail_image: '',
         cover_image_url: '',
-        preview_video: '',
         images: [],
         videos: [],
+        pdf_url: '', // Initialize PDF URL for add
         status: 'active',
         featured: false,
-        stock: '',
         // Initialize new fields for add
         ideal_for: '',
         age_range: '',
@@ -429,14 +513,12 @@ const Products = () => {
         price: product.price.toString(),
         category_id: product.category_id || '',
         image_url: product.image_url || '',
-        thumbnail_image: product.thumbnail_image || '',
         cover_image_url: product.cover_image_url || '',
-        preview_video: product.preview_video || '',
         images: product.images || [],
         videos: product.videos || [],
+        pdf_url: product.pdf_url || '', // Initialize PDF URL for edit/view
         status: product.status,
         featured: product.featured || false,
-        stock: product.stock?.toString() || '',
         // Initialize new fields for edit/view
         ideal_for: product.ideal_for || '',
         age_range: product.age_range || '',
@@ -479,14 +561,12 @@ const Products = () => {
         price: Number(formData.price),
         category_id: formData.category_id || undefined,
         image_url: formData.image_url.trim() || undefined,
-        thumbnail_image: formData.thumbnail_image || undefined,
         cover_image_url: formData.cover_image_url || undefined,
-        preview_video: formData.preview_video || undefined,
         images: formData.images.length > 0 ? formData.images : undefined,
         videos: formData.videos.length > 0 ? formData.videos : undefined,
+        pdf_url: formData.pdf_url.trim() || undefined, // Include PDF URL
         status: formData.status,
         featured: formData.featured,
-        stock: formData.stock ? Number(formData.stock) : undefined,
         // Include new metadata fields
         ideal_for: formData.ideal_for.trim() || undefined,
         age_range: formData.age_range || undefined,
@@ -571,7 +651,7 @@ const Products = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
+        <div className={`text-center ${rtl.text.bodyText}`}>
           <RefreshCw className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
         </div>
@@ -580,7 +660,7 @@ const Products = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 main-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div key={renderKey} className={rtl.layout.mainContainer} dir={isRTL ? 'rtl' : 'ltr'}>
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
@@ -593,30 +673,34 @@ const Products = () => {
           onSidebarToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
         
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className={rtl.layout.contentArea} style={{ 
+          fontFamily: rtl.utils.fontFamily,
+          direction: isRTL ? 'rtl' : 'ltr',
+          textAlign: isRTL ? 'right' : 'left'
+        }}>
           {currentView === 'list' ? (
             <>
               {/* Header Actions */}
-              <div className={`flex items-center justify-between mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className={`flex items-center mb-6 ${isRTL ? 'justify-between' : 'justify-between'}`}>
+                <div style={{ textAlign: isRTL ? 'right' : 'left' }} className={isRTL ? 'order-1 flex-shrink-0' : 'order-1'}>
+                  <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${isRTL ? 'text-right' : 'text-left'}`}>
                     {t('products.allProducts')}
                   </h2>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  <p className={`text-gray-600 dark:text-gray-400 mt-1 ${isRTL ? 'text-right' : 'text-left'}`}>
                     {t('products.showingProducts').replace('{filtered}', filteredProducts.length.toString()).replace('{total}', state.products.length.toString())}
                   </p>
                 </div>
-                <div className={`flex items-center space-x-3 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-center gap-3 flex-shrink-0 ${isRTL ? 'order-2' : 'order-2'}`}>
                   <button
                     onClick={() => openModal('add')}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200"
+                    className={`flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
                   >
                     <Plus size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
                     {t('products.addProduct')}
                   </button>
                   <button
                     onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg font-medium transition-colors duration-200"
+                    className={`flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg font-medium transition-colors duration-200 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
                   >
                     <RefreshCw size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
                     {t('products.refresh')}
@@ -627,10 +711,11 @@ const Products = () => {
 
               {/* Filters and View Controls */}
               <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
-                <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <div className={`flex items-center space-x-4 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex flex-col lg:flex-row lg:items-center gap-4 ${isRTL ? 'lg:justify-end lg:flex-row' : 'lg:justify-between'}`}>
+                  {/* Filters Section */}
+                  <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-4 ${isRTL ? 'sm:flex-row sm:justify-end sm:ml-auto' : 'sm:justify-start flex-1'}`}>
                     {/* Search */}
-                    <div className="relative">
+                    <div className="relative flex-1 min-w-0 sm:max-w-xs">
                       <Search 
                         size={20} 
                         className={`absolute top-1/2 transform -translate-y-1/2 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} 
@@ -641,7 +726,7 @@ const Products = () => {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className={`
-                          w-64 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                          w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                           placeholder-gray-500 dark:placeholder-gray-400
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent 
@@ -653,20 +738,20 @@ const Products = () => {
                     </div>
 
                     {/* Status Filter */}
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       <Filter 
                         size={20} 
-                        className={`absolute top-1/2 transform -translate-y-1/2 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} 
+                        className={`absolute top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none ${isRTL ? 'right-3' : 'left-3'}`} 
                       />
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                         className={`
-                          px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                          min-w-[140px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                          transition-colors duration-200
-                          ${isRTL ? 'pr-10 text-right' : 'pl-10'}
+                          transition-colors duration-200 appearance-none
+                          ${isRTL ? 'pr-10 text-right' : 'pl-10 pr-8'}
                         `}
                         dir={isRTL ? 'rtl' : 'ltr'}
                       >
@@ -679,29 +764,31 @@ const Products = () => {
                     </div>
 
                     {/* Category Filter */}
-                    <select
-                      value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
-                      className={`
-                        px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
-                        focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                        transition-colors duration-200
-                        ${isRTL ? 'text-right' : ''}
-                      `}
-                      dir={isRTL ? 'rtl' : 'ltr'}
-                    >
-                      <option value="all">{t('products.allCategories')}</option>
-                      {state.categories.map((category: Category) => (
-                        <option key={category.id} value={category.id}>
-                          {isRTL && category.name_ar ? category.name_ar : category.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative flex-shrink-0">
+                      <select
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        className={`
+                          min-w-[140px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
+                          focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                          transition-colors duration-200 appearance-none
+                          ${isRTL ? 'text-right' : ''}
+                        `}
+                        dir={isRTL ? 'rtl' : 'ltr'}
+                      >
+                        <option value="all">{t('products.allCategories')}</option>
+                        {state.categories.map((category: Category) => (
+                          <option key={category.id} value={category.id}>
+                            {isRTL && category.name_ar ? category.name_ar : category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   {/* View Mode Toggle */}
-                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                  <div className={`flex items-center gap-2 flex-shrink-0 ${isRTL ? 'lg:order-last lg:mr-auto' : 'lg:order-last'}`}>
                     <button
                       onClick={() => setViewMode('grid')}
                       className={`p-2 rounded-lg transition-colors duration-200 ${
@@ -731,10 +818,10 @@ const Products = () => {
                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                   <div className="text-center py-12">
                     <Package size={64} className="mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    <h3 className={`text-lg font-medium text-gray-900 dark:text-white mb-2 ${isRTL ? 'text-right' : 'text-left'}`}>
                       {state.products.length === 0 ? t('products.noProductsYet') : t('products.noProductsFound')}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    <p className={`text-gray-600 dark:text-gray-400 mb-6 ${isRTL ? 'text-right' : 'text-left'}`}>
                       {state.products.length === 0 
                         ? t('products.createFirstProduct')
                         : t('products.adjustSearchFilter')
@@ -743,7 +830,7 @@ const Products = () => {
                     {state.products.length === 0 && (
                       <button
                         onClick={() => openModal('add')}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200"
+                        className={`inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
                       >
                         <Plus size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
                         {t('products.addProduct')}
@@ -787,7 +874,10 @@ const Products = () => {
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                           : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                       }`}>
-                        {product.status}
+                        {product.status === 'active' ? t('products.statusActive') : 
+                         product.status === 'inactive' ? t('products.statusInactive') : 
+                         product.status === 'out_of_stock' ? t('products.statusOutOfStock') : 
+                         product.status}
                       </span>
                     </div>
                   </div>
@@ -811,15 +901,6 @@ const Products = () => {
                           {getCategoryName(product.category_id || '')}
                         </div>
                       </div>
-                      
-                      {product.stock !== undefined && (
-                        <div className={`flex items-center mb-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                          <Package size={16} className="text-gray-400" />
-                          <span className={`text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'mr-2' : 'ml-2'}`}>
-                            {t('products.stock')}: {product.stock}
-                          </span>
-                        </div>
-                      )}
 
                       {/* Charge Information */}
                       {(product.pdf_charges !== undefined && product.pdf_charges !== null) || 
@@ -828,7 +909,7 @@ const Products = () => {
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             {product.pdf_charges !== undefined && product.pdf_charges !== null && (
                               <div className="flex items-center">
-                                <span className="text-gray-500 dark:text-gray-400">PDF:</span>
+                                <span className="text-gray-500 dark:text-gray-400">{t('products.pdfCharges')}:</span>
                                 <span className="text-blue-600 dark:text-blue-400 ml-1 font-medium">
                                   {product.pdf_charges.toFixed(2)} SYP
                                 </span>
@@ -836,7 +917,7 @@ const Products = () => {
                             )}
                             {product.physical_shipment_charges !== undefined && product.physical_shipment_charges !== null && (
                               <div className="flex items-center">
-                                <span className="text-gray-500 dark:text-gray-400">Ship:</span>
+                                <span className="text-gray-500 dark:text-gray-400">{t('products.ship')}:</span>
                                 <span className="text-green-600 dark:text-green-400 ml-1 font-medium">
                                   {product.physical_shipment_charges.toFixed(2)} SYP
                                 </span>
@@ -855,11 +936,8 @@ const Products = () => {
                         </div>
                       </div>
                       
-                      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          ID: #{typeof product.id === 'string' ? product.id.slice(0, 8) : product.id}
-                        </span>
-                        <div className={`flex space-x-2 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex items-center ${isRTL ? 'justify-between' : 'justify-between'}`}>
+                        <div className={`flex gap-2 ${isRTL ? 'order-2' : 'order-2'}`}>
                           <button
                             onClick={() => openModal('view', product)}
                             className="p-2 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors duration-200"
@@ -877,11 +955,14 @@ const Products = () => {
                           <button
                             onClick={() => openModal('delete', product)}
                             className="p-2 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 transition-colors duration-200"
-                            title="Delete product"
+                            title={t('products.deleteProductTooltip')}
                           >
                             <Trash2 size={16} />
                           </button>
                         </div>
+                        <span className={`text-xs text-gray-500 dark:text-gray-400 ${isRTL ? 'order-1' : 'order-1'}`}>
+                          {t('products.id')}: #{typeof product.id === 'string' ? product.id.slice(0, 8) : product.id}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -892,7 +973,7 @@ const Products = () => {
             /* List View */
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
               {/* Table Header */}
-              <div className={`grid grid-cols-7 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${isRTL ? 'text-right' : ''}`}>
+              <div className={`grid grid-cols-6 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${isRTL ? 'text-right' : ''}`}>
                 <div className="font-medium text-gray-700 dark:text-gray-300">
                   {t('products.tableProduct')}
                 </div>
@@ -901,9 +982,6 @@ const Products = () => {
                 </div>
                 <div className="font-medium text-gray-700 dark:text-gray-300">
                   {t('products.tableCategory')}
-                </div>
-                <div className="font-medium text-gray-700 dark:text-gray-300">
-                  {t('products.tableStock')}
                 </div>
                 <div className="font-medium text-gray-700 dark:text-gray-300">
                   {t('products.tableStatus')}
@@ -919,7 +997,7 @@ const Products = () => {
               {/* Table Body */}
               <div className="divide-y divide-gray-200 dark:divide-gray-600">
                 {filteredProducts.map((product) => (
-                  <div key={product.id} className={`grid grid-cols-7 gap-4 p-4 ${isRTL ? 'text-right' : ''}`}>
+                  <div key={product.id} className={`grid grid-cols-6 gap-4 p-4 ${isRTL ? 'text-right' : ''}`}>
                     {/* Product */}
                     <div className="flex items-center">
                       <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
@@ -948,7 +1026,7 @@ const Products = () => {
                           </p>
                         )}
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          ID: #{typeof product.id === 'string' ? product.id.slice(0, 8) : product.id}
+                          {t('products.id')}: #{typeof product.id === 'string' ? product.id.slice(0, 8) : product.id}
                         </p>
                       </div>
                     </div>
@@ -968,14 +1046,6 @@ const Products = () => {
                       </span>
                     </div>
 
-                    {/* Stock */}
-                    <div className="flex items-center">
-                      <Package size={16} className="text-gray-400" />
-                      <span className={`text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'mr-2' : 'ml-2'}`}>
-                        {product.stock || t('products.notAvailable')}
-                      </span>
-                    </div>
-
                     {/* Status */}
                     <div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -983,7 +1053,10 @@ const Products = () => {
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                           : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                       }`}>
-                        {product.status}
+                        {product.status === 'active' ? t('products.statusActive') : 
+                         product.status === 'inactive' ? t('products.statusInactive') : 
+                         product.status === 'out_of_stock' ? t('products.statusOutOfStock') : 
+                         product.status}
                       </span>
                     </div>
 
@@ -996,7 +1069,7 @@ const Products = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className={`flex space-x-2 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className={`flex gap-2 ${isRTL ? 'justify-end' : 'justify-start'}`}>
                       <button
                         onClick={() => openModal('view', product)}
                         className="p-2 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors duration-200"
@@ -1029,8 +1102,8 @@ const Products = () => {
             /* Form Views */
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
               {/* Form Header */}
-              <div className={`flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <div className={`flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600`}>
+                <h3 className={`text-lg font-semibold text-gray-900 dark:text-white ${isRTL ? 'text-right' : 'text-left'}`}>
                   {currentView === 'add' && t('products.addProduct')}
                   {currentView === 'edit' && t('products.editProduct')}
                   {currentView === 'view' && t('products.viewProduct')}
@@ -1046,7 +1119,7 @@ const Products = () => {
               {/* Form Body */}
               <div className="p-6">
                 {currentView === 'view' ? (
-                  <div className={`space-y-6 ${isRTL ? 'text-right' : ''}`}>
+                  <div className={`space-y-6`} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {/* Product Image */}
                     {selectedProduct?.image_url && (
                       <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
@@ -1095,15 +1168,6 @@ const Products = () => {
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t('products.stock')}
-                        </label>
-                        <p className="text-gray-900 dark:text-white">
-                          {selectedProduct?.stock || t('products.notAvailable')}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           {t('products.status')}
                         </label>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1111,7 +1175,10 @@ const Products = () => {
                             ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                             : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                         }`}>
-                          {selectedProduct?.status}
+                          {selectedProduct?.status === 'active' ? t('products.statusActive') : 
+                           selectedProduct?.status === 'inactive' ? t('products.statusInactive') : 
+                           selectedProduct?.status === 'out_of_stock' ? t('products.statusOutOfStock') : 
+                           selectedProduct?.status}
                         </span>
                       </div>
                       
@@ -1192,6 +1259,26 @@ const Products = () => {
                       )}
                     </div>
                     
+                    {/* PDF File Information */}
+                    {selectedProduct?.pdf_url && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Product PDF File
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          <a
+                            href={selectedProduct.pdf_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            View PDF File
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    
                     {selectedProduct?.description && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1204,7 +1291,7 @@ const Products = () => {
                     )}
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className={`space-y-4 ${isRTL ? 'text-right' : ''}`}>
+                  <form onSubmit={handleSubmit} className={`space-y-4`} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Product Title and Description in same line */}
                       <div>
@@ -1247,7 +1334,7 @@ const Products = () => {
                           value={formData.price}
                           onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                          placeholder="0.00"
+                          placeholder={t('products.pricePlaceholder')}
                           required
                         />
                       </div>
@@ -1309,214 +1396,115 @@ const Products = () => {
                         </select>
                       </div>
                       
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t('products.stock')}
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={formData.stock}
-                          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                          placeholder={t('products.enterStockQuantity')}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t('products.status')}
-                        </label>
-                        <select
-                          value={formData.status}
-                          onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' | 'out_of_stock' })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                          dir={isRTL ? 'rtl' : 'ltr'}
-                        >
-                          <option value="active">{t('products.statusActive')}</option>
-                          <option value="inactive">{t('products.statusInactive')}</option>
-                          <option value="out_of_stock">{t('products.statusOutOfStock')}</option>
-                        </select>
-                      </div>
-                      
-                      {/* Thumbnail Image, Cover Image, and Additional Images in same line */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('products.thumbnailImageLabel')}
-                        </label>
-                        {formData.thumbnail_image ? (
-                          <div className="space-y-2">
-                            <div className="relative inline-block">
-                              <img
-                                src={formData.thumbnail_image}
-                                alt="Thumbnail"
-                                className="h-32 w-32 object-cover rounded-lg border-2 border-gray-300 dark:border-gray-600"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => clearSingleFile('thumbnail_image')}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                              >
-                                <XCircle size={20} />
-                              </button>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.clickXToRemoveText')}</p>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Upload className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">{t('products.clickToUploadText')}</span> {t('products.thumbnailUploadText')}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.maxSize10MB')}</p>
-                            </div>
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleFileUpload(e, 'thumbnail_image')}
-                            />
+                      {/* Cover Image and Additional Images in the same horizontal line */}
+                      <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Cover Image */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {t('products.coverImageLabel')}
                           </label>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('products.coverImageLabel')}
-                        </label>
-                        {formData.cover_image_url ? (
-                          <div className="space-y-2">
-                            <div className="relative inline-block">
-                              <img
-                                src={formData.cover_image_url}
-                                alt="Cover"
-                                className="h-32 w-32 object-cover rounded-lg border-2 border-gray-300 dark:border-gray-600"
-                              />
+                          {formData.cover_image_url ? (
+                            <div className="relative group">
+                              <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-sm">
+                                <img 
+                                  src={formData.cover_image_url} 
+                                  alt={t('products.coverPreview')}
+                                  className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                />
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => clearSingleFile('cover_image_url')}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-red-600 shadow-lg"
                               >
-                                <XCircle size={20} />
+                                <X size={16} />
                               </button>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.clickXToRemoveText')}</p>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Upload className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">{t('products.clickToUploadText')}</span> {t('products.coverImageUploadText')}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.maxSize10MB')}</p>
-                            </div>
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleFileUpload(e, 'cover_image_url')}
-                            />
-                          </label>
-                        )}
-                      </div>
-
-                      {/* Additional Images Upload (Gallery) */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('products.additionalImagesLabel')}
-                        </label>
-                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <ImageIcon className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              <span className="font-semibold">{t('products.clickToUploadText')}</span> {t('products.multipleImagesUploadText')}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.selectMultipleFilesText')} {t('products.maxSize10MBEach')}</p>
-                          </div>
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) => handleMultipleFilesUpload(e, 'images')}
-                          />
-                        </label>
-                        {formData.images.length > 0 && (
-                          <div className="mt-3 grid grid-cols-4 gap-2">
-                            {formData.images.map((img, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={img}
-                                  alt={`Gallery ${index + 1}`}
-                                  className="h-20 w-20 object-cover rounded-lg border-2 border-gray-300 dark:border-gray-600"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeFile('images', index)}
-                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                                >
-                                  <X size={14} />
-                                </button>
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3 rounded-b-lg">
+                                <p className="text-white text-sm font-medium">{t('products.coverImage')}</p>
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Preview Video and Additional Videos in same line */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('products.previewVideoLabel')}
-                        </label>
-                        {formData.preview_video ? (
-                          <div className="space-y-2">
-                            <div className="relative">
-                              <video
-                                src={formData.preview_video}
-                                className="h-48 w-full object-cover rounded-lg border-2 border-gray-300 dark:border-gray-600"
-                                controls
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 group">
+                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Upload className="w-10 h-10 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" />
+                                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                  <span className="font-semibold">{t('products.clickToUpload')}</span><br />
+                                  <span className="text-xs">{t('products.orDragDrop')}</span>
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">{t('products.imageFormats')}</p>
+                              </div>
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => handleFileUpload(e, 'cover_image_url')}
                               />
-                              <button
-                                type="button"
-                                onClick={() => clearSingleFile('preview_video')}
-                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                              >
-                                <XCircle size={20} />
-                              </button>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.clickXToRemoveText')}</p>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Video className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">{t('products.clickToUploadText')}</span> {t('products.previewVideoUploadText')}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.maxSize50MB')}</p>
-                            </div>
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="video/*"
-                              onChange={(e) => handleFileUpload(e, 'preview_video')}
-                            />
+                            </label>
+                          )}
+                        </div>
+
+                        {/* Additional Images Upload (Gallery) */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {t('products.additionalImagesLabel')}
                           </label>
-                        )}
+                          <div className="space-y-3">
+                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 group">
+                              <div className="flex flex-col items-center justify-center pt-3 pb-3">
+                                <ImageIcon className="w-8 h-8 mb-2 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                                  <span className="font-semibold">{t('products.clickToUploadText')}</span><br />
+                                  <span className="text-xs">{t('products.multipleImagesUploadText')}</span>
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">{t('products.selectMultipleFilesText')}</p>
+                              </div>
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => handleMultipleFilesUpload(e, 'images')}
+                              />
+                            </label>
+                            
+                            {formData.images.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                  {formData.images.map((img, index) => (
+                                    <div key={index} className="relative group">
+                                      <div className="w-full h-16 bg-white dark:bg-gray-600 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-500 shadow-sm">
+                                        <img
+                                          src={img}
+                                          alt={`${t('products.gallery')} ${index + 1}`}
+                                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                        />
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeFile('images', index)}
+                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-red-600 shadow-lg"
+                                      >
+                                        <X size={12} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Additional Videos Upload */}
-                      <div>
+                      <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {t('products.additionalVideosLabel')}
+                          {t('products.additionalVideos')}
                         </label>
                         <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                           <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <Video className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              <span className="font-semibold">{t('products.clickToUploadText')}</span> {t('products.multipleVideosUploadText')}
+                            <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{t('products.uploadMultipleVideos')}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">{t('products.selectMultipleFilesText')} {t('products.maxSize50MBEach')}</p>
                           </div>
@@ -1546,6 +1534,63 @@ const Products = () => {
                                 </button>
                               </div>
                             ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* PDF Upload */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Product PDF File
+                        </label>
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Click to upload PDF file
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              PDF files only, max 50MB
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,application/pdf"
+                            onChange={handlePDFUpload}
+                          />
+                        </label>
+                        {formData.pdf_url && (
+                          <div className="mt-3 flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                            <div className="flex items-center">
+                              <FileText className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
+                              <div>
+                                <p className="text-sm text-green-700 dark:text-green-300 font-medium">
+                                  PDF uploaded successfully
+                                </p>
+                                <p className="text-xs text-green-600 dark:text-green-400">
+                                  File is ready for use
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => window.open(formData.pdf_url, '_blank')}
+                                className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 transition-colors"
+                                title="View PDF"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={clearPDFFile}
+                                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
+                                title="Remove PDF"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1616,27 +1661,13 @@ const Products = () => {
                           dir={isRTL ? 'rtl' : 'ltr'}
                         />
                       </div>
-                      
-                      <div className="md:col-span-2">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.featured}
-                            onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {t('products.featuredProductLabel')}
-                          </span>
-                        </label>
-                      </div>
                     </div>
                     
                     {/* Upload Progress Indicator */}
                     {uploading && (
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                         <div className="flex items-center">
-                          <RefreshCw className="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                          <RefreshCw className={`animate-spin h-5 w-5 text-blue-600 dark:text-blue-400 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                           <span className="text-sm text-blue-700 dark:text-blue-300">
                             {t('products.uploadingFiles')}
                           </span>
@@ -1644,7 +1675,7 @@ const Products = () => {
                       </div>
                     )}
                     
-                    <div className={`flex space-x-3 rtl:space-x-reverse pt-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className={`flex gap-3 pt-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <button
                         type="submit"
                         disabled={uploading}
@@ -1674,8 +1705,8 @@ const Products = () => {
         <div className="fixed inset-0 backdrop-blur-md bg-black/20 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md">
             {/* Modal Header */}
-            <div className={`flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600 ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className={`flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600`}>
+              <h3 className={`text-lg font-semibold text-gray-900 dark:text-white ${isRTL ? 'text-right' : 'text-left'}`}>
                 {t('products.deleteProductTitle')}
               </h3>
               <button
@@ -1688,17 +1719,17 @@ const Products = () => {
 
             {/* Modal Body */}
             <div className="p-6">
-              <div className={`${isRTL ? 'text-right' : ''}`}>
-                <div className="flex items-center mb-4">
-                  <AlertCircle size={24} className="text-red-500 mr-3" />
+              <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                <div className={`flex items-center mb-4 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <AlertCircle size={24} className={`text-red-500 ${isRTL ? 'ml-3' : 'mr-3'}`} />
                   <p className="text-gray-600 dark:text-gray-400">
                     {t('products.deleteProductConfirm')}
                   </p>
                 </div>
-                <p className="text-lg font-medium text-gray-900 dark:text-white mb-6">
+                <p className={`text-lg font-medium text-gray-900 dark:text-white mb-6 ${isRTL ? 'text-right' : 'text-left'}`}>
                   {selectedProduct?.title}
                 </p>
-                <div className={`flex space-x-3 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <button
                     onClick={handleDelete}
                     className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors duration-200"

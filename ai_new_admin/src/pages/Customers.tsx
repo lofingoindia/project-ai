@@ -17,18 +17,21 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDataCache } from '../contexts/DataCacheContext';
+import { useDashboardRTL } from '../hooks/useDashboardRTL';
 import { db } from '../lib/supabase';
 import type { Customer } from '../types';
 
 const Customers: React.FC = () => {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const { state, actions } = useDataCache();
+  const rtl = useDashboardRTL();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [customersPerPage] = useState(10);
+  const [renderKey, setRenderKey] = useState(0);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     customer: Customer | null;
@@ -45,6 +48,16 @@ const Customers: React.FC = () => {
     actions.fetchCustomers();
   }, []);
 
+  // Force re-render when language changes
+  useEffect(() => {
+    console.log('🔄 Customers language changed:', language, 'isRTL:', isRTL);
+    console.log('🔄 RTL hook values:', {
+      isRTL: rtl.isRTL,
+      dir: rtl.dir
+    });
+    setRenderKey(prev => prev + 1);
+  }, [language, rtl]);
+
   // Filter customers when data or filters change
   useEffect(() => {
     filterCustomers();
@@ -52,7 +65,7 @@ const Customers: React.FC = () => {
 
   const loadCustomers = async () => {
     await actions.fetchCustomers(true); // Force refresh
-    toast.success('Customers refreshed');
+    toast.success(t('customers.refreshed'));
   };
 
   const filterCustomers = () => {
@@ -94,11 +107,11 @@ const Customers: React.FC = () => {
       
       // Refresh customers data
       await actions.fetchCustomers(true);
-      toast.success('Customer deleted successfully');
+      toast.success(t('customers.deleteSuccess'));
       setDeleteConfirmation({ isOpen: false, customer: null });
     } catch (error) {
       console.error('Error deleting customer:', error);
-      toast.error('Failed to delete customer');
+      toast.error(t('customers.deleteError'));
     }
   };
 
@@ -146,7 +159,7 @@ const Customers: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 main-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div key={renderKey} className={rtl.layout.mainContainer} dir={isRTL ? 'rtl' : 'ltr'}>
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
@@ -159,29 +172,33 @@ const Customers: React.FC = () => {
           onSidebarToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
         
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className={rtl.layout.contentArea} style={{ 
+          fontFamily: rtl.utils.fontFamily,
+          direction: isRTL ? 'rtl' : 'ltr',
+          textAlign: isRTL ? 'right' : 'left'
+        }}>
           {/* Header Actions */}
-          <div className={`flex items-center justify-between mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className={`flex items-center justify-between mb-6`}>
+            <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
+              <h2 className={rtl.text.title}>
                 {t('customers.allCustomers')}
               </h2>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Showing {filteredCustomers.length} of {state.customers.length} customers
+              <p className={rtl.text.subtitle}>
+                {t('customers.showing')} {filteredCustomers.length} {t('customers.of')} {state.customers.length} {t('customers.customers')}
               </p>
             </div>
             <button
               onClick={handleRefresh}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200"
+              className={`flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
             >
-              <RefreshCw size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
-              Refresh
+              <RefreshCw size={16} className={rtl.spacing.iconSpacing} />
+              <span>{t('common.refresh')}</span>
             </button>
           </div>
 
           {/* Filters */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${isRTL ? 'text-right' : ''}`}>
+          <div className={rtl.components.card + " p-6 mb-6"}>
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4`}>
               {/* Search */}
               <div className="relative">
                 <Search 
@@ -190,7 +207,7 @@ const Customers: React.FC = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Search customers by name, email, phone..."
+                  placeholder={t('customers.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={`
@@ -201,7 +218,8 @@ const Customers: React.FC = () => {
                     transition-colors duration-200
                     ${isRTL ? 'pr-10 text-right' : 'pl-10'}
                   `}
-                  dir={isRTL ? 'rtl' : 'ltr'}
+                  dir={rtl.forms.inputDir}
+                  style={{ textAlign: isRTL ? 'right' : 'left' }}
                 />
               </div>
 
@@ -221,7 +239,8 @@ const Customers: React.FC = () => {
                     transition-colors duration-200
                     ${isRTL ? 'pr-10 text-right' : 'pl-10'}
                   `}
-                  dir={isRTL ? 'rtl' : 'ltr'}
+                  dir={rtl.forms.inputDir}
+                  style={{ textAlign: isRTL ? 'right' : 'left' }}
                 >
                   {statusOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -234,11 +253,11 @@ const Customers: React.FC = () => {
               {/* Stats */}
               <div className="flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className={rtl.text.statValue}>
                     {filteredCustomers.length}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Total Customers
+                  <p className={rtl.text.bodyText}>
+                    {t('customers.totalCustomers')}
                   </p>
                 </div>
               </div>
@@ -251,12 +270,12 @@ const Customers: React.FC = () => {
               <div className="text-center py-12">
                 <Users size={64} className="mx-auto text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  No customers found
+                  {t('customers.noCustomersFound')}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
                   {state.customers.length === 0 
-                    ? "When users register and start shopping, they'll appear here"
-                    : "Try adjusting your search or filter criteria"
+                    ? t('customers.noCustomersMessage')
+                    : t('customers.adjustFiltersMessage')
                   }
                 </p>
               </div>
@@ -268,7 +287,7 @@ const Customers: React.FC = () => {
                     {t('customers.customerName')}
                   </div>
                   <div className="font-medium text-gray-700 dark:text-gray-300">
-                    Contact Info
+                    {t('customers.contactInfo')}
                   </div>
                   <div className="font-medium text-gray-700 dark:text-gray-300">
                     {t('customers.joinDate')}
@@ -277,10 +296,10 @@ const Customers: React.FC = () => {
                     {t('customers.totalOrders')}
                   </div>
                   <div className="font-medium text-gray-700 dark:text-gray-300">
-                    Status
+                    {t('customers.status')}
                   </div>
                   <div className="font-medium text-gray-700 dark:text-gray-300">
-                    Actions
+                    {t('customers.actions')}
                   </div>
                 </div>
 
@@ -346,8 +365,8 @@ const Customers: React.FC = () => {
                               {customer.total_orders}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {customer.total_orders === 1 ? 'Order' : 'Orders'}
-                            </p>
+                            {customer.total_orders === 1 ? t('customers.order') : t('customers.orders')}
+                          </p>
                           </div>
                         </div>
 
@@ -358,7 +377,7 @@ const Customers: React.FC = () => {
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                               : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                           }`}>
-                            {customer.status}
+                            {t(`customers.${customer.status}`)}
                           </span>
                         </div>
 
@@ -367,7 +386,7 @@ const Customers: React.FC = () => {
                           <button
                             onClick={() => handleDeleteClick(customer)}
                             className="p-2 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 transition-colors duration-200 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            title="Delete customer"
+                            title={t('customers.deleteCustomer')}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -384,7 +403,7 @@ const Customers: React.FC = () => {
           {totalPages > 1 && (
             <div className={`flex items-center justify-between mt-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} customers
+                {t('customers.showing')} {startIndex + 1} {t('customers.to')} {Math.min(endIndex, filteredCustomers.length)} {t('customers.of')} {filteredCustomers.length} {t('customers.customers')}
               </div>
               
               <div className={`flex items-center space-x-2 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
@@ -449,14 +468,14 @@ const Customers: React.FC = () => {
               
               {/* Title */}
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Delete Customer
+                {t('customers.deleteCustomerTitle')}
               </h3>
               
               {/* Message */}
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Are you sure you want to delete <span className="font-medium text-gray-900 dark:text-white">
+                {t('customers.deleteConfirmMessage')} <span className="font-medium text-gray-900 dark:text-white">
                   {deleteConfirmation.customer?.name}
-                </span>? This action cannot be undone.
+                </span>? {t('customers.deleteWarning')}
               </p>
               
               {/* Action Buttons */}
@@ -465,13 +484,13 @@ const Customers: React.FC = () => {
                   onClick={handleDeleteCancel}
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 transition-colors duration-200"
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </div>

@@ -20,12 +20,14 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDataCache } from '../contexts/DataCacheContext';
+import { useDashboardRTL } from '../hooks/useDashboardRTL';
 import type { Order } from '../types';
 
 const Orders: React.FC = () => {
   const navigate = useNavigate();
-  const { t, isRTL } = useLanguage();
+  const { t, language, isRTL } = useLanguage();
   const { state, actions } = useDataCache();
+  const rtl = useDashboardRTL();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +38,13 @@ const Orders: React.FC = () => {
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [renderKey, setRenderKey] = useState(0);
+
+  // Force re-render when language changes
+  useEffect(() => {
+    console.log('🔄 Orders language changed:', language, 'isRTL:', isRTL);
+    setRenderKey(prev => prev + 1);
+  }, [language, rtl]);
 
   const statusOptions = [
     { value: 'all', label: t('orders.allOrders') },
@@ -194,7 +203,7 @@ const Orders: React.FC = () => {
   if (isInitialLoad) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
+        <div className={rtl.text.bodyText}>
           <RefreshCw className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
         </div>
@@ -203,7 +212,7 @@ const Orders: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 main-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div key={renderKey} className={rtl.layout.mainContainer} dir={isRTL ? 'rtl' : 'ltr'}>
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
@@ -216,29 +225,33 @@ const Orders: React.FC = () => {
           onSidebarToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
         
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className={rtl.layout.contentArea} style={{ 
+          fontFamily: rtl.utils.fontFamily,
+          direction: isRTL ? 'rtl' : 'ltr',
+          textAlign: isRTL ? 'right' : 'left'
+        }}>
           {/* Header Actions */}
-          <div className={`flex items-center justify-between mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className={`flex items-center justify-between mb-6`}>
+            <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
+              <h2 className={rtl.text.title}>
                 {t('orders.allOrders')}
               </h2>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
+              <p className={rtl.text.subtitle}>
                 {t('orders.showingOrdersOf').replace('{filtered}', filteredOrders.length.toString()).replace('{total}', state.orders.length.toString())}
               </p>
             </div>
             <button
               onClick={handleRefresh}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200"
+              className={`flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
             >
-              <RefreshCw size={16} className={`${isRTL ? 'ml-2' : 'mr-2'}`} />
-              {t('orders.refresh')}
+              <RefreshCw size={16} className={rtl.spacing.iconSpacing} />
+              <span>{t('orders.refresh')}</span>
             </button>
           </div>
 
           {/* Filters */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${isRTL ? 'text-right' : ''}`}>
+          <div className={rtl.components.card + " p-6 mb-6"}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Search */}
               <div className="relative">
                 <Search 
@@ -250,15 +263,9 @@ const Orders: React.FC = () => {
                   placeholder={t('orders.searchOrdersCustomers')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`
-                    w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
-                    placeholder-gray-500 dark:placeholder-gray-400
-                    focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                    transition-colors duration-200
-                    ${isRTL ? 'pr-10 text-right' : 'pl-10'}
-                  `}
-                  dir={isRTL ? 'rtl' : 'ltr'}
+                  className={`w-full py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 ${isRTL ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'}`}
+                  dir={rtl.forms.inputDir}
+                  style={{ textAlign: isRTL ? 'right' : 'left' }}
                 />
               </div>
 
@@ -266,19 +273,14 @@ const Orders: React.FC = () => {
               <div className="relative">
                 <Filter 
                   size={20} 
-                  className={`absolute top-1/2 transform -translate-y-1/2 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} 
+                  className={`absolute top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none ${isRTL ? 'right-3' : 'left-3'}`} 
                 />
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className={`
-                    w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
-                    focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                    transition-colors duration-200
-                    ${isRTL ? 'pr-10 text-right' : 'pl-10'}
-                  `}
-                  dir={isRTL ? 'rtl' : 'ltr'}
+                  className={`w-full py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 appearance-none cursor-pointer ${isRTL ? 'pr-10 pl-8 text-right' : 'pl-10 pr-8 text-left'}`}
+                  dir={rtl.forms.inputDir}
+                  style={{ textAlign: isRTL ? 'right' : 'left' }}
                 >
                   {statusOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -286,15 +288,21 @@ const Orders: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {/* Custom dropdown arrow */}
+                <div className={`absolute top-1/2 transform -translate-y-1/2 pointer-events-none ${isRTL ? 'left-3' : 'right-3'}`}>
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
 
               {/* Stats */}
               <div className="flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className={rtl.text.statValue}>
                     {filteredOrders.length}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className={rtl.text.bodyText}>
                     {t('orders.totalOrders')}
                   </p>
                 </div>
@@ -303,14 +311,14 @@ const Orders: React.FC = () => {
           </div>
 
           {/* Orders Table */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className={rtl.components.card + " overflow-hidden"}>
             {currentOrders.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="text-center py-12" style={{ textAlign: 'center' }}>
                 <ShoppingCart size={64} className="mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className={rtl.text.sectionHeader + " mb-2"} style={{ textAlign: 'center' }}>
                   {t('orders.noOrdersFound')}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className={rtl.text.bodyText} style={{ textAlign: 'center' }}>
                   {state.orders.length === 0 
                     ? t('orders.whenCustomersStartPlacing')
                     : t('orders.tryAdjustingSearch')
@@ -320,39 +328,39 @@ const Orders: React.FC = () => {
             ) : (
               <>
                 {/* Table Header - Desktop */}
-                <div className={`hidden lg:grid grid-cols-8 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${isRTL ? 'text-right' : ''}`}>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                <div className={`hidden lg:grid grid-cols-8 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600`}>
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.orderNumber')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.customer')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.date')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.total')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.status')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.items')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.actions')}
                   </div>
                 </div>
 
                 {/* Table Header - Mobile */}
-                <div className={`lg:hidden grid grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${isRTL ? 'text-right' : ''}`}>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                <div className={`lg:hidden grid grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600`}>
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.orderAndCustomer')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.bookDetails')}
                   </div>
-                  <div className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className={rtl.text.bodyText + " font-medium text-gray-700 dark:text-gray-300"} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                     {t('orders.statusAndActions')}
                   </div>
                 </div>
@@ -368,13 +376,13 @@ const Orders: React.FC = () => {
                     return (
                       <div key={order.id}>
                         {/* Desktop Layout */}
-                        <div className={`hidden lg:grid grid-cols-8 gap-4 p-4 ${isRTL ? 'text-right' : ''}`}>
+                        <div className="hidden lg:grid grid-cols-8 gap-4 p-4" style={{ textAlign: isRTL ? 'right' : 'left' }}>
                           {/* Order Number */}
-                          <div className="flex items-center">
+                          <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                               <ShoppingCart size={16} className="text-blue-600 dark:text-blue-400" />
                             </div>
-                            <div className={`${isRTL ? 'mr-3' : 'ml-3'}`}>
+                            <div className={rtl.spacing.textMarginStart}>
                               <p className="text-sm font-medium text-gray-900 dark:text-white">
                                 #{order.id.slice(0, 8)}
                               </p>
@@ -382,24 +390,24 @@ const Orders: React.FC = () => {
                           </div>
 
                           {/* Customer */}
-                          <div className="flex items-center">
+                          <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
                               <User size={14} className="text-gray-600 dark:text-gray-400" />
                             </div>
-                            <div className={`${isRTL ? 'mr-2' : 'ml-2'}`}>
-                              <p className="text-sm text-gray-900 dark:text-white">
+                            <div className={`flex-1 min-w-0 ${rtl.spacing.textMarginStart}`}>
+                              <p className="text-sm text-gray-900 dark:text-white truncate">
                                 {order.shipping_address?.full_name || order.user?.full_name || order.app_users?.full_name || t('orders.unknown')}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {order.user?.email || order.app_users?.email || t('orders.noEmail')}
                               </p>
                             </div>
                           </div>
 
                           {/* Date */}
-                          <div className="flex items-center">
-                            <Calendar size={16} className="text-gray-400" />
-                            <div className={`${isRTL ? 'mr-2' : 'ml-2'}`}>
+                          <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+                            <Calendar size={16} className="text-gray-400 flex-shrink-0" />
+                            <div className={rtl.spacing.textMarginStart}>
                               <p className="text-sm text-gray-900 dark:text-white">
                                 {formattedDate.date}
                               </p>
@@ -410,9 +418,9 @@ const Orders: React.FC = () => {
                           </div>
 
                           {/* Total */}
-                          <div className="flex items-center">
-                            <DollarSign size={16} className="text-green-600 dark:text-green-400" />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+                            <DollarSign size={16} className="text-green-600 dark:text-green-400 flex-shrink-0" />
+                            <span className={`text-sm font-medium text-gray-900 dark:text-white ${rtl.utils.margin('start', '1')}`}>
                               ${order.total_amount}
                             </span>
                           </div>
@@ -423,17 +431,9 @@ const Orders: React.FC = () => {
                               value={order.status}
                               onChange={(e) => handleStatusChange(order.id, e.target.value)}
                               disabled={updatingStatus === order.id}
-                              className={`
-                                px-2 py-1 rounded-lg text-xs font-medium border-0 cursor-pointer
-                                transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:outline-none
-                                disabled:opacity-50 disabled:cursor-not-allowed
-                                ${getStatusColor(order.status)}
-                                ${updatingStatus === order.id ? 'animate-pulse' : ''}
-                              `}
-                              style={{ 
-                                minWidth: '100px',
-                                background: 'inherit'
-                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-0 cursor-pointer w-full transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${getStatusColor(order.status)} ${updatingStatus === order.id ? 'animate-pulse' : ''}`}
+                              dir={rtl.forms.inputDir}
+                              style={{ textAlign: isRTL ? 'right' : 'left' }}
                             >
                               {editableStatusOptions.map(option => (
                                 <option 
@@ -448,15 +448,15 @@ const Orders: React.FC = () => {
                           </div>
 
                           {/* Items */}
-                          <div className="flex items-center">
-                            <Package size={16} className="text-gray-400" />
-                            <span className={`text-sm text-gray-600 dark:text-gray-400 ${isRTL ? 'mr-2' : 'ml-2'}`}>
+                          <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+                            <Package size={16} className="text-gray-400 flex-shrink-0" />
+                            <span className={`text-sm text-gray-600 dark:text-gray-400 ${rtl.spacing.textMarginStart}`}>
                               {order.order_items?.length || 0} {t('orders.itemsCount')}
                             </span>
                           </div>
 
                           {/* Actions */}
-                          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                          <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <button
                               onClick={() => handleViewOrder(order.id)}
                               className="p-2 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-200"
@@ -475,14 +475,14 @@ const Orders: React.FC = () => {
                         </div>
 
                         {/* Mobile Layout */}
-                        <div className={`lg:hidden grid grid-cols-3 gap-4 p-4 ${isRTL ? 'text-right' : ''}`}>
+                        <div className="lg:hidden grid grid-cols-3 gap-4 p-4" style={{ textAlign: isRTL ? 'right' : 'left' }}>
                           {/* Order & Customer Info */}
                           <div className="flex flex-col space-y-2">
-                            <div className="flex items-center">
+                            <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
                               <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                                 <ShoppingCart size={12} className="text-blue-600 dark:text-blue-400" />
                               </div>
-                              <div className={`${isRTL ? 'mr-2' : 'ml-2'}`}>
+                              <div className={rtl.spacing.textMarginStart}>
                                 <p className="text-xs font-medium text-gray-900 dark:text-white">
                                   #{order.id.slice(0, 8)}
                                 </p>
@@ -499,31 +499,10 @@ const Orders: React.FC = () => {
                           </div>
 
                           {/* Book Details */}
-                          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                            {firstBook ? (
-                              <div className="w-10 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                                {(firstBook.thumbnail_image || firstBook.cover_image_url) ? (
-                                  <img
-                                    src={firstBook.thumbnail_image || firstBook.cover_image_url}
-                                    alt={firstBook.title}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.currentTarget;
-                                      const fallback = target.nextElementSibling as HTMLElement;
-                                      target.style.display = 'none';
-                                      if (fallback) fallback.style.display = 'flex';
-                                    }}
-                                  />
-                                ) : null}
-                                <div className="w-full h-full flex items-center justify-center" style={{ display: (firstBook.thumbnail_image || firstBook.cover_image_url) ? 'none' : 'flex' }}>
-                                  <Package size={16} className="text-gray-400" />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-10 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <Package size={16} className="text-gray-400" />
-                              </div>
-                            )}
+                          <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                            <div className="w-10 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Package size={16} className="text-gray-400" />
+                            </div>
                             <div className="flex-1 min-w-0">
                               {firstBook ? (
                                 <>
@@ -548,17 +527,9 @@ const Orders: React.FC = () => {
                               value={order.status}
                               onChange={(e) => handleStatusChange(order.id, e.target.value)}
                               disabled={updatingStatus === order.id}
-                              className={`
-                                px-2 py-1 rounded-lg text-xs font-medium border-0 cursor-pointer self-start
-                                transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:outline-none
-                                disabled:opacity-50 disabled:cursor-not-allowed
-                                ${getStatusColor(order.status)}
-                                ${updatingStatus === order.id ? 'animate-pulse' : ''}
-                              `}
-                              style={{ 
-                                minWidth: '100px',
-                                background: 'inherit'
-                              }}
+                              className={`px-2 py-1 rounded-lg text-xs font-medium border-0 cursor-pointer appearance-none w-full transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${getStatusColor(order.status)} ${updatingStatus === order.id ? 'animate-pulse' : ''}`}
+                              dir={rtl.forms.inputDir}
+                              style={{ textAlign: isRTL ? 'right' : 'left' }}
                             >
                               {editableStatusOptions.map(option => (
                                 <option 
@@ -570,7 +541,7 @@ const Orders: React.FC = () => {
                                 </option>
                               ))}
                             </select>
-                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                            <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
                               <button
                                 onClick={() => handleViewOrder(order.id)}
                                 className="p-1.5 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-200"
@@ -598,25 +569,25 @@ const Orders: React.FC = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className={`flex items-center justify-between mt-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className={`flex items-center justify-between mt-6`}>
+              <div className={rtl.text.bodyText}>
                 {t('orders.showingPagination')
                   .replace('{start}', (startIndex + 1).toString())
                   .replace('{end}', Math.min(endIndex, filteredOrders.length).toString())
                   .replace('{total}', filteredOrders.length.toString())}
               </div>
               
-              <div className={`flex items-center space-x-2 rtl:space-x-reverse ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <div className={`flex items-center gap-2`}>
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="flex items-center px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  className={`flex items-center px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${isRTL ? 'flex-row-reverse' : ''}`}
                 >
-                  <ChevronLeft size={16} className={`${isRTL ? 'ml-1' : 'mr-1'}`} />
-                  {t('common.previous')}
+                  <ChevronLeft size={16} className={rtl.spacing.iconSpacing} />
+                  <span>{t('common.previous')}</span>
                 </button>
                 
-                <div className="flex space-x-1 rtl:space-x-reverse">
+                <div className="flex gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     const page = i + 1;
                     return (
@@ -638,10 +609,10 @@ const Orders: React.FC = () => {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="flex items-center px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  className={`flex items-center px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${isRTL ? 'flex-row-reverse' : ''}`}
                 >
-                  {t('common.next')}
-                  <ChevronRight size={16} className={`${isRTL ? 'mr-1' : 'ml-1'}`} />
+                  <span>{t('common.next')}</span>
+                  <ChevronRight size={16} className={rtl.spacing.iconSpacing} />
                 </button>
               </div>
             </div>
@@ -651,7 +622,7 @@ const Orders: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
           {/* Blurred Background Overlay */}
           <div 
             className="fixed inset-0 bg-black/50 backdrop-blur-sm"
@@ -659,38 +630,38 @@ const Orders: React.FC = () => {
           ></div>
           
           {/* Modal Content */}
-          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-md mx-4 transform transition-all duration-300 ease-out">
+          <div className={rtl.components.card + " p-6 w-full max-w-md mx-4 transform transition-all duration-300 ease-out relative"}>
             {/* Close Button */}
             <button
               onClick={cancelDeleteOrder}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200`}
             >
               <X size={20} />
             </button>
 
             {/* Modal Header */}
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mr-4">
+            <div className={`flex items-center mb-4 ${isRTL ? 'flex-row-reverse' : ''}`} style={{ textAlign: isRTL ? 'right' : 'left' }}>
+              <div className={`w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center ${rtl.spacing.contentSpacing}`}>
                 <Trash2 size={24} className="text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className={rtl.text.sectionHeader}>
                   {t('orders.deleteOrderTitle')}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className={rtl.text.bodyText}>
                   {t('orders.deleteOrderCannotBeUndone')}
                 </p>
               </div>
             </div>
 
             {/* Modal Body */}
-            <div className="mb-6">
+            <div className="mb-6" style={{ textAlign: isRTL ? 'right' : 'left' }}>
               <p className="text-gray-700 dark:text-gray-300">
                 {t('orders.deleteOrderConfirmation')}
               </p>
               {orderToDelete && (
                 <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className={rtl.text.bodyText}>
                     {t('orders.orderID')} <span className="font-mono text-gray-900 dark:text-white">#{orderToDelete.slice(0, 8)}</span>
                   </p>
                 </div>
@@ -698,7 +669,7 @@ const Orders: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end space-x-3">
+            <div className={`flex items-center gap-3 ${isRTL ? 'justify-start flex-row-reverse' : 'justify-end'}`}>
               <button
                 onClick={cancelDeleteOrder}
                 disabled={deleting}
@@ -709,17 +680,17 @@ const Orders: React.FC = () => {
               <button
                 onClick={confirmDeleteOrder}
                 disabled={deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}
               >
                 {deleting ? (
                   <>
-                    <RefreshCw size={16} className="animate-spin mr-2" />
-                    {t('orders.deleting')}
+                    <RefreshCw size={16} className={`animate-spin ${rtl.spacing.iconSpacing}`} />
+                    <span>{t('orders.deleting')}</span>
                   </>
                 ) : (
                   <>
-                    <Trash2 size={16} className="mr-2" />
-                    {t('orders.deleteOrderButton')}
+                    <Trash2 size={16} className={rtl.spacing.iconSpacing} />
+                    <span>{t('orders.deleteOrderButton')}</span>
                   </>
                 )}
               </button>

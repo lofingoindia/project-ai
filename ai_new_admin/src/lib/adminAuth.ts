@@ -27,6 +27,8 @@ class AdminAuthService {
 
   async signIn(email: string, password: string): Promise<{ user: AdminUser }> {
     try {
+      console.log('🔑 AdminAuth: Sign in attempt for:', email);
+      
       // Fetch admin user from our custom table
       const { data: adminUser, error } = await supabase
         .from('admin_users')
@@ -36,15 +38,21 @@ class AdminAuthService {
         .single();
 
       if (error || !adminUser) {
+        console.log('🔑 AdminAuth: User not found or inactive:', error);
         throw new Error('Invalid email or password');
       }
+
+      console.log('🔑 AdminAuth: User found, verifying password');
 
       // Verify password using bcrypt
       const isPasswordValid = await comparePassword(password, adminUser.password_hash);
       
       if (!isPasswordValid) {
+        console.log('🔑 AdminAuth: Password verification failed');
         throw new Error('Invalid email or password');
       }
+
+      console.log('🔑 AdminAuth: Password verified, creating session');
 
       // Create session
       const sessionToken = this.generateSessionToken();
@@ -68,8 +76,10 @@ class AdminAuthService {
       this.saveSession(session);
       this.currentUser = session.user;
 
+      console.log('🔑 AdminAuth: Sign in successful for:', session.user.email);
       return { user: session.user };
     } catch (error) {
+      console.log('🔑 AdminAuth: Sign in failed:', error);
       throw new Error('Invalid email or password');
     }
   }
@@ -82,11 +92,14 @@ class AdminAuthService {
   }
 
   async getCurrentUser(): Promise<AdminUser | null> {
+    console.log('🔑 AdminAuth: getCurrentUser called');
     // Check if session is still valid
     if (this.isSessionValid()) {
+      console.log('🔑 AdminAuth: Session valid, returning current user:', this.currentUser?.email);
       return this.currentUser;
     } else {
       // Session expired, sign out
+      console.log('🔑 AdminAuth: Session invalid/expired, signing out');
       await this.signOut();
       return null;
     }

@@ -1,6 +1,6 @@
-/* RTL Global Utility System - Comprehensive RTL Support */
+/* Clean RTL Base System - Works with Master RTL Controller */
 
-/* Base RTL Direction */
+/* Base RTL Direction - Essential only */
 [dir="rtl"] {
   direction: rtl;
 }
@@ -9,93 +9,52 @@
   direction: ltr;
 }
 
-/* Automatic Text Alignment */
-[dir="rtl"] .text-left {
-  text-align: right !important;
+/* Font Configuration - Tajawal for Arabic */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;600;700;800;900&display=swap');
+
+/* Logical Properties - Modern RTL approach */
+.ms-1 { margin-inline-start: 0.25rem; }
+.me-1 { margin-inline-end: 0.25rem; }
+.ms-2 { margin-inline-start: 0.5rem; }
+.me-2 { margin-inline-end: 0.5rem; }
+.ms-3 { margin-inline-start: 0.75rem; }
+.me-3 { margin-inline-end: 0.75rem; }
+.ms-4 { margin-inline-start: 1rem; }
+.me-4 { margin-inline-end: 1rem; }
+.ms-6 { margin-inline-start: 1.5rem; }
+.me-6 { margin-inline-end: 1.5rem; }
+
+.ps-1 { padding-inline-start: 0.25rem; }
+.pe-1 { padding-inline-end: 0.25rem; }
+.ps-2 { padding-inline-start: 0.5rem; }
+.pe-2 { padding-inline-end: 0.5rem; }
+.ps-3 { padding-inline-start: 0.75rem; }
+.pe-3 { padding-inline-end: 0.75rem; }
+.ps-4 { padding-inline-start: 1rem; }
+.pe-4 { padding-inline-end: 1rem; }
+.ps-6 { padding-inline-start: 1.5rem; }
+.pe-6 { padding-inline-end: 1.5rem; }
+
+/* Text alignment */
+.text-start { text-align: start; }
+.text-end { text-align: end; }
+
+/* Border utilities */
+.border-s { border-inline-start: 1px solid; }
+.border-e { border-inline-end: 1px solid; }
+
+/* Positioning */
+.start-0 { inset-inline-start: 0; }
+.end-0 { inset-inline-end: 0; }
+
+/* RTL-specific optimizations */
+[dir="rtl"] .rtl-optimized {
+  font-feature-settings: "liga" off;
 }
 
-[dir="rtl"] .text-right {
-  text-align: left !important;
-}
-
-/* Margin Utilities - Auto RTL Swap */
-[dir="rtl"] .ml-1 { margin-right: 0.25rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-1 { margin-left: 0.25rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-2 { margin-right: 0.5rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-2 { margin-left: 0.5rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-3 { margin-right: 0.75rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-3 { margin-left: 0.75rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-4 { margin-right: 1rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-4 { margin-left: 1rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-5 { margin-right: 1.25rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-5 { margin-left: 1.25rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-6 { margin-right: 1.5rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-6 { margin-left: 1.5rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-8 { margin-right: 2rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-8 { margin-left: 2rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-10 { margin-right: 2.5rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-10 { margin-left: 2.5rem !important; margin-right: 0 !important; }
-[dir="rtl"] .ml-12 { margin-right: 3rem !important; margin-left: 0 !important; }
-[dir="rtl"] .mr-12 { margin-left: 3rem !important; margin-right: 0 !important; }
-
-/* Padding Utilities - Auto RTL Swap */
-[dir="rtl"] .pl-1 { padding-right: 0.25rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-1 { padding-left: 0.25rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-2 { padding-right: 0.5rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-2 { padding-left: 0.5rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-3 { padding-right: 0.75rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-3 { padding-left: 0.75rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-4 { padding-right: 1rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-4 { padding-left: 1rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-5 { padding-right: 1.25rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-5 { padding-left: 1.25rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-6 { padding-right: 1.5rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-6 { padding-left: 1.5rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-8 { padding-right: 2rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-8 { padding-left: 2rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-10 { padding-right: 2.5rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-10 { padding-left: 2.5rem !important; padding-right: 0 !important; }
-[dir="rtl"] .pl-12 { padding-right: 3rem !important; padding-left: 0 !important; }
-[dir="rtl"] .pr-12 { padding-left: 3rem !important; padding-right: 0 !important; }
-
-/* Flexbox Direction - Auto RTL Swap */
-[dir="rtl"] .flex-row {
-  flex-direction: row-reverse !important;
-}
-
-[dir="rtl"] .flex-row-reverse {
-  flex-direction: row !important;
-}
-
-/* Space Between Items - Auto RTL Swap */
-[dir="rtl"] .space-x-reverse > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 0;
-  margin-right: 0;
-  margin-left: var(--tw-space-x);
-}
-
-[dir="rtl"] .space-x-1 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 1;
-  margin-right: 0.25rem;
-  margin-left: 0;
-}
-
-[dir="rtl"] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 1;
-  margin-right: 0.5rem;
-  margin-left: 0;
-}
-
-[dir="rtl"] .space-x-3 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 1;
-  margin-right: 0.75rem;
-  margin-left: 0;
-}
-
-[dir="rtl"] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 1;
-  margin-right: 1rem;
-  margin-left: 0;
+/* Smooth transitions for RTL switching */
+.rtl-transition {
+  transition: all 0.2s ease-in-out;
 }
 
 [dir="rtl"] .space-x-5 > :not([hidden]) ~ :not([hidden]) {
@@ -133,6 +92,140 @@
   border-right: none !important;
   border-left: 2px solid !important;
   border-left-color: inherit;
+}
+
+/* Dashboard-specific RTL styles */
+[dir="rtl"] .dashboard-flex {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .dashboard-text-align {
+  text-align: right;
+}
+
+[dir="rtl"] .dashboard-content-reverse {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .dashboard-icon-order {
+  order: 2;
+}
+
+[dir="rtl"] .dashboard-content-order {
+  order: 1;
+}
+
+[dir="rtl"] .dashboard-space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.75rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.75rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir="rtl"] .dashboard-space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir="rtl"] .dashboard-grid {
+  direction: rtl;
+}
+
+[dir="rtl"] .dashboard-button-content {
+  flex-direction: row-reverse;
+}
+
+/* Ensure proper spacing for RTL */
+[dir="rtl"] .dashboard-mr-2 {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+[dir="rtl"] .dashboard-ml-2 {
+  margin-right: 0.5rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .dashboard-ml-3 {
+  margin-right: 0.75rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .dashboard-mr-1 {
+  margin-left: 0.25rem;
+  margin-right: 0;
+}
+
+[dir="rtl"] .dashboard-ml-1 {
+  margin-right: 0.25rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .dashboard-mr-4 {
+  margin-left: 1rem;
+  margin-right: 0;
+}
+
+[dir="rtl"] .dashboard-ml-4 {
+  margin-right: 1rem;
+  margin-left: 0;
+}
+
+/* Grid system for RTL */
+[dir="rtl"] .dashboard-grid-cols-8 {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  direction: rtl;
+}
+
+/* Input padding for RTL */
+[dir="rtl"] .dashboard-input-padding {
+  padding-right: 2.5rem;
+  padding-left: 1rem;
+}
+
+[dir="ltr"] .dashboard-input-padding {
+  padding-left: 2.5rem;
+  padding-right: 1rem;
+}
+
+/* Mobile specific RTL classes */
+[dir="rtl"] .dashboard-mobile-status {
+  align-self: flex-end;
+}
+
+[dir="ltr"] .dashboard-mobile-status {
+  align-self: flex-start;
+}
+
+[dir="rtl"] .dashboard-mobile-actions {
+  justify-content: flex-end;
+}
+
+[dir="ltr"] .dashboard-mobile-actions {
+  justify-content: flex-start;
+}
+
+/* Space utilities with proper RTL handling */
+[dir="rtl"] .dashboard-space-x-1 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.25rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.25rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir="rtl"] .dashboard-mt-1 {
+  margin-top: 0.25rem;
+}
+
+[dir="rtl"] .dashboard-mt-2 {
+  margin-top: 0.5rem;
+}
+
+[dir="rtl"] .dashboard-mb-1 {
+  margin-bottom: 0.25rem;
+}
+
+[dir="rtl"] .dashboard-mb-4 {
+  margin-bottom: 1rem;
 }
 
 /* Positioning - Auto RTL Swap */
@@ -394,4 +487,54 @@
 
 [dir="ltr"] .modal-slide-in.open {
   transform: translateX(0);
+}
+
+/* Additional dashboard spacing classes for RTL */
+[dir="rtl"] .dashboard-space-x-1 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.25rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.25rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir="rtl"] .dashboard-space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir="rtl"] .dashboard-space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.75rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.75rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+/* Mobile specific alignment */
+[dir="rtl"] .dashboard-mobile-actions {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+[dir="ltr"] .dashboard-mobile-actions {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+/* Modal close button positioning */
+[dir="rtl"] .modal-close-btn {
+  left: 1rem;
+  right: auto;
+}
+
+[dir="ltr"] .modal-close-btn {
+  right: 1rem;
+  left: auto;
+}
+
+/* Table alignment */
+[dir="rtl"] .table-cell-rtl {
+  text-align: right;
+}
+
+[dir="ltr"] .table-cell-rtl {
+  text-align: left;
 }

@@ -12,7 +12,16 @@ import Customers from './pages/Customers';
 import Categories from './pages/Categories';
 import Products from './pages/Products';
 import Settings from './pages/Settings';
+// Import master RTL controller to initialize it
+import './utils/masterRTL';
+// Import language persistence test for debugging
+import { LanguagePersistenceTest } from './utils/languagePersistenceTest';
 import 'react-toastify/dist/ReactToastify.css';
+
+// Make test available globally for debugging
+if (typeof window !== 'undefined') {
+  (window as any).LanguagePersistenceTest = LanguagePersistenceTest;
+}
 
 function AppContent() {
   const { isRTL } = useLanguage();

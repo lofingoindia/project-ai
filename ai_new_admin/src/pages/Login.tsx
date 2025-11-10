@@ -22,13 +22,17 @@ const Login: React.FC = () => {
     // Check if already authenticated
     const checkAuth = async () => {
       try {
+        console.log('🔐 Login: Checking if already authenticated...');
         const user = await adminAuth.getCurrentUser();
         if (user) {
+          console.log('🔐 Login: Already authenticated, redirecting to dashboard');
           navigate('/dashboard');
+        } else {
+          console.log('🔐 Login: Not authenticated, staying on login page');
         }
       } catch (error) {
         // User not authenticated, stay on login page
-        console.log('User not authenticated');
+        console.log('🔐 Login: User not authenticated', error);
       }
     };
     checkAuth();
@@ -49,13 +53,15 @@ const Login: React.FC = () => {
     setError('');
 
     try {
+      console.log('🔐 Login: Attempting login for:', formData.email);
       await adminAuth.signIn(formData.email, formData.password);
       
+      console.log('🔐 Login: Sign in successful, navigating to dashboard');
       // Success message and navigation
       toast.success(t('messages.success.login'));
       navigate('/dashboard');
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('🔐 Login: Sign in error:', error);
       const errorMessage = error.message === 'Invalid email or password' 
         ? t('login.errorInvalidCredentials')
         : t('login.errorGeneral');
@@ -197,11 +203,10 @@ const Login: React.FC = () => {
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Please use an admin account registered through the Settings page.
-                <br />
-                Contact your administrator to create an account for you.
               </p>
             </div>
           </div>
+
         </div>
       </div>
     </div>
