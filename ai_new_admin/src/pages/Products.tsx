@@ -399,23 +399,64 @@ const Products = () => {
 
       toast.info('Uploading PDF file...');
 
+      // Get backend URL with better fallback
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+      const uploadUrl = `${backendUrl}/api/upload-pdf`;
+      
+      console.log('Upload URL:', uploadUrl);
+
+      // Test connection first
+      try {
+        console.log('Testing backend connection...');
+        const healthResponse = await fetch(`${backendUrl}/health`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        
+        if (healthResponse.ok) {
+          console.log('✅ Backend server is reachable');
+        } else {
+          console.warn('⚠️ Health check failed but continuing...');
+        }
+      } catch (healthError) {
+        console.error('❌ Backend health check failed:', healthError);
+        throw new Error('Cannot connect to backend server. Please ensure it is running on port 3002.');
+      }
+
       // Create FormData for PDF upload
       const pdfFormData = new FormData();
       pdfFormData.append('pdf', file);
 
-      // Upload to backend - replace with your actual backend URL
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
-      const response = await fetch(`${backendUrl}/api/upload-pdf`, {
+      // Upload with enhanced error handling
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: pdfFormData,
+        // Add headers for better compatibility
+        headers: {
+          'Accept': 'application/json',
+        },
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload PDF');
+        let errorMessage = 'Failed to upload PDF';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('Server error response:', errorData);
+        } catch (parseError) {
+          console.error('Could not parse error response:', parseError);
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log('Upload response:', result);
 
       if (result.success && result.data?.pdf_url) {
         console.log('PDF upload successful:', result.data);
@@ -424,7 +465,7 @@ const Products = () => {
         setUploadProgress({ pdf: 100 });
         toast.success('PDF uploaded successfully');
       } else {
-        throw new Error('Invalid response from server');
+        throw new Error('Invalid response from server - missing PDF URL');
       }
 
     } catch (error) {
@@ -432,7 +473,11 @@ const Products = () => {
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          toast.error('Cannot connect to server. Please check if the backend is running.');
+          toast.error('Cannot connect to server. Please start the backend server (npm start) and ensure it\'s running on port 3002.');
+        } else if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
+          toast.error('Network or CORS error. Please check server configuration.');
+        } else if (error.message.includes('backend server')) {
+          toast.error(error.message);
         } else if (error.message.includes('File size')) {
           toast.error('PDF file is too large. Maximum size is 50MB.');
         } else if (error.message.includes('PDF files')) {
