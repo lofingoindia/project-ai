@@ -1,12 +1,9 @@
 // PDF Extractor Utility
-// Converts PDF pages to base64 images
+// Converts PDF pages to base64 images using pdf-to-img
 
 const axios = require('axios');
-const { createCanvas } = require('canvas');
-const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
-
-// Disable worker for Node.js environment (not needed)
-pdfjsLib.GlobalWorkerOptions.workerSrc = false;
+const fs = require('fs');
+const path = require('path');
 
 class PDFExtractor {
   /**
@@ -18,58 +15,64 @@ class PDFExtractor {
     try {
       console.log(`📄 Extracting pages from PDF: ${pdfUrl}`);
 
+      let pdfPath = pdfUrl;
+      let shouldDeleteTempFile = false;
+
       // Download PDF if it's a URL
-      let pdfData;
       if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
         console.log('⬇️ Downloading PDF from URL...');
         const response = await axios.get(pdfUrl, {
           responseType: 'arraybuffer'
         });
-        pdfData = new Uint8Array(response.data);
-      } else {
-        // Local file path
-        const fs = require('fs');
-        pdfData = fs.readFileSync(pdfUrl);
+        
+        // Save to temporary file
+        const tempDir = path.join(__dirname, 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        pdfPath = path.join(tempDir, `temp_${Date.now()}.pdf`);
+        fs.writeFileSync(pdfPath, response.data);
+        shouldDeleteTempFile = true;
+        console.log(`✅ PDF downloaded to temporary file: ${pdfPath}`);
       }
 
-      // Load PDF document
-      const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-      const pdfDocument = await loadingTask.promise;
-      const numPages = pdfDocument.numPages;
+      // Import pdf-to-img (ES module, so we use dynamic import)
+      const { pdf } = await import('pdf-to-img');
 
-      console.log(`📚 PDF loaded: ${numPages} pages`);
+      // Convert PDF to images
+      console.log('🔄 Converting PDF pages to images...');
+      const document = await pdf(pdfPath, { 
+        scale: 2.0 // Scale for better quality
+      });
 
       const pageImages = [];
+      let pageCounter = 1;
 
-      // Extract each page
-      for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-        console.log(`📄 Extracting page ${pageNum}/${numPages}...`);
+      // Iterate through each page
+      for await (const image of document) {
+        console.log(`📄 Processing page ${pageCounter}...`);
         
-        const page = await pdfDocument.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 2.0 }); // Scale for better quality
-
-        // Create canvas
-        const canvas = createCanvas(viewport.width, viewport.height);
-        const context = canvas.getContext('2d');
-
-        // Render PDF page to canvas
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
-
-        await page.render(renderContext).promise;
-
-        // Convert canvas to base64 image
-        const imageData = canvas.toDataURL('image/jpeg', 0.95);
-        // Remove data URI prefix to get just base64
-        const base64Image = imageData.replace(/^data:image\/\w+;base64,/, '');
-        
+        // Convert image buffer to base64
+        // image is a Buffer, convert it to base64 string
+        const base64Image = Buffer.from(image).toString('base64');
         pageImages.push(base64Image);
-        console.log(`✅ Page ${pageNum} extracted`);
+        
+        console.log(`✅ Page ${pageCounter} converted to base64`);
+        pageCounter++;
       }
 
-      console.log(`✅ All ${numPages} pages extracted successfully`);
+      // Clean up temporary PDF file if we downloaded it
+      if (shouldDeleteTempFile) {
+        try {
+          fs.unlinkSync(pdfPath);
+          console.log(`🗑️  Temporary PDF file deleted: ${pdfPath}`);
+        } catch (err) {
+          console.warn(`⚠️  Could not delete temp PDF file: ${pdfPath}`);
+        }
+      }
+
+      console.log(`✅ All ${pageImages.length} pages extracted successfully`);
       return pageImages;
 
     } catch (error) {
@@ -85,20 +88,51 @@ class PDFExtractor {
    */
   async getPageCount(pdfUrl) {
     try {
-      let pdfData;
+      let pdfPath = pdfUrl;
+      let shouldDeleteTempFile = false;
+
+      // Download PDF if it's a URL
       if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
+        console.log('⬇️ Downloading PDF from URL to count pages...');
         const response = await axios.get(pdfUrl, {
           responseType: 'arraybuffer'
         });
-        pdfData = new Uint8Array(response.data);
-      } else {
-        const fs = require('fs');
-        pdfData = fs.readFileSync(pdfUrl);
+        
+        // Save to temporary file
+        const tempDir = path.join(__dirname, 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        pdfPath = path.join(tempDir, `temp_count_${Date.now()}.pdf`);
+        fs.writeFileSync(pdfPath, response.data);
+        shouldDeleteTempFile = true;
       }
 
-      const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-      const pdfDocument = await loadingTask.promise;
-      return pdfDocument.numPages;
+      // Import pdf-to-img
+      const { pdf } = await import('pdf-to-img');
+
+      // Convert PDF to images (just to count pages)
+      const document = await pdf(pdfPath, { 
+        scale: 1.0 // Lower scale for faster counting
+      });
+
+      let pageCount = 0;
+      for await (const image of document) {
+        pageCount++;
+        // Don't need to process the image, just count
+      }
+
+      // Clean up temporary PDF file if we downloaded it
+      if (shouldDeleteTempFile) {
+        try {
+          fs.unlinkSync(pdfPath);
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      }
+
+      return pageCount;
     } catch (error) {
       console.error('❌ Failed to get PDF page count:', error);
       throw new Error(`Failed to get page count: ${error.message}`);
@@ -107,4 +141,3 @@ class PDFExtractor {
 }
 
 module.exports = PDFExtractor;
-
