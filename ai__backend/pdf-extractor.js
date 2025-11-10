@@ -8,10 +8,12 @@ const path = require('path');
 class PDFExtractor {
   /**
    * Extract all pages from a PDF URL and convert to base64 images
+   * Also saves images as PNG files in uploads directory
    * @param {string} pdfUrl - URL or path to PDF file
+   * @param {string} outputPrefix - Optional prefix for saved PNG files (e.g., 'book_123')
    * @returns {Promise<Array<string>>} - Array of base64-encoded page images
    */
-  async extractPagesFromPDF(pdfUrl) {
+  async extractPagesFromPDF(pdfUrl, outputPrefix = null) {
     try {
       console.log(`📄 Extracting pages from PDF: ${pdfUrl}`);
 
@@ -37,6 +39,13 @@ class PDFExtractor {
         console.log(`✅ PDF downloaded to temporary file: ${pdfPath}`);
       }
 
+      // Create uploads/pages directory for storing PNG images
+      const pagesDir = path.join(__dirname, 'uploads', 'pages');
+      if (!fs.existsSync(pagesDir)) {
+        fs.mkdirSync(pagesDir, { recursive: true });
+        console.log(`📁 Created pages directory: ${pagesDir}`);
+      }
+
       // Import pdf-to-img (ES module, so we use dynamic import)
       const { pdf } = await import('pdf-to-img');
 
@@ -47,7 +56,10 @@ class PDFExtractor {
       });
 
       const pageImages = [];
+      const savedImagePaths = [];
       let pageCounter = 1;
+      const timestamp = Date.now();
+      const prefix = outputPrefix || `pdf_${timestamp}`;
 
       // Iterate through each page - ONE PAGE = ONE IMAGE
       for await (const image of document) {
@@ -58,8 +70,14 @@ class PDFExtractor {
           throw new Error(`Invalid image data for page ${pageCounter}`);
         }
         
-        // Convert image buffer to base64
-        // image is already a Buffer, convert it to base64 string
+        // Save image as PNG file
+        const pngFileName = `${prefix}_page_${pageCounter}.png`;
+        const pngFilePath = path.join(pagesDir, pngFileName);
+        fs.writeFileSync(pngFilePath, image);
+        savedImagePaths.push(pngFilePath);
+        console.log(`💾 Page ${pageCounter} saved as PNG: ${pngFilePath}`);
+        
+        // Convert image buffer to base64 for processing
         const base64Image = image.toString('base64');
         
         // Ensure we have valid base64 data
@@ -91,6 +109,9 @@ class PDFExtractor {
 
       console.log(`✅ All ${pageImages.length} pages extracted successfully (1 page = 1 image)`);
       console.log(`📊 Page-to-image mapping: ${pageImages.length} pages → ${pageImages.length} images`);
+      console.log(`💾 PNG files saved in: ${pagesDir}`);
+      console.log(`📁 Saved ${savedImagePaths.length} PNG files`);
+      
       return pageImages;
 
     } catch (error) {

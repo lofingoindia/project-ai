@@ -42,7 +42,10 @@ class CompleteBookPersonalizationService {
       let pagesToProcess = bookPages;
       if (pdfUrl) {
         console.log('📄 Extracting pages from PDF...');
-        pagesToProcess = await this.pdfExtractor.extractPagesFromPDF(pdfUrl);
+        // Generate a meaningful prefix for PNG files (using book title and timestamp)
+        const safeBookTitle = (bookTitle || 'book').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+        const outputPrefix = `${safeBookTitle}_${Date.now()}`;
+        pagesToProcess = await this.pdfExtractor.extractPagesFromPDF(pdfUrl, outputPrefix);
         console.log(`✅ Extracted ${pagesToProcess.length} pages from PDF`);
         
         // Validate: Ensure 1:1 mapping (one PDF page = one image)
