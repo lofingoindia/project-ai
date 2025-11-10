@@ -1,4 +1,6 @@
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/book.dart';
 import '../services/book_service.dart';
 import 'book_detail_page.dart';
@@ -43,7 +45,12 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading books: $e')),
+        SnackBar(
+          content: Text(
+            'Error loading books: $e',
+            style: GoogleFonts.tajawal(),
+          ),
+        ),
       );
     }
   }
@@ -52,7 +59,10 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.categoryName),
+        title: Text(
+          widget.categoryName,
+          style: GoogleFonts.tajawal(),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0.5,
@@ -72,7 +82,7 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
                       const SizedBox(height: 16),
                       Text(
                         'No books found in ${widget.categoryName}',
-                        style: TextStyle(
+                        style: GoogleFonts.tajawal(
                           fontSize: 18,
                           color: Colors.grey[600],
                         ),
@@ -80,7 +90,7 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
                       const SizedBox(height: 8),
                       Text(
                         'Check back later for new additions!',
-                        style: TextStyle(
+                        style: GoogleFonts.tajawal(
                           fontSize: 14,
                           color: Colors.grey[500],
                         ),
@@ -173,7 +183,7 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
                           ),
                           child: Text(
                             '-${book.discountPercentage}%',
-                            style: const TextStyle(
+                            style: GoogleFonts.tajawal(
                               color: Colors.white,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -197,7 +207,7 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
                     // Title
                     Text(
                       book.title,
-                      style: const TextStyle(
+                      style: GoogleFonts.tajawal(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -211,7 +221,7 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
                         if (book.discountPercentage > 0) ...[
                           Text(
                             book.formattedPrice,
-                            style: const TextStyle(
+                            style: GoogleFonts.tajawal(
                               decoration: TextDecoration.lineThrough,
                               color: Colors.grey,
                               fontSize: 12,
@@ -221,7 +231,7 @@ class _BooksByCategoryPageState extends State<BooksByCategoryPage> {
                         ],
                         Text(
                           book.formattedDiscountedPrice,
-                          style: const TextStyle(
+                          style: GoogleFonts.tajawal(
                             fontWeight: FontWeight.bold,
                             color: Color(0xFFB47AFF),
                             fontSize: 14,

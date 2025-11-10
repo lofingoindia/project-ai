@@ -69,7 +69,7 @@ class _LanguageSelectorState extends State<LanguageSelector> {
           value: 'en',
           child: Row(
             children: [
-              const Text('🇬🇧', style: TextStyle(fontSize: 20)),
+              Text('🇬🇧', style: GoogleFonts.tajawal(fontSize: 20)),
               const SizedBox(width: 12),
               Text(
                 'English',
@@ -92,7 +92,7 @@ class _LanguageSelectorState extends State<LanguageSelector> {
           value: 'ar',
           child: Row(
             children: [
-              const Text('🇸🇦', style: TextStyle(fontSize: 20)),
+              Text('🇸🇦', style: GoogleFonts.tajawal(fontSize: 20)),
               const SizedBox(width: 12),
               Text(
                 'العربية',

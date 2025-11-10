@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:video_player/video_player.dart';
 import '../models/book.dart';
 import '../pages/start_personalisation_page.dart';
 import '../services/localization_service.dart';
@@ -36,6 +37,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
   String _selectedTab = 'Reviews'; // Track which tab is selected
   int _adoreImageIndex = 0; // For rotating images in adored section
   
+  // Video player state
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
+  bool _isVideoPlaying = false;
+  
 
   @override
   void initState() {
@@ -52,6 +58,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
       }
     });
     
+    // Initialize video player if preview video exists
+    if (widget.book.previewVideo != null && widget.book.previewVideo!.isNotEmpty) {
+      _initializeVideoPlayer(widget.book.previewVideo!);
+    } else if (widget.book.videos.isNotEmpty) {
+      // Use first video from videos array
+      _initializeVideoPlayer(widget.book.videos.first);
+    }
+    
     // Auto-rotate images for adored section (every 3 seconds)
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 3));
@@ -65,10 +79,37 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
     });
   }
 
+  void _initializeVideoPlayer(String videoUrl) {
+    try {
+      _videoController = VideoPlayerController.networkUrl(
+        Uri.parse(videoUrl)
+      )..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _isVideoInitialized = true;
+          });
+        }
+      }).catchError((error) {
+        print('Error initializing video: $error');
+      });
+      
+      _videoController?.addListener(() {
+        if (mounted) {
+          setState(() {
+            _isVideoPlaying = _videoController?.value.isPlaying ?? false;
+          });
+        }
+      });
+    } catch (e) {
+      print('Error creating video controller: $e');
+    }
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
     _imagePageController.dispose();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -139,6 +180,149 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
             fontWeight: FontWeight.w400,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildVideoSection() {
+    // Check if there's any video to display
+    bool hasVideo = (widget.book.previewVideo != null && widget.book.previewVideo!.isNotEmpty) || 
+                    widget.book.videos.isNotEmpty;
+    
+    if (!hasVideo) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        
+        // Video Section Title
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Watch Preview',
+            style: GoogleFonts.tajawal(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Video Player
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            width: double.infinity,
+            height: _isMobile(context) ? 250 : 400,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.black,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: _isVideoInitialized && _videoController != null
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: VideoPlayer(_videoController!),
+                        ),
+                        
+                        // Play/Pause overlay button
+                        if (!_isVideoPlaying)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 50,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _videoController?.play();
+                                });
+                              },
+                            ),
+                          ),
+                        
+                        // Pause button when playing
+                        if (_isVideoPlaying)
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _videoController?.pause();
+                              });
+                            },
+                            child: Container(
+                              color: Colors.transparent,
+                              child: Center(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.3),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      Icons.pause,
+                                      color: Colors.white,
+                                      size: 50,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _videoController?.pause();
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        
+                        // Video progress bar
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: VideoProgressIndicator(
+                            _videoController!,
+                            allowScrubbing: true,
+                            colors: const VideoProgressColors(
+                              playedColor: Color(0xFF784D9C),
+                              bufferedColor: Colors.grey,
+                              backgroundColor: Colors.white24,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                          ),
+                        ),
+                      ],
+                    )
+                  : const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF784D9C)),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -314,26 +498,109 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                       Container(
                         height: _isMobile(context) ? 450 : 600, // Larger height for web
                         width: double.infinity,
-                        child: widget.book.allImages.isNotEmpty
+                        child: widget.book.allImages.isNotEmpty || (_videoController != null && _isVideoInitialized)
                             ? Stack(
                                 children: [
-                                  // PageView for images
+                                  // PageView for images and video
                                   PageView.builder(
                                     controller: _imagePageController,
                                     onPageChanged: (index) {
                                       setState(() {
                                         _currentImageIndex = index;
+                                        // Pause video when leaving video slide
+                                        if (_videoController != null && _videoController!.value.isPlaying) {
+                                          _videoController!.pause();
+                                        }
                                       });
                                     },
-                                    itemCount: widget.book.allImages.length,
+                                    itemCount: widget.book.allImages.length + (_isVideoInitialized ? 1 : 0),
                                     itemBuilder: (context, index) {
+                                      // Show video as the first item if available
+                                      if (index == 0 && _isVideoInitialized && _videoController != null) {
+                                        return Container(
+                                          width: double.infinity,
+                                          color: Colors.black,
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              Center(
+                                                child: AspectRatio(
+                                                  aspectRatio: _videoController!.value.aspectRatio,
+                                                  child: VideoPlayer(_videoController!),
+                                                ),
+                                              ),
+                                              
+                                              // Play/Pause overlay button
+                                              if (!_isVideoPlaying)
+                                                Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.5),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: IconButton(
+                                                    icon: const Icon(
+                                                      Icons.play_arrow,
+                                                      color: Colors.white,
+                                                      size: 60,
+                                                    ),
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        _videoController?.play();
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
+                                              
+                                              // Pause button when playing
+                                              if (_isVideoPlaying)
+                                                GestureDetector(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      _videoController?.pause();
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    color: Colors.transparent,
+                                                    child: Center(
+                                                      child: Icon(
+                                                        Icons.pause_circle_outline,
+                                                        color: Colors.white.withOpacity(0.8),
+                                                        size: 60,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              
+                                              // Video progress bar
+                                              Positioned(
+                                                bottom: 0,
+                                                left: 0,
+                                                right: 0,
+                                                child: VideoProgressIndicator(
+                                                  _videoController!,
+                                                  allowScrubbing: true,
+                                                  colors: const VideoProgressColors(
+                                                    playedColor: Color(0xFF784D9C),
+                                                    bufferedColor: Colors.grey,
+                                                    backgroundColor: Colors.white24,
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+                                      
+                                      // Show images (adjust index if video is present)
+                                      final imageIndex = _isVideoInitialized ? index - 1 : index;
                                       return GestureDetector(
-                                        onTap: () => _showFullScreenImage(context, widget.book.allImages[index]),
+                                        onTap: () => _showFullScreenImage(context, widget.book.allImages[imageIndex]),
                                         child: Container(
                                           width: double.infinity,
                                           child: _isMobile(context)
                                               ? Image.network(
-                                                  widget.book.allImages[index],
+                                                  widget.book.allImages[imageIndex],
                                                   fit: BoxFit.cover,
                                                   width: double.infinity,
                                                   loadingBuilder: (context, child, loadingProgress) {
@@ -365,7 +632,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                                                       maxHeight: 600,
                                                     ),
                                                     child: Image.network(
-                                                      widget.book.allImages[index],
+                                                      widget.book.allImages[imageIndex],
                                                       fit: BoxFit.contain, // Contain for web to show full image
                                                       loadingBuilder: (context, child, loadingProgress) {
                                                         if (loadingProgress == null) return child;
@@ -396,11 +663,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                                     },
                                   ),
                                   
-                                  // Navigation arrows for web only
-                                  if (!_isMobile(context) && widget.book.allImages.length > 1) ...[
-                                    // Left arrow
+                                  // Navigation arrows for web/desktop only
+                                  if (!_isMobile(context) && !_isTablet(context) && (widget.book.allImages.length + (_isVideoInitialized ? 1 : 0)) > 1) ...[
+                                    // Left/Right arrow (position depends on text direction)
                                     Positioned(
-                                      left: 20,
+                                      left: _localizationService.isRTL ? null : 20,
+                                      right: _localizationService.isRTL ? 20 : null,
                                       top: 0,
                                       bottom: 0,
                                       child: Center(
@@ -417,7 +685,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                                             ],
                                           ),
                                           child: IconButton(
-                                            icon: Icon(Icons.arrow_back_ios_new, color: Color(0xFF784D9C)),
+                                            icon: Icon(
+                                              _localizationService.isRTL ? Icons.arrow_forward_ios : Icons.arrow_back_ios_new,
+                                              color: Color(0xFF784D9C),
+                                            ),
                                             onPressed: () {
                                               if (_currentImageIndex > 0) {
                                                 _imagePageController.previousPage(
@@ -431,9 +702,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                                       ),
                                     ),
                                     
-                                    // Right arrow
+                                    // Right/Left arrow (position depends on text direction)
                                     Positioned(
-                                      right: 20,
+                                      right: _localizationService.isRTL ? null : 20,
+                                      left: _localizationService.isRTL ? 20 : null,
                                       top: 0,
                                       bottom: 0,
                                       child: Center(
@@ -450,9 +722,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                                             ],
                                           ),
                                           child: IconButton(
-                                            icon: Icon(Icons.arrow_forward_ios, color: Color(0xFF784D9C)),
+                                            icon: Icon(
+                                              _localizationService.isRTL ? Icons.arrow_back_ios_new : Icons.arrow_forward_ios,
+                                              color: Color(0xFF784D9C),
+                                            ),
                                             onPressed: () {
-                                              if (_currentImageIndex < widget.book.allImages.length - 1) {
+                                              final totalItems = widget.book.allImages.length + (_isVideoInitialized ? 1 : 0);
+                                              if (_currentImageIndex < totalItems - 1) {
                                                 _imagePageController.nextPage(
                                                   duration: Duration(milliseconds: 300),
                                                   curve: Curves.easeInOut,
@@ -476,23 +752,32 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                               ),
                       ),
                       
-                      // Image indicators if multiple images
-                      if (widget.book.allImages.length > 1) ...[
-                        const SizedBox(height: 2),
+                      // Image indicators if multiple images or video
+                      if ((widget.book.allImages.length + (_isVideoInitialized ? 1 : 0)) > 1) ...[
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
-                            widget.book.allImages.length,
+                            widget.book.allImages.length + (_isVideoInitialized ? 1 : 0),
                             (index) => AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
-                              width: _currentImageIndex == index ? 20 : 8,
-                              height: 2,
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              width: _currentImageIndex == index ? 24 : 8,
+                              height: 8,
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(4),
                                 color: _currentImageIndex == index 
-                                    ? const Color.fromARGB(255, 142, 142, 142) 
-                                    : const Color.fromARGB(255, 162, 161, 161).withOpacity(0.5),
+                                    ? const Color(0xFF784D9C)
+                                    : Colors.grey.withOpacity(0.4),
+                                boxShadow: _currentImageIndex == index 
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF784D9C).withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
                               ),
                             ),
                           ),
@@ -904,6 +1189,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
                             ),
                           ],
                         ),
+                        
+                        // Video Section - Now shown in the gallery above
+                        // _buildVideoSection(),
                         
                         // const SizedBox(height: 32),
                         

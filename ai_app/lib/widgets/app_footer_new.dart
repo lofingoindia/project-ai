@@ -337,7 +337,7 @@ class AppFooter extends StatelessWidget {
             ),
             Text(
               '|',
-              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+              style: GoogleFonts.tajawal(color: Colors.white.withOpacity(0.5)),
             ),
             TextButton(
               onPressed: () {
@@ -401,7 +401,7 @@ class AppFooter extends StatelessWidget {
             ),
             Text(
               '|',
-              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+              style: GoogleFonts.tajawal(color: Colors.white.withOpacity(0.5)),
             ),
             TextButton(
               onPressed: () {

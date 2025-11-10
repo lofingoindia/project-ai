@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sign_up_page.dart';
-import 'forgot_password_page.dart';
 import 'services/cart_service.dart';
 import 'services/localization_service.dart';
 
@@ -20,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final CartService _cartService = CartService();
   final LocalizationService _localizationService = LocalizationService();
   bool _loading = false;
+  bool _obscurePassword = true;
   String? _error;
 
   @override
@@ -30,18 +30,20 @@ class _LoginPageState extends State<LoginPage> {
     
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7FC),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 0, vertical: 40),
-          child: Directionality(
-            textDirection: _localizationService.textDirection,
-            child: Container(
-              width: containerWidth,
-              padding: EdgeInsets.symmetric(
-                vertical: isMobile ? 30 : 40, 
-                horizontal: isMobile ? 24 : 32
-              ),
-              decoration: BoxDecoration(
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 0, vertical: 40),
+              child: Directionality(
+                textDirection: _localizationService.textDirection,
+                child: Container(
+                  width: containerWidth,
+                  padding: EdgeInsets.symmetric(
+                    vertical: isMobile ? 30 : 40, 
+                    horizontal: isMobile ? 24 : 32
+                  ),
+                  decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
@@ -114,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       hintText: _localizationService.translate('login_page_password_hint'),
                       hintStyle: GoogleFonts.tajawal(color: Color(0xFF999999)),
@@ -133,6 +135,17 @@ class _LoginPageState extends State<LoginPage> {
                         borderSide: BorderSide(color: Color(0xFFB47AFF), width: 1.5),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Color(0xFF999999),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -169,29 +182,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => ForgotPasswordPage()),
-                        );
-                      },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Text(
-                        _localizationService.translate('login_page_forgot_password'),
-                        style: GoogleFonts.tajawal(
-                          color: Color(0xFFB47AFF),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -226,6 +216,24 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+      ),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 10,
+          left: _localizationService.textDirection == TextDirection.ltr ? 10 : null,
+          right: _localizationService.textDirection == TextDirection.rtl ? 10 : null,
+          child: IconButton(
+            icon: Icon(
+              _localizationService.textDirection == TextDirection.ltr 
+                ? Icons.arrow_back_ios 
+                : Icons.arrow_forward_ios,
+              color: Color(0xFF784D9C),
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ),
+        ],
       ),
     );
   }
