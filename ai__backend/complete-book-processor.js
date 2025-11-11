@@ -202,21 +202,23 @@ class CompleteBookPersonalizationService {
     const analysisPrompt = `
     You are an expert at analyzing children's book illustrations. Analyze this book page (page ${pageNumber + 1}) with extreme precision:
     
-    1. CHARACTER DETECTION (MOST IMPORTANT - MAIN HUMAN CHARACTER ONLY):
-       - Identify ONLY the MAIN HUMAN PROTAGONIST (the story's hero - must be a human, NOT an animal)
-       - DO NOT identify animals, pets, or non-human creatures as the main character
+    1. CHARACTER DETECTION (MOST IMPORTANT - DETECT ALL HUMAN CHARACTERS):
+       - Identify ALL HUMAN CHARACTERS on this page (children, people, NOT animals)
+       - Mark the MAIN/PRIMARY human character (the story's protagonist)
        - The main character is usually:
          * A human child or person
-         * Appears most frequently across the book
+         * The largest or most prominent human in the scene
          * Central to the story narrative
-         * The character the story is about
-       - For the MAIN HUMAN CHARACTER ONLY, describe:
+         * Appears consistently throughout the book
+       - For EACH HUMAN CHARACTER (main and secondary), describe:
          * Physical appearance (age, gender, hair color, hair style, clothing, distinctive features)
          * Position in the image (specific location: top-left, center, bottom-right, etc.)
          * Size relative to page (large/medium/small/tiny)
          * Facial expression and body language
-         * Is this the story's hero/main human character? (must be yes for replacement)
-       - List other characters (animals, side characters) but mark them as NOT for replacement
+         * isMainCharacter: true for the PRIMARY protagonist, false for others
+         * replaceWithChild: true for the main protagonist (largest human character), false for minor characters
+       - Mark isMainCharacter=true for the MOST PROMINENT HUMAN on the page
+       - List animals and pets separately, marked as isAnimal=true and NOT for replacement
     
     2. SCENE ANALYSIS:
        - What is happening in this scene? (action, interaction, event)
@@ -436,35 +438,60 @@ class CompleteBookPersonalizationService {
 
   /**
    * Map characters across all pages for replacement strategy
-   * Includes ALL pages - pages without main human characters will use original image
-   * Only maps the main HUMAN character (excludes animals and other items)
+   * Includes ALL pages - pages without human characters will use original image
+   * FLEXIBLE: Looks for any human character, not just strictly marked "main character"
    */
   async mapCharacterAcrossPages(bookPages, bookAnalysis) {
     const characterMapping = [];
     
     for (let i = 0; i < bookAnalysis.pages.length; i++) {
       const pageAnalysis = bookAnalysis.pages[i];
-      // Find main character that is human (not animal) and should be replaced
-      const mainCharacter = pageAnalysis.characters.find(char => 
+      
+      // STRATEGY 1: Try to find main character first
+      let characterToReplace = pageAnalysis.characters.find(char => 
         char.isMainCharacter && 
-        char.isHuman !== false && // Prefer human characters
-        char.isAnimal !== true && // Exclude animals
-        (char.replaceWithChild !== false) // Should be marked for replacement
+        char.isHuman !== false && 
+        char.isAnimal !== true && 
+        (char.replaceWithChild !== false)
       );
       
-      if (mainCharacter) {
-        // Page has main human character - will be processed
+      // STRATEGY 2: If no main character found, look for ANY human character (not animal)
+      // This handles cases where AI doesn't consistently mark "isMainCharacter" on every page
+      if (!characterToReplace && pageAnalysis.characters && pageAnalysis.characters.length > 0) {
+        characterToReplace = pageAnalysis.characters.find(char => 
+          char.isHuman !== false && 
+          char.isAnimal !== true &&
+          (char.replaceWithChild !== false) &&
+          // Look for human-like characteristics
+          (char.description?.toLowerCase().includes('child') ||
+           char.description?.toLowerCase().includes('boy') ||
+           char.description?.toLowerCase().includes('girl') ||
+           char.description?.toLowerCase().includes('person') ||
+           char.description?.toLowerCase().includes('kid'))
+        );
+      }
+      
+      // STRATEGY 3: If still no character, check if ANY character exists that's not explicitly marked as animal
+      if (!characterToReplace && pageAnalysis.characters && pageAnalysis.characters.length > 0) {
+        characterToReplace = pageAnalysis.characters.find(char => 
+          char.isAnimal !== true && // Not explicitly marked as animal
+          char.isHuman !== false && // Not explicitly marked as non-human
+          char.size && (char.size === 'large' || char.size === 'medium') // Has substantial presence
+        );
+      }
+      
+      if (characterToReplace) {
+        // Page has a human character - will be processed
         characterMapping.push({
           pageNumber: i + 1,
-          character: mainCharacter,
+          character: characterToReplace,
           replacementNeeded: true,
-          replacementStrategy: this.determineReplacementStrategy(mainCharacter, i),
+          replacementStrategy: this.determineReplacementStrategy(characterToReplace, i),
           pageImage: bookPages[i]
         });
-        console.log(`✅ Page ${i + 1}: Main human character found, will be processed`);
+        console.log(`✅ Page ${i + 1}: Human character found (${characterToReplace.isMainCharacter ? 'main' : 'secondary'}), will be processed`);
       } else {
-        // Page has no main human character - include it but mark as no replacement needed
-        // This ensures ALL pages are included in the final PDF
+        // Page has no detectable human character - include it but use original
         characterMapping.push({
           pageNumber: i + 1,
           character: null,
@@ -472,7 +499,7 @@ class CompleteBookPersonalizationService {
           replacementStrategy: null,
           pageImage: bookPages[i]
         });
-        console.log(`📄 Page ${i + 1}: No main human character found - will use original image (animals/background pages preserved)`);
+        console.log(`📄 Page ${i + 1}: No human character detected - will use original image (text/background/animal page)`);
       }
     }
     
