@@ -76,7 +76,8 @@ class CompleteBookPersonalizationService {
       throw new Error('GOOGLE_AI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-    this.model = "gemini-2.5-flash";
+    this.model = "gemini-2.5-flash"; // For text analysis tasks
+    this.imageModel = "gemini-2.5-flash-image-preview"; // For image generation tasks
     this.maxRetries = 5; // Retry failed API calls (increased from 3)
     this.retryDelay = 3000; // 3 seconds base delay between retries (increased from 2)
     this.pdfExtractor = new PDFExtractor();
@@ -150,6 +151,13 @@ class CompleteBookPersonalizationService {
         console.log(`   📝 Pages to preserve: [${pagesToPreserve.join(', ')}]`);
       }
       
+      // Step 2.5: Analyze child image ONCE (same as cover generation) - reuse throughout PDF
+      console.log('👶 Step 2.5: Analyzing child image (will be reused for all pages)...');
+      const childFeatures = await this._analyzeChildImage(childImage, childName);
+      console.log('✅ Child analysis complete - will be used consistently across all pages');
+      console.log(`   Child name: ${childFeatures.name}`);
+      console.log(`   Key features: ${childFeatures.features}`);
+      
       // Step 3: Process pages in batches
       console.log('🔄 Step 3: Processing pages in batches...');
       const processedPages = await this.processPagesInBatches(
@@ -157,6 +165,7 @@ class CompleteBookPersonalizationService {
         characterMapping,
         childImage,
         childName,
+        childFeatures, // Pass pre-analyzed child features
         options
       );
       console.log('✅ All pages processed');
@@ -721,8 +730,9 @@ class CompleteBookPersonalizationService {
    * Process all pages in batches for efficiency
    * IMPORTANT: Each page is processed individually to maintain 1:1 mapping
    * (one page = one processed image)
+   * Uses pre-analyzed child features for consistency (same as cover generation)
    */
-  async processPagesInBatches(bookPages, characterMapping, childImage, childName, options) {
+  async processPagesInBatches(bookPages, characterMapping, childImage, childName, childFeatures, options) {
     const batchSize = options.batchSize || 3;
     const processedPages = [];
     
@@ -778,7 +788,7 @@ class CompleteBookPersonalizationService {
           // Rate limit: wait before making request
           await this.rateLimiter.waitBeforeRequest();
           
-          const result = await this.processPage(mapping, childImage, childName, previousPage);
+          const result = await this.processPage(mapping, childImage, childName, childFeatures, previousPage);
           batchResults.push(result);
           
           // Log result
@@ -1093,12 +1103,12 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
 
   /**
    * Process a single page with character replacement (with retry logic)
-   * Uses the same approach as cover generation: analyze → generate prompt → generate image
+   * Uses the same approach as cover generation: use pre-analyzed child features → generate prompt → generate image
    * IMPORTANT: This function processes ONE page and returns ONE image
    * Ensures 1:1 mapping (one page = one processed image)
-   * Maintains consistent character appearance across all pages
+   * Maintains consistent character appearance across all pages using pre-analyzed child features
    */
-  async processPage(characterMapping, childImage, childName, previousPage = null) {
+  async processPage(characterMapping, childImage, childName, childFeatures, previousPage = null) {
     const { character, pageImage, pageNumber, replacementNeeded } = characterMapping;
     
     // Validate: Ensure we have valid page image
@@ -1129,13 +1139,13 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         // Get prompt (use dynamic if available, otherwise static)
-        // Step 1-3: Analyze child image and generate dynamic prompt (similar to cover generator)
+        // Use pre-analyzed child features (same as cover generation) - no need to re-analyze
         let prompt;
         try {
-          // Step 1: Analyze child image (similar to cover generator)
-          console.log(`👶 Analyzing child image for page ${pageNumber}...`);
-          const childFeatures = await this._analyzeChildImage(childImage, childName);
-          console.log(`✅ Child analysis complete for page ${pageNumber}`);
+          // Step 1: Use pre-analyzed child features (already done once at the start - same as cover generation)
+          console.log(`👶 Using pre-analyzed child features for page ${pageNumber} (consistent across all pages)...`);
+          console.log(`   Child name: ${childFeatures.name}`);
+          console.log(`   Key features: ${childFeatures.features}`);
 
           // Step 2: Get page analysis (already done during analyzeCompleteBook)
           // We'll use the character mapping data as page analysis
@@ -1147,7 +1157,8 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
           };
 
           // Step 3: Generate dynamic prompt using AI (similar to cover generator)
-          console.log(`🤖 Generating AI prompt for page ${pageNumber}...`);
+          // Uses the same child analysis that was used for cover generation
+          console.log(`🤖 Generating AI prompt for page ${pageNumber} using consistent child analysis...`);
           prompt = await this._generateDynamicPagePrompt(
             pageAnalysis,
             childFeatures,
@@ -1158,7 +1169,7 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
           console.log(`✅ AI prompt generated for page ${pageNumber}`);
           console.log(`📝 Prompt preview: ${prompt.substring(0, 200)}...`);
         } catch (promptError) {
-          // If analysis or prompt generation fails, fall back to static prompt
+          // If prompt generation fails, fall back to static prompt (still uses pre-analyzed child features)
           console.warn(`⚠️  Using static prompt for page ${pageNumber} due to error:`, promptError.message);
           prompt = this.generatePagePrompt(characterMapping, childName, previousPage);
         }
@@ -1174,7 +1185,8 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
         // Rate limit: wait before making request
         await this.rateLimiter.waitBeforeRequest();
         
-        const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
+        // Use image generation model (not text model) for image generation
+        const generativeModel = this.genAI.getGenerativeModel({ model: this.imageModel });
         
         // Prepare multi-image input with prompt (same as cover generator)
         const contents = [{
