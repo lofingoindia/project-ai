@@ -519,7 +519,7 @@ class CompleteBookPersonalizationService {
         // Process each page individually - ONE PAGE = ONE IMAGE
         // Pass previous page reference to maintain consistency
         // Get the last successfully processed page from all previous batches
-        const lastProcessedPage = processedPages.length > 0 
+        let lastProcessedPage = processedPages.length > 0 
           ? processedPages[processedPages.length - 1] 
           : null;
         
