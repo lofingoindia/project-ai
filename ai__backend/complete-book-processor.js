@@ -528,14 +528,15 @@ class CompleteBookPersonalizationService {
         console.log(`⚠️  Page ${i + 1}: FORCE PROCESSING - using first available character from analysis`);
       }
       
-      // STRATEGY 6: ULTIMATE FALLBACK - Force process any page that doesn't explicitly have errors
-      if (!characterToReplace && !pageAnalysis.error) {
-        console.warn(`⚠️  Page ${i + 1}: ULTIMATE FALLBACK - creating default character for processing`);
+      // STRATEGY 6: ULTIMATE FALLBACK - FORCE PROCESS ALL PAGES
+      // Process EVERY page unless it has explicit errors or is marked as text-only
+      if (!characterToReplace) {
+        console.warn(`⚠️  Page ${i + 1}: FORCE PROCESSING ALL PAGES - creating default character`);
         characterToReplace = {
           isMainCharacter: true,
           isHuman: true,
           isAnimal: false,
-          description: "main character (forced processing)",
+          description: "main character (forced processing - all pages)",
           position: "center",
           size: "medium",
           emotion: "neutral",
@@ -545,42 +546,54 @@ class CompleteBookPersonalizationService {
         };
       }
       
-      if (characterToReplace) {
-        // Page has a character to replace - will be processed
-        const pageImageData = bookPages[i];
-        const imagePreview = pageImageData ? `${pageImageData.substring(0, 50)}... (${pageImageData.length} chars)` : 'MISSING IMAGE DATA!';
-        
-        characterMapping.push({
-          pageNumber: i + 1,
-          character: characterToReplace,
-          replacementNeeded: true,
-          replacementStrategy: this.determineReplacementStrategy(characterToReplace, i),
-          pageImage: pageImageData
-        });
-        console.log(`✅ Page ${i + 1}: Character found (${characterToReplace.isMainCharacter ? 'main' : 'secondary/fallback'}), will be processed`);
-        console.log(`   📷 Page ${i + 1} image: ${imagePreview}`);
-      } else {
-        // Page has no detectable character to replace - include it but use original
-        const pageImageData = bookPages[i];
-        const imagePreview = pageImageData ? `${pageImageData.substring(0, 50)}... (${pageImageData.length} chars)` : 'MISSING IMAGE DATA!';
-        
-        characterMapping.push({
-          pageNumber: i + 1,
-          character: null,
-          replacementNeeded: false,
-          replacementStrategy: null,
-          pageImage: pageImageData
-        });
-        console.log(`📄 Page ${i + 1}: No processable character detected - will use original image (text/background/animal-only page)`);
-        console.log(`   📷 Page ${i + 1} image: ${imagePreview}`);
+      // At this point, characterToReplace MUST exist due to Strategy 6 fallback
+      // Every page will be processed
+      const pageImageData = bookPages[i];
+      const imagePreview = pageImageData ? `${pageImageData.substring(0, 50)}... (${pageImageData.length} chars)` : 'MISSING IMAGE DATA!';
+      
+      if (!characterToReplace) {
+        // This should NEVER happen due to Strategy 6, but just in case
+        console.error(`❌ CRITICAL: Page ${i + 1} has no character despite fallback strategies!`);
+        console.error(`   This should never happen. Creating emergency fallback character.`);
+        characterToReplace = {
+          isMainCharacter: true,
+          isHuman: true,
+          isAnimal: false,
+          description: "emergency fallback character",
+          position: "center",
+          size: "medium",
+          emotion: "neutral",
+          pose: "standing",
+          replaceWithChild: true,
+          replacementDifficulty: "medium"
+        };
       }
+      
+      // ALL pages will be processed
+      characterMapping.push({
+        pageNumber: i + 1,
+        character: characterToReplace,
+        replacementNeeded: true, // ALWAYS true - process ALL pages
+        replacementStrategy: this.determineReplacementStrategy(characterToReplace, i),
+        pageImage: pageImageData
+      });
+      
+      console.log(`✅ Page ${i + 1}: Character assigned (${characterToReplace.isMainCharacter ? 'main' : 'fallback'}), WILL BE PROCESSED`);
+      console.log(`   📷 Page ${i + 1} image: ${imagePreview}`);
     }
     
     const replacementCount = characterMapping.filter(m => m.replacementNeeded).length;
-    console.log(`📊 Character mapping complete: ${characterMapping.length} total pages, ${replacementCount} pages need replacement`);
+    console.log(`📊 Character mapping complete: ${characterMapping.length} total pages`);
+    console.log(`✅ ALL ${replacementCount} pages will be processed with face replacement`);
     
-    if (replacementCount < characterMapping.length * 0.5) {
-      console.warn(`⚠️  Warning: Less than 50% of pages marked for replacement (${replacementCount}/${characterMapping.length}). This may indicate detection issues.`);
+    // Verify ALL pages are being processed
+    if (replacementCount !== characterMapping.length) {
+      console.error(`❌ CRITICAL ERROR: Not all pages marked for processing!`);
+      console.error(`   Expected: ${characterMapping.length}, Got: ${replacementCount}`);
+      const skippedPages = characterMapping.filter(m => !m.replacementNeeded).map(m => m.pageNumber);
+      console.error(`   Skipped pages: [${skippedPages.join(', ')}] - THIS SHOULD NOT HAPPEN!`);
+    } else {
+      console.log(`✅ Verified: 100% of pages (${replacementCount}/${characterMapping.length}) will be processed`);
     }
     
     return characterMapping;
@@ -746,31 +759,22 @@ class CompleteBookPersonalizationService {
       throw new Error(`No page image provided for page ${pageNumber}`);
     }
     
-    // If no replacement needed (page has no main human character), return original
-    if (!replacementNeeded || !character) {
-      console.log(`📄 Page ${pageNumber}: No replacement needed - using original image`);
-      return {
-        pageNumber,
-        processedImage: pageImage, // Use original image
-        pageImage: pageImage, // Also include pageImage for compatibility
-        success: true, // Mark as success since we're intentionally using original
-        character: null,
-        attempts: 0,
-        note: 'No main human character - original page preserved'
-      };
+    // Validate: Ensure character exists (should ALWAYS exist now due to fallback strategies)
+    if (!character) {
+      console.error(`❌ CRITICAL: Page ${pageNumber} has no character! This should never happen.`);
+      throw new Error(`No character data for page ${pageNumber}`);
     }
     
-    // Validate: Ensure character is human (not animal)
+    // Validate: Ensure replacementNeeded is true (should ALWAYS be true now)
+    if (!replacementNeeded) {
+      console.error(`❌ CRITICAL: Page ${pageNumber} marked as no replacement needed! This should never happen.`);
+      console.error(`   Forcing processing anyway...`);
+    }
+    
+    // Check if character is explicitly marked as animal
     if (character.isAnimal === true) {
-      console.warn(`⚠️  Page ${pageNumber}: Character is an animal, using original`);
-      return {
-        pageNumber,
-        processedImage: pageImage, // Use original if it's an animal
-        success: true, // Mark as success since we're intentionally using original
-        error: 'Character is an animal, not replaced',
-        character: character.description,
-        attempts: 0
-      };
+      console.warn(`⚠️  Page ${pageNumber}: Character marked as animal, but will still process`);
+      console.warn(`   This may not produce good results, but processing all pages as requested`);
     }
     
     // Retry logic for failed image generation
