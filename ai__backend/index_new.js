@@ -69,7 +69,7 @@ async function generateImageFromPrompt(prompt, inputImageBase64) {
         console.log(`🎨 Generating image with prompt: ${prompt.substring(0, 100)}...`);
         
         // Use the same model as your working Python API
-        const model = "gemini-2.5-flash-image-preview";
+        const model = "gemini-2.5-flash";
         
         // Prepare the content exactly like your Python API
         const contents = [

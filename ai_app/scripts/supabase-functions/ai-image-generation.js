@@ -68,7 +68,7 @@ serve(async (req) => {
     const prompt = `Replace the kids face in the book cover with the attached reference image. Keep the face, hairstyle, features, and camera angle exactly the same as in the reference image without any changes. The background and context must remain unchanged, and the final image should look perfectly realistic and clearly identifiable as the same kid, and even there is a text change that text into ${childName} into lofingo keep face 100% same.`
 
     console.log('Calling Gemini AI...')
-    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${geminiApiKey}`, {
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

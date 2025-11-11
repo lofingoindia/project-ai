@@ -7,16 +7,85 @@ const fs = require('fs');
 const path = require('path');
 const PDFExtractor = require('./pdf-extractor');
 
+/**
+ * Rate Limiter to prevent API overload
+ * Ensures requests are spaced out to avoid hitting rate limits
+ */
+class RateLimiter {
+  constructor(minDelayMs = 2000, maxDelayMs = 10000) {
+    this.minDelayMs = minDelayMs; // Minimum delay between requests
+    this.maxDelayMs = maxDelayMs; // Maximum delay (adaptive)
+    this.currentDelay = minDelayMs;
+    this.lastRequestTime = 0;
+    this.consecutive503Errors = 0; // Track 503 errors for adaptive backoff
+  }
+
+  /**
+   * Wait before making next request (rate limiting)
+   */
+  async waitBeforeRequest() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    // If enough time has passed, use current delay
+    // Otherwise, wait for the remaining time plus current delay
+    if (timeSinceLastRequest < this.currentDelay) {
+      const waitTime = this.currentDelay - timeSinceLastRequest;
+      console.log(`⏳ Rate limiter: waiting ${Math.round(waitTime)}ms before next request`);
+      await this.sleep(waitTime);
+    }
+    
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * Increase delay when 503 errors are detected (adaptive backoff)
+   */
+  handle503Error() {
+    this.consecutive503Errors++;
+    // Increase delay exponentially when 503 errors occur
+    this.currentDelay = Math.min(
+      this.minDelayMs * Math.pow(2, this.consecutive503Errors),
+      this.maxDelayMs
+    );
+    console.log(`⚠️  Rate limiter: 503 error detected. Increasing delay to ${Math.round(this.currentDelay)}ms (consecutive 503s: ${this.consecutive503Errors})`);
+  }
+
+  /**
+   * Reset delay when requests succeed (gradual recovery)
+   */
+  handleSuccess() {
+    if (this.consecutive503Errors > 0) {
+      // Gradually reduce delay back to minimum
+      this.consecutive503Errors = Math.max(0, this.consecutive503Errors - 1);
+      this.currentDelay = Math.max(
+        this.minDelayMs,
+        this.minDelayMs * Math.pow(2, this.consecutive503Errors)
+      );
+    }
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
 class CompleteBookPersonalizationService {
   constructor() {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('GOOGLE_AI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-    this.model = "gemini-2.5-flash-image-preview";
+    this.model = "gemini-2.5-flash";
     this.maxRetries = 5; // Retry failed API calls (increased from 3)
     this.retryDelay = 3000; // 3 seconds base delay between retries (increased from 2)
     this.pdfExtractor = new PDFExtractor();
+    
+    // Rate limiting configuration
+    this.rateLimiter = new RateLimiter(2000, 15000); // 2-15 seconds between requests
+    this.pageAnalysisDelay = 2000; // 2 seconds between page analyses
+    this.pageProcessingDelay = 2000; // 2 seconds between page processing
+    this.batchDelay = 3000; // 3 seconds between batches
   }
 
   /**
@@ -135,19 +204,39 @@ class CompleteBookPersonalizationService {
       const page = bookPages[i];
       console.log(`📄 Analyzing page ${i + 1}/${bookPages.length}`);
       
+      // Rate limit: wait before making request
+      await this.rateLimiter.waitBeforeRequest();
+      
       try {
         const pageAnalysis = await this.analyzePage(page, i);
         analysisResults.push(pageAnalysis);
+        this.rateLimiter.handleSuccess(); // Track successful request
         
-        // Add small delay to avoid rate limiting
-        await this.sleep(100);
+        // Add delay between page analyses to avoid rate limiting
+        if (i < bookPages.length - 1) {
+          console.log(`⏳ Waiting ${this.pageAnalysisDelay}ms before next page analysis...`);
+          await this.sleep(this.pageAnalysisDelay);
+        }
       } catch (error) {
+        // Check if it's a 503 error and update rate limiter
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('503') ? 503 : null);
+        if (errorStatus === 503) {
+          this.rateLimiter.handle503Error();
+        }
+        
         console.error(`❌ Failed to analyze page ${i + 1}:`, error);
         // Use proper fallback analysis with character data (so page will be processed)
         const fallbackAnalysis = this.createFallbackAnalysis(i);
         fallbackAnalysis.error = error.message;
         analysisResults.push(fallbackAnalysis);
         console.log(`⚠️  Using fallback analysis for page ${i + 1} - will attempt face replacement`);
+        
+        // Add extra delay after error before next page
+        if (i < bookPages.length - 1) {
+          const errorDelay = errorStatus === 503 ? this.pageAnalysisDelay * 2 : this.pageAnalysisDelay;
+          console.log(`⏳ Waiting ${errorDelay}ms after error before next page analysis...`);
+          await this.sleep(errorDelay);
+        }
       }
     }
     
@@ -179,6 +268,11 @@ class CompleteBookPersonalizationService {
           console.error(`   Error status: ${errorStatus}`);
         }
         
+        // If 503 error, update rate limiter for adaptive backoff
+        if (errorStatus === 503) {
+          this.rateLimiter.handle503Error();
+        }
+        
         // If this was the last attempt or error is not retryable, return fallback
         if (attempt === this.maxRetries || !isRetryable) {
           if (!isRetryable) {
@@ -191,11 +285,17 @@ class CompleteBookPersonalizationService {
         
         // Wait before retrying (exponential backoff with jitter)
         // Exponential backoff: 3s, 6s, 12s, 24s, 48s
-        const delay = this.retryDelay * Math.pow(2, attempt - 1);
-        // Add random jitter (0-1s) to avoid thundering herd
-        const jitter = Math.random() * 1000;
+        // For 503 errors, use longer delays
+        let baseDelay = this.retryDelay;
+        if (errorStatus === 503) {
+          // Use rate limiter's current delay as base for 503 errors
+          baseDelay = Math.max(this.retryDelay, this.rateLimiter.currentDelay);
+        }
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        // Add random jitter (0-2s) to avoid thundering herd
+        const jitter = Math.random() * 2000;
         const totalDelay = delay + jitter;
-        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff)...`);
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff${errorStatus === 503 ? ' + 503 adaptive delay' : ''})...`);
         await this.sleep(totalDelay);
       }
     }
@@ -297,6 +397,9 @@ class CompleteBookPersonalizationService {
     
     console.log(`🔍 Analyzing page ${pageNumber + 1} (attempt ${attempt}/${this.maxRetries})...`);
     
+    // Strip data URI prefix if present (Google API expects only base64 string)
+    const cleanPageImage = this._stripDataUriPrefix(pageImage);
+    
     const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
     const result = await generativeModel.generateContent({
       contents: [{
@@ -304,7 +407,7 @@ class CompleteBookPersonalizationService {
         parts: [
           {
             inlineData: {
-              data: pageImage,
+              data: cleanPageImage,
               mimeType: "image/jpeg"
             }
           },
@@ -672,19 +775,33 @@ class CompleteBookPersonalizationService {
           console.log(`  📄 Processing page ${mapping.pageNumber}${needsReplacement ? ' (face replacement)' : ' (original preserved)'}`);
           console.log(`     Image data: ${pageImagePreview} (${mapping.pageImage ? mapping.pageImage.length : 0} chars)`);
           
+          // Rate limit: wait before making request
+          await this.rateLimiter.waitBeforeRequest();
+          
           const result = await this.processPage(mapping, childImage, childName, previousPage);
           batchResults.push(result);
           
           // Log result
           if (result.success) {
             console.log(`     ✅ Page ${mapping.pageNumber} processed successfully`);
+            this.rateLimiter.handleSuccess(); // Track successful request
           } else {
             console.log(`     ⚠️  Page ${mapping.pageNumber} processing issue: ${result.error || result.note || 'unknown'}`);
+            // Check if it's a 503 error
+            if (result.error && (result.error.includes('503') || result.error.includes('overloaded'))) {
+              this.rateLimiter.handle503Error();
+            }
           }
           
           // Update lastProcessedPage if this was a successful face replacement
           if (result.success && result.character && !result.note) {
             lastProcessedPage = result;
+          }
+          
+          // Add delay between pages within batch to avoid rate limiting
+          if (batchIdx < batch.length - 1) {
+            console.log(`     ⏳ Waiting ${this.pageProcessingDelay}ms before next page in batch...`);
+            await this.sleep(this.pageProcessingDelay);
           }
         }
         
@@ -704,8 +821,8 @@ class CompleteBookPersonalizationService {
         
         // Add delay between batches to avoid rate limiting
         if (i + batchSize < characterMapping.length) {
-          console.log(`⏳ Waiting 1 second before next batch...`);
-          await this.sleep(1000);
+          console.log(`⏳ Waiting ${this.batchDelay}ms before next batch...`);
+          await this.sleep(this.batchDelay);
         }
         
       } catch (error) {
@@ -746,7 +863,237 @@ class CompleteBookPersonalizationService {
   }
 
   /**
+   * Analyze child's image to extract key features (similar to cover generator)
+   */
+  async _analyzeChildImage(childImageBase64, childName) {
+    // Retry logic for API calls
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        // Rate limit: wait before making request
+        await this.rateLimiter.waitBeforeRequest();
+        
+        const model = this.genAI.getGenerativeModel({
+          model: this.model,
+        });
+
+        const analysisPrompt = `Analyze this child's photo and describe:
+1. Physical appearance (hair color, hair style, eye color, skin tone)
+2. Approximate age and gender (if determinable)
+3. Facial features (round face, oval face, etc.)
+4. Expression and mood
+5. Clothing or accessories visible
+
+Child's name: ${childName || "N/A"}
+
+Provide detailed but natural descriptions suitable for creating an illustrated character. Focus on features that need to remain consistent across all pages of a book.`;
+
+        console.log(`👶 Analyzing child image for page processing (attempt ${attempt}/${this.maxRetries})...`);
+
+        // Strip data URI prefix if present
+        const cleanChildImage = this._stripDataUriPrefix(childImageBase64);
+
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              data: cleanChildImage,
+              mimeType: "image/jpeg",
+            },
+          },
+          analysisPrompt,
+        ]);
+
+        const response = await result.response;
+        const analysisText = response.text();
+
+        console.log(`✅ Child analysis successful${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+        this.rateLimiter.handleSuccess(); // Track successful request
+
+        return {
+          name: childName || "the child",
+          appearance: analysisText,
+          features: this._extractKeyFeatures(analysisText),
+        };
+      } catch (error) {
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
+        
+        console.error(`❌ Child analysis failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
+        }
+        
+        // If 503 error, update rate limiter for adaptive backoff
+        if (errorStatus === 503) {
+          this.rateLimiter.handle503Error();
+        }
+        
+        // If this was the last attempt or error is not retryable, return default
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.warn(`⚠️  Non-retryable error, using default child features`);
+          } else {
+            console.warn(`⚠️  Using default child features after ${this.maxRetries} failed attempts`);
+          }
+          return {
+            name: childName || "the child",
+            appearance: "a young child",
+            features: "happy and friendly",
+          };
+        }
+        
+        // Wait before retrying (exponential backoff with jitter)
+        let baseDelay = this.retryDelay;
+        if (errorStatus === 503) {
+          baseDelay = Math.max(this.retryDelay, this.rateLimiter.currentDelay);
+        }
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 2000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff${errorStatus === 503 ? ' + 503 adaptive delay' : ''})...`);
+        await this.sleep(totalDelay);
+      }
+    }
+  }
+
+  /**
+   * Extract key features from child analysis text (helper method)
+   */
+  _extractKeyFeatures(analysisText) {
+    const features = [];
+    const featureKeywords = ["hair", "eyes", "smile", "face", "skin"];
+    const lowerText = analysisText.toLowerCase();
+
+    for (const keyword of featureKeywords) {
+      const regex = new RegExp(`([^.]*${keyword}[^.]*)`, "i");
+      const match = analysisText.match(regex);
+      if (match) {
+        features.push(match[1].trim());
+      }
+    }
+
+    return features.length > 0 ? features.join(", ") : "distinctive features";
+  }
+
+  /**
+   * Generate dynamic prompt for page processing using AI (similar to cover generator)
+   * This makes the prompt truly adaptive and intelligent
+   */
+  async _generateDynamicPagePrompt(pageAnalysis, childFeatures, characterMapping, childName, previousPageReference = null) {
+    // Retry logic for API calls
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        // Rate limit: wait before making request
+        await this.rateLimiter.waitBeforeRequest();
+        
+        const model = this.genAI.getGenerativeModel({
+          model: this.model,
+        });
+
+        const { character, pageNumber } = characterMapping;
+        const consistencyNote = previousPageReference 
+          ? `CRITICAL CONSISTENCY: ${childName} must look EXACTLY the same as in previous pages - SAME EXACT SKIN TONE (do not change color), same face, same hair color, same eye color, same distinctive facial features.`
+          : `CRITICAL CONSISTENCY: This is part of a complete book. ${childName} must have IDENTICAL appearance across ALL pages - SAME EXACT SKIN TONE on every page (copy from reference photo), same face, same hair, same distinctive features.`;
+
+        // Use AI to create the perfect prompt based on analysis
+        const metaPrompt = `You are an expert AI prompt engineer specializing in children's book page personalization with face replacement.
+
+Based on the following analysis data, create a precise and detailed prompt for an AI image generator to replace the main character's face on a book page.
+
+PAGE ANALYSIS (Page ${pageNumber}):
+${JSON.stringify(pageAnalysis, null, 2)}
+
+Key character details:
+- Description: ${character.description}
+- Position: ${character.position}
+- Size: ${character.size}
+- Emotion: ${character.emotion}
+- Pose: ${character.pose}
+- Replacement difficulty: ${character.replacementDifficulty || 'medium'}
+
+CHILD'S APPEARANCE:
+${childFeatures.appearance}
+- Name: ${childName}
+- Key Features: ${childFeatures.features}
+
+CONSISTENCY REQUIREMENTS:
+${consistencyNote}
+
+TASK:
+Generate a detailed prompt for replacing ONLY the main human character's FACE on this book page. The prompt should:
+
+1. Specify EXACTLY how to preserve the original page 100% (text, background, other characters, layout)
+2. Describe precisely how to replace ONLY the face with ${childName}'s face from the reference photo
+3. Detail which elements to keep identical (everything except the face)
+4. Explain how to maintain the EXACT same skin tone from the reference photo
+5. Ensure the face replacement is seamless and undetectable
+6. Maintain character consistency across all pages
+7. Preserve all headwear, accessories, and clothing exactly as they are
+
+CRITICAL REQUIREMENTS:
+- This is a FACE REPLACEMENT task, NOT a page regeneration task
+- ONLY replace the main human character's FACE (nothing else)
+- Use the EXACT skin tone from the child reference photo
+- Preserve ALL text, background, other characters, and layout exactly
+- Keep headwear, hats, crowns, helmets exactly as they appear
+- The output must look like the original page with ONLY the face replaced
+
+Generate a comprehensive, technical prompt that an AI image generator can use to create a seamless face replacement. Be specific about what to preserve and what to replace.
+
+Respond ONLY with the prompt itself - no explanations or meta-text.`;
+
+        console.log(`🤖 Generating AI prompt for page ${pageNumber} (attempt ${attempt}/${this.maxRetries})...`);
+
+        const result = await model.generateContent(metaPrompt);
+        const response = await result.response;
+        const generatedPrompt = response.text().trim();
+
+        console.log(`✅ AI prompt generated successfully for page ${pageNumber}${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+        console.log("📝 Prompt preview:");
+        console.log(generatedPrompt.substring(0, 200) + "...");
+        this.rateLimiter.handleSuccess(); // Track successful request
+
+        return generatedPrompt;
+      } catch (error) {
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
+        
+        console.error(`❌ AI prompt generation failed for page ${characterMapping.pageNumber} (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
+        }
+        
+        // If 503 error, update rate limiter for adaptive backoff
+        if (errorStatus === 503) {
+          this.rateLimiter.handle503Error();
+        }
+        
+        // If this was the last attempt or error is not retryable, use fallback
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.warn(`⚠️  Non-retryable error, using fallback prompt for page ${characterMapping.pageNumber}`);
+          } else {
+            console.warn(`⚠️  Using fallback prompt for page ${characterMapping.pageNumber} after ${this.maxRetries} failed attempts`);
+          }
+          return this.generatePagePrompt(characterMapping, childName, previousPageReference);
+        }
+        
+        // Wait before retrying (exponential backoff with jitter)
+        let baseDelay = this.retryDelay;
+        if (errorStatus === 503) {
+          baseDelay = Math.max(this.retryDelay, this.rateLimiter.currentDelay);
+        }
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 2000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff${errorStatus === 503 ? ' + 503 adaptive delay' : ''})...`);
+        await this.sleep(totalDelay);
+      }
+    }
+  }
+
+  /**
    * Process a single page with character replacement (with retry logic)
+   * Uses the same approach as cover generation: analyze → generate prompt → generate image
    * IMPORTANT: This function processes ONE page and returns ONE image
    * Ensures 1:1 mapping (one page = one processed image)
    * Maintains consistent character appearance across all pages
@@ -776,15 +1123,56 @@ class CompleteBookPersonalizationService {
       console.warn(`⚠️  Page ${pageNumber}: Character marked as animal, but will still process`);
       console.warn(`   This may not produce good results, but processing all pages as requested`);
     }
-    
+
+    // Step 4: Generate the image (same as cover generator)
     // Retry logic for failed image generation
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        const prompt = this.generatePagePrompt(characterMapping, childName, previousPage);
+        // Get prompt (use dynamic if available, otherwise static)
+        // Step 1-3: Analyze child image and generate dynamic prompt (similar to cover generator)
+        let prompt;
+        try {
+          // Step 1: Analyze child image (similar to cover generator)
+          console.log(`👶 Analyzing child image for page ${pageNumber}...`);
+          const childFeatures = await this._analyzeChildImage(childImage, childName);
+          console.log(`✅ Child analysis complete for page ${pageNumber}`);
+
+          // Step 2: Get page analysis (already done during analyzeCompleteBook)
+          // We'll use the character mapping data as page analysis
+          const pageAnalysis = {
+            pageNumber: pageNumber,
+            character: character,
+            scene: characterMapping.replacementStrategy || {},
+            replacementGuidance: characterMapping.replacementGuidance || {}
+          };
+
+          // Step 3: Generate dynamic prompt using AI (similar to cover generator)
+          console.log(`🤖 Generating AI prompt for page ${pageNumber}...`);
+          prompt = await this._generateDynamicPagePrompt(
+            pageAnalysis,
+            childFeatures,
+            characterMapping,
+            childName,
+            previousPage
+          );
+          console.log(`✅ AI prompt generated for page ${pageNumber}`);
+          console.log(`📝 Prompt preview: ${prompt.substring(0, 200)}...`);
+        } catch (promptError) {
+          // If analysis or prompt generation fails, fall back to static prompt
+          console.warn(`⚠️  Using static prompt for page ${pageNumber} due to error:`, promptError.message);
+          prompt = this.generatePagePrompt(characterMapping, childName, previousPage);
+        }
+        
+        console.log(`📸 Image order: 1) Child reference photo, 2) PDF page to edit`);
         
         console.log(`🎨 Processing page ${pageNumber} → generating 1 image (attempt ${attempt}/${this.maxRetries})...`);
-        console.log(`📝 Prompt preview: ${prompt.substring(0, 200)}...`);
-        console.log(`📸 Image order: 1) Child reference photo, 2) PDF page to edit`);
+        
+        // Strip data URI prefix if present (Google API expects only base64 string)
+        const cleanChildImage = this._stripDataUriPrefix(childImage);
+        const cleanPageImage = this._stripDataUriPrefix(pageImage);
+        
+        // Rate limit: wait before making request
+        await this.rateLimiter.waitBeforeRequest();
         
         const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
         
@@ -794,13 +1182,13 @@ class CompleteBookPersonalizationService {
           parts: [
             {
               inlineData: {
-                data: childImage,
+                data: cleanChildImage,
                 mimeType: "image/jpeg"
               }
             },
             {
               inlineData: {
-                data: pageImage,
+                data: cleanPageImage,
                 mimeType: "image/jpeg"
               }
             },
@@ -827,6 +1215,7 @@ class CompleteBookPersonalizationService {
                 if (part.inlineData?.data) {
                   generatedImageData = part.inlineData.data;
                   console.log(`✅ Page ${pageNumber} generated (streaming): ${generatedImageData.length} bytes${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+                  this.rateLimiter.handleSuccess(); // Track successful request
                   return {
                     pageNumber,
                     processedImage: generatedImageData,
@@ -857,6 +1246,7 @@ class CompleteBookPersonalizationService {
                 if (part.inlineData?.data) {
                   generatedImageData = part.inlineData.data;
                   console.log(`✅ Page ${pageNumber} generated (fallback): ${generatedImageData.length} bytes${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+                  this.rateLimiter.handleSuccess(); // Track successful request
                   return {
                     pageNumber,
                     processedImage: generatedImageData,
@@ -881,6 +1271,11 @@ class CompleteBookPersonalizationService {
           console.error(`   Error status: ${errorStatus}`);
         }
         
+        // If 503 error, update rate limiter for adaptive backoff
+        if (errorStatus === 503) {
+          this.rateLimiter.handle503Error();
+        }
+        
         // If this was the last attempt or error is not retryable, return with original image
         if (attempt === this.maxRetries || !isRetryable) {
           if (!isRetryable) {
@@ -900,10 +1295,17 @@ class CompleteBookPersonalizationService {
         }
         
         // Wait before retrying (exponential backoff with jitter)
-        const delay = this.retryDelay * Math.pow(2, attempt - 1);
-        const jitter = Math.random() * 1000;
+        // For 503 errors, use longer delays based on rate limiter
+        let baseDelay = this.retryDelay;
+        if (errorStatus === 503) {
+          // Use rate limiter's current delay as base for 503 errors
+          baseDelay = Math.max(this.retryDelay, this.rateLimiter.currentDelay);
+        }
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        // Add random jitter (0-2s) to avoid thundering herd
+        const jitter = Math.random() * 2000;
         const totalDelay = delay + jitter;
-        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff)...`);
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry (exponential backoff${errorStatus === 503 ? ' + 503 adaptive delay' : ''})...`);
         await this.sleep(totalDelay);
       }
     }
@@ -1130,6 +1532,21 @@ class CompleteBookPersonalizationService {
     
     // Default: retry on unknown errors (could be temporary)
     return true;
+  }
+
+  /**
+   * Strip data URI prefix from base64 image data if present
+   * Google API expects only the base64 string, not the data URI format
+   * @param {string} imageData - Base64 image data (may include data URI prefix)
+   * @returns {string} - Clean base64 string without prefix
+   */
+  _stripDataUriPrefix(imageData) {
+    if (!imageData || typeof imageData !== 'string') {
+      return imageData;
+    }
+    
+    // Remove data URI prefix if present (e.g., "data:image/jpeg;base64,")
+    return imageData.replace(/^data:image\/\w+;base64,/, '');
   }
 
   /**
