@@ -783,59 +783,90 @@ class CompleteBookPersonalizationService {
         console.log(`📸 Image order: 1) Child reference photo, 2) PDF page to edit`);
         
         const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
-        const result = await generativeModel.generateContent({
-          contents: [{
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  data: childImage,
-                  mimeType: "image/jpeg"
+        
+        // Prepare multi-image input with prompt (same as cover generator)
+        const contents = [{
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                data: childImage,
+                mimeType: "image/jpeg"
+              }
+            },
+            {
+              inlineData: {
+                data: pageImage,
+                mimeType: "image/jpeg"
+              }
+            },
+            { text: prompt }
+          ]
+        }];
+        
+        const generationConfig = {
+          responseModalities: ["IMAGE"]
+        };
+        
+        let generatedImageData = null;
+        
+        // Try streaming first (same as cover generator - faster)
+        try {
+          const streamResult = await generativeModel.generateContentStream({
+            contents,
+            generationConfig
+          });
+          
+          for await (const chunk of streamResult.stream) {
+            if (chunk.candidates?.[0]?.content?.parts) {
+              for (const part of chunk.candidates[0].content.parts) {
+                if (part.inlineData?.data) {
+                  generatedImageData = part.inlineData.data;
+                  console.log(`✅ Page ${pageNumber} generated (streaming): ${generatedImageData.length} bytes${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+                  return {
+                    pageNumber,
+                    processedImage: generatedImageData,
+                    success: true,
+                    character: character.description,
+                    attempts: attempt
+                  };
                 }
-              },
-              {
-                inlineData: {
-                  data: pageImage,
-                  mimeType: "image/jpeg"
-                }
-              },
-              { text: prompt }
-            ]
-          }],
-          generationConfig: {
-            responseModalities: ["IMAGE"]
+              }
+            }
           }
+        } catch (streamError) {
+          console.log(`   Streaming failed for page ${pageNumber}, trying non-stream fallback...`);
+        }
+        
+        // Fallback to non-streaming (same as cover generator)
+        const result = await generativeModel.generateContent({
+          contents,
+          generationConfig
         });
         
         const response = await result.response;
-        let generatedImageData = null;
         
         if (response.candidates) {
           for (const candidate of response.candidates) {
-            if (candidate.content && candidate.content.parts) {
+            if (candidate.content?.parts) {
               for (const part of candidate.content.parts) {
-                if (part.inlineData && part.inlineData.data) {
+                if (part.inlineData?.data) {
                   generatedImageData = part.inlineData.data;
-                  break;
+                  console.log(`✅ Page ${pageNumber} generated (fallback): ${generatedImageData.length} bytes${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+                  return {
+                    pageNumber,
+                    processedImage: generatedImageData,
+                    success: true,
+                    character: character.description,
+                    attempts: attempt
+                  };
                 }
               }
             }
           }
         }
         
-        if (generatedImageData) {
-          console.log(`✅ Page ${pageNumber} → 1 image generated successfully${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
-          // Return ONE processed image for ONE page
-          return {
-            pageNumber,
-            processedImage: generatedImageData, // Single image for single page
-            success: true,
-            character: character.description,
-            attempts: attempt
-          };
-        } else {
-          throw new Error('No image generated in response');
-        }
+        throw new Error('No image data returned from Gemini API');
         
       } catch (error) {
         const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
@@ -883,17 +914,8 @@ class CompleteBookPersonalizationService {
     const { character, replacementStrategy, replacementGuidance } = characterMapping;
     
     const consistencyNote = previousPageReference 
-      ? `CRITICAL CONSISTENCY: ${childName} must look EXACTLY the same as in previous pages:
-         - SAME EXACT SKIN TONE (do not change color between pages)
-         - Same face, same hair color, same eye color
-         - Same distinctive facial features
-         - Use the SAME child reference photo (FIRST IMAGE) consistently for skin tone
-         - The child must be INSTANTLY recognizable as the same person`
-      : `CRITICAL CONSISTENCY: This is part of a complete book. ${childName} must have IDENTICAL appearance across ALL pages:
-         - SAME EXACT SKIN TONE on every page (copy from reference photo)
-         - Same face, same hair, same distinctive features
-         - Use the FIRST IMAGE (child reference) for consistent skin tone
-         - The child must look like the SAME person throughout the entire book`;
+      ? `CRITICAL CONSISTENCY: ${childName} must look EXACTLY the same as in previous pages - SAME EXACT SKIN TONE (do not change color), same face, same hair color, same eye color, same distinctive facial features. Use the SAME child reference photo (FIRST IMAGE) consistently. The child must be INSTANTLY recognizable as the same person.`
+      : `CRITICAL CONSISTENCY: This is part of a complete book. ${childName} must have IDENTICAL appearance across ALL pages - SAME EXACT SKIN TONE on every page (copy from reference photo), same face, same hair, same distinctive features. Use the FIRST IMAGE (child reference) for consistent skin tone. The child must look like the SAME person throughout the entire book.`;
     
     return `
     ⚠️ CRITICAL: This is a FACE REPLACEMENT task on an existing PDF page. You MUST preserve the original page 100% - only replace the character's face.
