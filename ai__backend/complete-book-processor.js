@@ -69,7 +69,17 @@ class CompleteBookPersonalizationService {
       // Step 2: Map characters across pages
       console.log('👤 Step 2: Mapping characters across pages...');
       const characterMapping = await this.mapCharacterAcrossPages(pagesToProcess, bookAnalysis);
-      console.log(`✅ Character mapping complete: ${characterMapping.length} replacements needed`);
+      console.log(`✅ Character mapping complete: ${characterMapping.length} total pages mapped`);
+      console.log(`   Pages with replacement: ${characterMapping.filter(m => m.replacementNeeded).length}`);
+      console.log(`   Pages to preserve (original): ${characterMapping.filter(m => !m.replacementNeeded).length}`);
+      
+      // Debug: Show which pages will be processed
+      const pagesToReplace = characterMapping.filter(m => m.replacementNeeded).map(m => m.pageNumber);
+      const pagesToPreserve = characterMapping.filter(m => !m.replacementNeeded).map(m => m.pageNumber);
+      console.log(`   📝 Pages to replace: [${pagesToReplace.join(', ')}]`);
+      if (pagesToPreserve.length > 0) {
+        console.log(`   📝 Pages to preserve: [${pagesToPreserve.join(', ')}]`);
+      }
       
       // Step 3: Process pages in batches
       console.log('🔄 Step 3: Processing pages in batches...');
@@ -133,15 +143,11 @@ class CompleteBookPersonalizationService {
         await this.sleep(100);
       } catch (error) {
         console.error(`❌ Failed to analyze page ${i + 1}:`, error);
-        // Add fallback analysis
-        analysisResults.push({
-          pageNumber: i + 1,
-          characters: [],
-          scene: { action: 'unknown', setting: 'unknown', mood: 'unknown' },
-          text: { content: '', characterNames: [], context: 'unknown' },
-          layout: { composition: 'unknown', characterPositions: [], visualFocus: 'unknown' },
-          error: error.message
-        });
+        // Use proper fallback analysis with character data (so page will be processed)
+        const fallbackAnalysis = this.createFallbackAnalysis(i);
+        fallbackAnalysis.error = error.message;
+        analysisResults.push(fallbackAnalysis);
+        console.log(`⚠️  Using fallback analysis for page ${i + 1} - will attempt face replacement`);
       }
     }
     
@@ -447,6 +453,31 @@ class CompleteBookPersonalizationService {
     for (let i = 0; i < bookAnalysis.pages.length; i++) {
       const pageAnalysis = bookAnalysis.pages[i];
       
+      // Safety check: Ensure characters array exists
+      if (!pageAnalysis.characters || !Array.isArray(pageAnalysis.characters)) {
+        console.warn(`⚠️  Page ${i + 1}: No characters array found in analysis, creating fallback`);
+        pageAnalysis.characters = [{
+          isMainCharacter: true,
+          isHuman: true,
+          isAnimal: false,
+          description: "main character (missing analysis)",
+          position: "center",
+          size: "medium",
+          emotion: "neutral",
+          pose: "standing",
+          replaceWithChild: true,
+          replacementDifficulty: "medium"
+        }];
+      }
+      
+      // Log characters found for debugging
+      console.log(`🔍 Page ${i + 1}: Found ${pageAnalysis.characters.length} character(s)`);
+      if (pageAnalysis.characters.length > 0) {
+        pageAnalysis.characters.forEach((char, idx) => {
+          console.log(`   - Character ${idx + 1}: ${char.description?.substring(0, 50)}... (isMain: ${char.isMainCharacter}, isHuman: ${char.isHuman !== false}, isAnimal: ${char.isAnimal === true})`);
+        });
+      }
+      
       // STRATEGY 1: Try to find main character first
       let characterToReplace = pageAnalysis.characters.find(char => 
         char.isMainCharacter && 
@@ -467,7 +498,8 @@ class CompleteBookPersonalizationService {
            char.description?.toLowerCase().includes('boy') ||
            char.description?.toLowerCase().includes('girl') ||
            char.description?.toLowerCase().includes('person') ||
-           char.description?.toLowerCase().includes('kid'))
+           char.description?.toLowerCase().includes('kid') ||
+           char.description?.toLowerCase().includes('human'))
         );
       }
       
@@ -480,30 +512,51 @@ class CompleteBookPersonalizationService {
         );
       }
       
+      // STRATEGY 4: Last resort - if page has ANY character that's not explicitly an animal, try to replace it
+      if (!characterToReplace && pageAnalysis.characters && pageAnalysis.characters.length > 0) {
+        characterToReplace = pageAnalysis.characters.find(char => char.isAnimal !== true);
+        if (characterToReplace) {
+          console.log(`⚠️  Page ${i + 1}: Using last-resort strategy - processing character that may not be explicitly human`);
+        }
+      }
+      
       if (characterToReplace) {
-        // Page has a human character - will be processed
+        // Page has a character to replace - will be processed
+        const pageImageData = bookPages[i];
+        const imagePreview = pageImageData ? `${pageImageData.substring(0, 50)}... (${pageImageData.length} chars)` : 'MISSING IMAGE DATA!';
+        
         characterMapping.push({
           pageNumber: i + 1,
           character: characterToReplace,
           replacementNeeded: true,
           replacementStrategy: this.determineReplacementStrategy(characterToReplace, i),
-          pageImage: bookPages[i]
+          pageImage: pageImageData
         });
-        console.log(`✅ Page ${i + 1}: Human character found (${characterToReplace.isMainCharacter ? 'main' : 'secondary'}), will be processed`);
+        console.log(`✅ Page ${i + 1}: Character found (${characterToReplace.isMainCharacter ? 'main' : 'secondary/fallback'}), will be processed`);
+        console.log(`   📷 Page ${i + 1} image: ${imagePreview}`);
       } else {
-        // Page has no detectable human character - include it but use original
+        // Page has no detectable character to replace - include it but use original
+        const pageImageData = bookPages[i];
+        const imagePreview = pageImageData ? `${pageImageData.substring(0, 50)}... (${pageImageData.length} chars)` : 'MISSING IMAGE DATA!';
+        
         characterMapping.push({
           pageNumber: i + 1,
           character: null,
           replacementNeeded: false,
           replacementStrategy: null,
-          pageImage: bookPages[i]
+          pageImage: pageImageData
         });
-        console.log(`📄 Page ${i + 1}: No human character detected - will use original image (text/background/animal page)`);
+        console.log(`📄 Page ${i + 1}: No processable character detected - will use original image (text/background/animal-only page)`);
+        console.log(`   📷 Page ${i + 1} image: ${imagePreview}`);
       }
     }
     
-    console.log(`📊 Character mapping complete: ${characterMapping.length} total pages, ${characterMapping.filter(m => m.replacementNeeded).length} pages need replacement`);
+    const replacementCount = characterMapping.filter(m => m.replacementNeeded).length;
+    console.log(`📊 Character mapping complete: ${characterMapping.length} total pages, ${replacementCount} pages need replacement`);
+    
+    if (replacementCount < characterMapping.length * 0.5) {
+      console.warn(`⚠️  Warning: Less than 50% of pages marked for replacement (${replacementCount}/${characterMapping.length}). This may indicate detection issues.`);
+    }
     
     return characterMapping;
   }
@@ -535,12 +588,16 @@ class CompleteBookPersonalizationService {
     console.log(`🔄 Processing ${characterMapping.length} pages in batches of ${batchSize}`);
     console.log(`📊 Ensuring 1:1 mapping: ${characterMapping.length} pages → ${characterMapping.length} images`);
     
+    const totalBatches = Math.ceil(characterMapping.length / batchSize);
+    console.log(`📦 Will process ${totalBatches} batches total`);
+    
     for (let i = 0; i < characterMapping.length; i += batchSize) {
       const batch = characterMapping.slice(i, i + batchSize);
       const batchNumber = Math.floor(i / batchSize) + 1;
-      const totalBatches = Math.ceil(characterMapping.length / batchSize);
       
-      console.log(`🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} pages, each will produce 1 image)`);
+      console.log(`\n🔄 ========== BATCH ${batchNumber}/${totalBatches} START ==========`);
+      console.log(`   Pages in this batch: ${batch.map(m => m.pageNumber).join(', ')}`);
+      console.log(`   Batch size: ${batch.length} pages`);
       
       try {
         // Process each page individually - ONE PAGE = ONE IMAGE
@@ -573,9 +630,19 @@ class CompleteBookPersonalizationService {
           }
           
           const needsReplacement = mapping.replacementNeeded && mapping.character;
+          const pageImagePreview = mapping.pageImage ? `${mapping.pageImage.substring(0, 30)}...` : 'NO IMAGE';
           console.log(`  📄 Processing page ${mapping.pageNumber}${needsReplacement ? ' (face replacement)' : ' (original preserved)'}`);
+          console.log(`     Image data: ${pageImagePreview} (${mapping.pageImage ? mapping.pageImage.length : 0} chars)`);
+          
           const result = await this.processPage(mapping, childImage, childName, previousPage);
           batchResults.push(result);
+          
+          // Log result
+          if (result.success) {
+            console.log(`     ✅ Page ${mapping.pageNumber} processed successfully`);
+          } else {
+            console.log(`     ⚠️  Page ${mapping.pageNumber} processing issue: ${result.error || result.note || 'unknown'}`);
+          }
           
           // Update lastProcessedPage if this was a successful face replacement
           if (result.success && result.character && !result.note) {
@@ -594,16 +661,23 @@ class CompleteBookPersonalizationService {
         
         processedPages.push(...batchResults);
         console.log(`✅ Batch ${batchNumber} completed: ${batchResults.length} pages → ${batchResults.length} images`);
+        console.log(`📊 Total pages processed so far: ${processedPages.length}/${characterMapping.length}`);
+        console.log(`🔄 ========== BATCH ${batchNumber}/${totalBatches} END ==========\n`);
         
         // Add delay between batches to avoid rate limiting
         if (i + batchSize < characterMapping.length) {
+          console.log(`⏳ Waiting 1 second before next batch...`);
           await this.sleep(1000);
         }
         
       } catch (error) {
-        console.error(`❌ Batch ${batchNumber} failed:`, error);
+        console.error(`❌ Batch ${batchNumber} failed with error:`, error);
+        console.error(`   Error details: ${error.message}`);
+        console.error(`   Stack trace:`, error.stack);
+        
         // Add fallback pages for failed batch - still maintaining 1:1 mapping
         batch.forEach(mapping => {
+          console.warn(`   ⚠️  Adding fallback for page ${mapping.pageNumber} due to batch error`);
           processedPages.push({
             pageNumber: mapping.pageNumber,
             processedImage: mapping.pageImage, // Use original if processing fails (1 page = 1 image)
@@ -612,6 +686,9 @@ class CompleteBookPersonalizationService {
             error: error.message
           });
         });
+        
+        // CRITICAL: Continue processing next batch even if this one failed
+        console.log(`   ⚠️  Batch ${batchNumber} completed with fallback, continuing to next batch...`);
       }
     }
     
