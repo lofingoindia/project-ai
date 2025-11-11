@@ -520,6 +520,31 @@ class CompleteBookPersonalizationService {
         }
       }
       
+      // STRATEGY 5: FORCE PROCESS - If still no character but analysis has character data, create a default character
+      // This ensures ALL pages get processed unless they're explicitly text-only pages
+      if (!characterToReplace && pageAnalysis.characters && pageAnalysis.characters.length > 0) {
+        // Take the first character regardless
+        characterToReplace = pageAnalysis.characters[0];
+        console.log(`⚠️  Page ${i + 1}: FORCE PROCESSING - using first available character from analysis`);
+      }
+      
+      // STRATEGY 6: ULTIMATE FALLBACK - Force process any page that doesn't explicitly have errors
+      if (!characterToReplace && !pageAnalysis.error) {
+        console.warn(`⚠️  Page ${i + 1}: ULTIMATE FALLBACK - creating default character for processing`);
+        characterToReplace = {
+          isMainCharacter: true,
+          isHuman: true,
+          isAnimal: false,
+          description: "main character (forced processing)",
+          position: "center",
+          size: "medium",
+          emotion: "neutral",
+          pose: "standing",
+          replaceWithChild: true,
+          replacementDifficulty: "medium"
+        };
+      }
+      
       if (characterToReplace) {
         // Page has a character to replace - will be processed
         const pageImageData = bookPages[i];
@@ -858,19 +883,37 @@ class CompleteBookPersonalizationService {
     const { character, replacementStrategy, replacementGuidance } = characterMapping;
     
     const consistencyNote = previousPageReference 
-      ? `IMPORTANT: ${childName} must look EXACTLY the same as in previous pages - same face, same hair, same appearance. Use the SAME child image reference consistently.`
-      : `IMPORTANT: This is part of a complete book. ${childName} must have a consistent appearance across ALL pages - same face, same hair, same distinctive features.`;
+      ? `CRITICAL CONSISTENCY: ${childName} must look EXACTLY the same as in previous pages:
+         - SAME EXACT SKIN TONE (do not change color between pages)
+         - Same face, same hair color, same eye color
+         - Same distinctive facial features
+         - Use the SAME child reference photo (FIRST IMAGE) consistently for skin tone
+         - The child must be INSTANTLY recognizable as the same person`
+      : `CRITICAL CONSISTENCY: This is part of a complete book. ${childName} must have IDENTICAL appearance across ALL pages:
+         - SAME EXACT SKIN TONE on every page (copy from reference photo)
+         - Same face, same hair, same distinctive features
+         - Use the FIRST IMAGE (child reference) for consistent skin tone
+         - The child must look like the SAME person throughout the entire book`;
     
     return `
     ⚠️ CRITICAL: This is a FACE REPLACEMENT task on an existing PDF page. You MUST preserve the original page 100% - only replace the character's face.
     
     IMAGE REFERENCE GUIDE:
-    - FIRST IMAGE: Reference photo of ${childName} (use this child's face for replacement)
+    - FIRST IMAGE: Reference photo of ${childName} (use this child's EXACT face, skin tone, and features for replacement)
     - SECOND IMAGE: The PDF page to edit (this is the existing page - preserve it 100% except for face replacement)
     
     TASK: Replace ONLY the MAIN HUMAN CHARACTER's FACE in the SECOND IMAGE (the PDF page) with ${childName}'s face from the FIRST IMAGE (reference photo). This is NOT a generation task - you are EDITING an existing page.
     
     ${consistencyNote}
+    
+    ⚠️ ABSOLUTE CONSISTENCY REQUIREMENTS (MOST CRITICAL):
+    - Use the EXACT same skin tone as in the FIRST IMAGE (child reference photo) - DO NOT change skin color
+    - Use the EXACT same facial features throughout ALL pages
+    - Keep ${childName}'s skin tone, hair color, eye color IDENTICAL across all pages
+    - The child must be INSTANTLY recognizable as the same person on every page
+    - DO NOT lighten, darken, or alter the skin tone in any way
+    - DO NOT change hair style, hair color, or any distinctive features
+    - The face must look like it was photographed from the same child every time
     
     ⚠️ PDF PRESERVATION REQUIREMENTS (MOST CRITICAL):
     - This is an EXISTING PDF page - you MUST preserve it exactly as-is
@@ -892,24 +935,29 @@ class CompleteBookPersonalizationService {
     - CRITICAL: This must be the MAIN HUMAN PROTAGONIST, NOT an animal or other character
     
     CHILD'S APPEARANCE (from reference photo - USE CONSISTENTLY):
-    - Use the EXACT same child's facial features, hair color, hair style, skin tone as in all other pages
+    - CRITICAL: Use the EXACT same skin tone from the reference photo - DO NOT alter skin color in any way
+    - Use the EXACT same child's facial features, hair color, hair style, eye color as in all other pages
     - Maintain the child's distinctive characteristics consistently
-    - The child's face must look IDENTICAL across all pages of the book
+    - The child's face must look IDENTICAL across all pages of the book (same person, same skin tone, same features)
     - Make ${childName} look natural in this illustration style
     - Use the SAME child image reference to ensure consistency
+    - NEVER change, lighten, darken, or modify the skin tone - keep it exactly as in the reference photo
+    - The child should be instantly recognizable as the same person across all pages
     
     REPLACEMENT REQUIREMENTS:
     1. FACE REPLACEMENT ONLY (MAIN HUMAN CHARACTER):
-       - Replace ONLY the main human character's FACE with ${childName}'s face
+       - Replace ONLY the main human character's FACE with ${childName}'s face from the FIRST IMAGE
+       - CRITICAL: Use the EXACT skin tone from the child reference photo (FIRST IMAGE) - DO NOT change it
        - DO NOT replace the body, clothing, or pose (keep them exactly as in original)
        - DO NOT replace headwear, hats, crowns, helmets, or any accessories on the head (preserve them exactly)
        - DO NOT replace animals, pets, or any non-human characters
        - DO NOT replace background elements, objects, or other items
-       - Match facial proportions to the illustration style
+       - Match facial proportions to the illustration style but KEEP THE EXACT SKIN TONE
        - Keep the same expression and emotion as the original
-       - Ensure the face looks natural in the art style
-       - The face must match ${childName}'s appearance from previous pages
+       - Ensure the face looks natural in the art style while maintaining skin tone consistency
+       - The face must match ${childName}'s appearance (especially skin tone) from previous pages
        - If the character is wearing something on their head (hat, crown, helmet, etc.), keep it EXACTLY as it is - only replace the face underneath
+       - ABSOLUTELY NO changes to skin color, tone, or complexion - copy exactly from reference photo
     
     2. BODY & POSE (KEEP UNCHANGED):
        - Keep the EXACT same body pose as the original character
@@ -932,11 +980,14 @@ class CompleteBookPersonalizationService {
        - DO NOT modify or replace anything except the main human character's face
        - The page layout must remain 100% identical to the original
     
-    5. CHARACTER CONSISTENCY (CRITICAL):
+    5. CHARACTER CONSISTENCY (CRITICAL - SKIN TONE):
        - ${childName} must look EXACTLY the same as in all other pages
-       - Same face, same hair, same skin tone, same distinctive features
-       - The child's appearance must be consistent throughout the entire book
-       - Use the reference child image to maintain this consistency
+       - CRITICAL: EXACT same skin tone on every page - copy directly from reference photo
+       - Same face, same hair, SAME SKIN COLOR, same distinctive features
+       - The child's appearance must be IDENTICAL throughout the entire book
+       - Use the reference child image (FIRST IMAGE) to maintain exact skin tone consistency
+       - The child should be the SAME person with the SAME skin tone on every single page
+       - DO NOT adapt or modify skin tone to match the illustration - keep it from the reference photo
     
     6. NATURAL INTEGRATION:
        - The face replacement should be seamless and undetectable
@@ -947,15 +998,17 @@ class CompleteBookPersonalizationService {
     ⚠️ CRITICAL RULES (MUST FOLLOW):
     - This is a FACE REPLACEMENT task, NOT a page generation task
     - ONLY replace the MAIN HUMAN CHARACTER's FACE (nothing else)
+    - CRITICAL: Use the EXACT skin tone from the child reference photo (FIRST IMAGE) on ALL pages
     - DO NOT replace headwear, hats, crowns, helmets, or any accessories - preserve them exactly
     - DO NOT replace animals, pets, or any non-human characters
     - DO NOT replace background elements, objects, or other items
     - DO NOT regenerate or recreate the page - preserve the original PDF content
-    - ${childName} must look IDENTICAL across all pages (same face, same appearance)
+    - ${childName} must look IDENTICAL across all pages (SAME face, SAME skin tone, SAME appearance)
     - Keep EVERYTHING else exactly as it appears in the original PDF page (including all accessories and headwear)
     - The output must be the original page with ONLY the face replaced (accessories and headwear must remain unchanged)
+    - SKIN TONE MUST BE IDENTICAL on every page - copy from the reference photo, not from the illustration
     
-    Return the original PDF page with ONLY the main human character's face replaced with ${childName}'s face. Everything else must remain 100% identical to the original.
+    Return the original PDF page with ONLY the main human character's face replaced with ${childName}'s face (using EXACT skin tone from reference photo). Everything else must remain 100% identical to the original.
     `;
   }
 
