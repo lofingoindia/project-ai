@@ -42,10 +42,7 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
       
       // Debug logging
       if (kDebugMode && orders.isNotEmpty) {
-        for (var order in orders) {
-          for (var item in order.items) {
-          }
-        }
+        // Orders loaded successfully
       }
       
       setState(() {
@@ -370,61 +367,91 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
     
     // Use the helper methods from OrderItem
     String bookTitle = item.bookTitle;
-    String imageUrl = item.bookCoverUrl.isNotEmpty ? item.bookCoverUrl : item.bookThumbnailUrl;
+    // Prioritize the generated cover image, fallback to book cover
+    String imageUrl = item.coverImageUrl?.isNotEmpty == true 
+        ? item.coverImageUrl! 
+        : (item.bookCoverUrl.isNotEmpty ? item.bookCoverUrl : item.bookThumbnailUrl);
+    bool isGeneratedImage = item.coverImageUrl?.isNotEmpty == true;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Book Cover
-          Container(
-            width: 60,
-            height: 80,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+          // Book Cover - Tappable to view full image
+          GestureDetector(
+            onTap: imageUrl.isNotEmpty ? () => _showImagePreview(context, imageUrl, bookTitle) : null,
+            child: Container(
+              width: 60,
+              height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: imageUrl.isNotEmpty
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) {
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.book, color: Colors.grey, size: 30),
+                              );
+                            },
                           ),
+                          // Generated image indicator
+                          if (isGeneratedImage)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 10,
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.book, color: Colors.grey, size: 30),
+                            const SizedBox(height: 4),
+                            Text(
+                              'my_orders_page_no_image'.tr,
+                              style: GoogleFonts.tajawal(
+                                fontSize: 8,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      errorWidget: (context, url, error) {
-                        return Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.book, color: Colors.grey, size: 30),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: Colors.grey[200],
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.book, color: Colors.grey, size: 30),
-                          const SizedBox(height: 4),
-                          Text(
-                            'my_orders_page_no_image'.tr,
-                            style: GoogleFonts.tajawal(
-                              fontSize: 8,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -884,6 +911,102 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
         });
       }
     }
+  }
+
+  /// Show full-screen image preview
+  void _showImagePreview(BuildContext context, String imageUrl, String bookTitle) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.8),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Image with title - no extra space, just the content
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Image container - sized to content
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width - 32,
+                    maxHeight: MediaQuery.of(context).size.height - 120,
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => Container(
+                      width: 200,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      width: 200,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.broken_image,
+                        color: Colors.white,
+                        size: 48,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Title below image
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    bookTitle,
+                    style: GoogleFonts.tajawal(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            // Close button - on top so it's always clickable
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.black,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
