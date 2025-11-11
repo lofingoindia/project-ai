@@ -127,6 +127,45 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
 
   bool _isMobile(BuildContext context) => MediaQuery.of(context).size.width < 650;
 
+  void _showImageFullScreen(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          children: [
+            // Image viewer
+            Center(
+              child: InteractiveViewer(
+                panEnabled: true,
+                boundaryMargin: const EdgeInsets.all(80),
+                minScale: 0.5,
+                maxScale: 4,
+                child: _buildImageWidget(imageUrl),
+              ),
+            ),
+            // Close button
+            Positioned(
+              top: 16,
+              right: 16,
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+                color: Colors.white,
+                iconSize: 32,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                  padding: const EdgeInsets.all(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final maxWidth = _isMobile(context) ? double.infinity : 1000.0;
@@ -159,15 +198,10 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
                                   padding: _isMobile(context)
                                       ? const EdgeInsets.all(16)
                                       : const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                                  itemCount: _cartItems.length + 1, // +1 for the add books card
+                                  itemCount: _cartItems.length,
                                   itemBuilder: (context, index) {
-                                    if (index < _cartItems.length) {
-                                      final item = _cartItems[index];
-                                      return _buildCartItem(item);
-                                    } else {
-                                      // Add books card
-                                      return _buildAddBooksCard();
-                                    }
+                                    final item = _cartItems[index];
+                                    return _buildCartItem(item);
                                   },
                                 ),
                                 // Cart summary with checkout button
@@ -288,242 +322,161 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Book cover
-            Container(
-              width: 80,
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey[200],
-              ),
-              child: imageUrl.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Stack(
-                        children: [
-                          // Main image
-                          Positioned.fill(
-                            child: _buildImageWidget(imageUrl),
-                          ),
-                          // Personalized badge if this is a generated cover
-                          if (generatedCoverUrl?.isNotEmpty == true)
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFB47AFF),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.auto_awesome,
-                                  color: Colors.white,
-                                  size: 12,
+            // Book cover - Full width at top
+            GestureDetector(
+              onTap: () => _showImageFullScreen(imageUrl),
+              child: Container(
+                width: double.infinity,
+                height: 200,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[200],
+                ),
+                child: imageUrl.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Stack(
+                          children: [
+                            // Main image
+                            Positioned.fill(
+                              child: _buildImageWidget(imageUrl),
+                            ),
+                            // Personalized badge if this is a generated cover
+                            if (generatedCoverUrl?.isNotEmpty == true)
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFB47AFF),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.auto_awesome,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : const Center(child: Icon(Icons.book)),
+                          ],
+                        ),
+                      )
+                    : const Center(child: Icon(Icons.book, size: 60)),
+              ),
             ),
             
-            const SizedBox(width: 16),
+            const SizedBox(height: 16),
             
-            // Book details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    book.title,
-                    style: GoogleFonts.tajawal(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Personalization info
-                  if (item.personalizationData.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFB47AFF).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+            // Book details - Below image
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and remove button in same row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        book.title,
+                        style: GoogleFonts.tajawal(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.auto_awesome,
-                                size: 14,
-                                color: Color(0xFFB47AFF),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'cart_page_personalized_for'.tr,
-                                style: GoogleFonts.tajawal(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.personalizationData['child_name'] ?? 'cart_page_unknown'.tr,
-                            style: GoogleFonts.tajawal(
-                              fontWeight: FontWeight.bold,
+                    ),
+                    IconButton(
+                      onPressed: () => _removeItem(item.id),
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red,
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Personalization info
+                if (item.personalizationData.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB47AFF).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome,
+                              size: 14,
                               color: Color(0xFFB47AFF),
                             ),
-                          ),
-                          if (item.personalizationData['child_age'] != null) ...[
-                            const SizedBox(height: 2),
+                            const SizedBox(width: 4),
                             Text(
-                              '${'cart_page_age_label'.tr} ${item.personalizationData['child_age']} ${'cart_page_years'.tr}',
+                              'cart_page_personalized_for'.tr,
                               style: GoogleFonts.tajawal(
                                 fontSize: 12,
                                 color: Colors.grey[600],
                               ),
                             ),
                           ],
-                          if (item.personalizationData['selected_language'] != null) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              '${'cart_page_language_label'.tr} ${item.personalizationData['selected_language']}',
-                              style: GoogleFonts.tajawal(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  
-                  // Price and quantity
-                  Row(
-                    children: [
-                      Text(
-                        book.formattedDiscountedPrice,
-                        style: GoogleFonts.tajawal(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFB47AFF),
                         ),
-                      ),
-                      
-                      const Spacer(),
-                      
-                      // Quantity controls
-                      // Row(
-                      //   children: [
-                      //     IconButton(
-                      //       onPressed: () => _updateQuantity(item.id, item.quantity - 1),
-                      //       icon: const Icon(Icons.remove_circle_outline),
-                      //       color: const Color(0xFFB47AFF),
-                      //     ),
-                      //     Text(
-                      //       '${item.quantity}',
-                      //       style: const TextStyle(
-                      //         fontSize: 16,
-                      //         fontWeight: FontWeight.bold,
-                      //       ),
-                      //     ),
-                      //     IconButton(
-                      //       onPressed: () => _updateQuantity(item.id, item.quantity + 1),
-                      //       icon: const Icon(Icons.add_circle_outline),
-                      //       color: const Color(0xFFB47AFF),
-                      //     ),
-                      //   ],
-                      // ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          item.personalizationData['child_name'] ?? 'cart_page_unknown'.tr,
+                          style: GoogleFonts.tajawal(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFB47AFF),
+                          ),
+                        ),
+                        if (item.personalizationData['child_age'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${'cart_page_age_label'.tr} ${item.personalizationData['child_age']} ${'cart_page_years'.tr}',
+                            style: GoogleFonts.tajawal(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                        if (item.personalizationData['selected_language'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${'cart_page_language_label'.tr} ${item.personalizationData['selected_language']}',
+                            style: GoogleFonts.tajawal(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 12),
                 ],
-              ),
-            ),
-            
-            // Remove button
-            IconButton(
-              onPressed: () => _removeItem(item.id),
-              icon: const Icon(Icons.delete_outline),
-              color: Colors.red,
+                
+                // Price
+                Text(
+                  book.formattedDiscountedPrice,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFB47AFF),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAddBooksCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFE8D5FF), Color(0xFFF0E6FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            'cart_page_add_another_book'.tr,
-            style: GoogleFonts.tajawal(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF6B46C1),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                // Switch to Shop tab (index 1) if in MainNavigation
-                MainNavigation.switchTab(context, 1);
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFFB47AFF), width: 2),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'cart_page_add_books'.tr,
-                style: GoogleFonts.tajawal(
-                  color: Color(0xFFB47AFF),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
