@@ -1038,14 +1038,18 @@ Generate a detailed prompt for replacing ONLY the main human character's FACE on
 5. Ensure the face replacement is seamless and undetectable
 6. Maintain character consistency across all pages
 7. Preserve all headwear, accessories, and clothing exactly as they are
+8. CRITICAL: Remove ALL OCR artifacts, watermarks, "Digitized by Google" text, scanning marks, and digitization metadata
+9. Clean up any garbled or corrupted text from OCR errors
+10. Output should be a clean, professional book page without scanning artifacts
 
 CRITICAL REQUIREMENTS:
 - This is a FACE REPLACEMENT task, NOT a page regeneration task
 - ONLY replace the main human character's FACE (nothing else)
 - Use the EXACT skin tone from the child reference photo
-- Preserve ALL text, background, other characters, and layout exactly
+- Preserve ALL ORIGINAL BOOK TEXT, background, other characters, and layout exactly
 - Keep headwear, hats, crowns, helmets exactly as they appear
 - The output must look like the original page with ONLY the face replaced
+- REMOVE ALL OCR artifacts, watermarks, and scanning metadata (but keep original book content)
 
 Generate a comprehensive, technical prompt that an AI image generator can use to create a seamless face replacement. Be specific about what to preserve and what to replace.
 
@@ -1344,6 +1348,13 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
     
     TASK: Replace ONLY the MAIN HUMAN CHARACTER's FACE in the SECOND IMAGE (the PDF page) with ${childName}'s face from the FIRST IMAGE (reference photo). This is NOT a generation task - you are EDITING an existing page.
     
+    ⚠️ CRITICAL: REMOVE ALL OCR ARTIFACTS AND WATERMARKS:
+    - Remove any "Digitized by Google" or similar OCR watermarks
+    - Remove any scanning artifacts, page numbers from scanning, or metadata text
+    - Remove any library stamps, copyright notices, or digitization marks
+    - Clean up any garbled or corrupted text from OCR errors
+    - The output should be a clean, professional book page without any scanning artifacts
+    
     ${consistencyNote}
     
     ⚠️ ABSOLUTE CONSISTENCY REQUIREMENTS (MOST CRITICAL):
@@ -1357,13 +1368,14 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
     
     ⚠️ PDF PRESERVATION REQUIREMENTS (MOST CRITICAL):
     - This is an EXISTING PDF page - you MUST preserve it exactly as-is
-    - Keep ALL text EXACTLY as it appears (word-for-word, same font, same size, same position)
+    - Keep ALL ORIGINAL BOOK TEXT EXACTLY as it appears (word-for-word, same font, same size, same position)
     - Keep ALL background elements 100% identical (colors, patterns, objects, layout)
     - Keep ALL other characters UNCHANGED (animals, pets, side characters, all non-human elements)
     - Keep ALL props, objects, and scene elements in their EXACT original positions
     - Keep the EXACT same page layout, composition, and visual structure
     - DO NOT regenerate, recreate, or modify anything except the main human character's face
     - The output must look like the original page with ONLY the face replaced
+    - ⚠️ EXCEPTION: Remove ALL OCR artifacts, watermarks, "Digitized by Google" text, scanning marks, and digitization metadata
     
     TARGET CHARACTER TO REPLACE (MAIN HUMAN CHARACTER ONLY):
     - Description: ${character.description}
