@@ -83,7 +83,6 @@ class _MainNavigationState extends State<MainNavigation> {
         );
       }
     } catch (e) {
-      print('Error refreshing cart: $e');
     }
   }
 
@@ -593,7 +592,7 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget _buildMobileBottomNav(BuildContext context) {
     return Container(
       color: const Color.fromARGB(0, 201, 131, 131),
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 16),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 8),
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(

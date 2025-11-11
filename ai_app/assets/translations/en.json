@@ -573,5 +573,23 @@
   "bestsellers": "Bestsellers",
   "personalise_a_bestseller": "Personalise a bestseller",
   "view_all": "View All",
-  "personalise": "Personalise"
+  "personalise": "Personalise",
+  
+  "preview_book_page_title": "Preview",
+  "preview_book_personalized_cover": "Personalized Cover",
+  "preview_book_personalized_for": "Personalized for:",
+  "preview_book_age": "Age:",
+  "preview_book_language": "Language:",
+  "preview_book_ready": "Your personalized book cover is ready!",
+  "preview_book_back": "Back",
+  "preview_book_add_to_cart": "Add to Cart",
+  "preview_book_added_success": "Added to cart successfully!",
+  "preview_book_add_error": "Failed to add to cart: ",
+  "preview_book_missing_info": "Unable to add to cart: Book information missing",
+  
+  "loading_page_book_moment_away": "Your book is just one moment away...",
+  "loading_page_ai_creating": "AI is creating your personalized cover...",
+  "loading_page_generating": "Generating your personalized book...",
+  "loading_page_downloading_images": "Downloading images...",
+  "loading_page_full_book_after_purchase": "The full book will be generated completely after your purchase. Go ahead and unlock it."
 }

@@ -125,13 +125,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   Future<void> _initializeVideo() async {
     try {
-      print('Starting video initialization...');
       final controller = VideoPlayerController.asset('assets/vd.mp4');
       _videoController = controller;
-      print('VideoController created');
       
       await controller.initialize();
-      print('Video initialized successfully');
       
       if (mounted) {
         setState(() {
@@ -146,10 +143,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         await Future.delayed(const Duration(milliseconds: 100));
         
         await controller.play();
-        print('Video is now playing');
       }
     } catch (error) {
-      print('Error initializing video: $error');
       if (mounted) {
         setState(() {
           _isVideoInitialized = false;
@@ -181,7 +176,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _loadFeaturedBooks() async {
-    print('🏠 Loading featured books...');
     setState(() {
       _isLoading = true;
     });
@@ -189,56 +183,46 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     try {
       // Use the same pattern as books page - load ALL books first without limit
       final books = await _bookService.getAllBooks();
-      print('🏠 Fetched ${books.length} total books from database');
       
       List<Book> filteredBooks = books;
       
       // Apply client-side filtering based on selected category
       if (_selectedCategory != 'all') {
-        print('🏠 Filtering books for category: $_selectedCategory');
         
         // Use the normalized category name directly for filtering
         final normalizedCategory = _selectedCategory.toLowerCase();
-        print('🏠 Using normalized category: $normalizedCategory');
         
         // Filter books based on the normalized category
         filteredBooks = books.where((book) {
           // Debug: print book details
-          print('  Book: ${book.title}, dbCategory: ${book.dbCategory}, genderTarget: ${book.genderTarget}, category: ${book.category}');
           
           if (normalizedCategory == 'girl') {
             // For girl category, check if dbCategory is 2 (since category 2 seems to be for girls)
             final isGirlBook = (book.dbCategory != null && book.dbCategory.toString() == '2') ||
                               (book.genderTarget.toLowerCase() == 'girl') ||
                               (book.category.toLowerCase().contains('girl'));
-            print('    -> Is girl book: $isGirlBook (dbCategory: ${book.dbCategory})');
             return isGirlBook;
           } else if (normalizedCategory == 'boy') {
             // For boy category, check if dbCategory is 1 (since category 1 seems to be for boys)
             final isBoyBook = (book.dbCategory != null && book.dbCategory.toString() == '1') ||
                              (book.genderTarget.toLowerCase() == 'boy') ||
                              (book.category.toLowerCase().contains('boy'));
-            print('    -> Is boy book: $isBoyBook (dbCategory: ${book.dbCategory})');
             return isBoyBook;
           } else {
             // For other categories, check category fields
             final isMatchingCategory = (book.dbCategory?.toString().toLowerCase() == normalizedCategory ||
                                        book.category.toLowerCase() == normalizedCategory ||
                                        book.genderTarget.toLowerCase() == normalizedCategory);
-            print('    -> Is matching category: $isMatchingCategory');
             return isMatchingCategory;
           }
         }).toList();
         
-        print('🏠 Found ${filteredBooks.length} books for category $normalizedCategory');
       }
       
       // Take only first 6 books for featured section
       final featuredBooks = filteredBooks.take(6).toList();
       
-      print('🏠 Final featured books count: ${featuredBooks.length}');
       for (var book in featuredBooks) {
-        print('  - ${book.title} (Category: ${book.category}, Gender: ${book.genderTarget}, dbCategory: ${book.dbCategory})');
       }
 
       setState(() {
@@ -246,7 +230,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _isLoading = false;
       });
     } catch (e) {
-      print('🚨 Error loading featured books: $e');
       setState(() {
         _featuredBooks = [];
         _isLoading = false;
@@ -286,7 +269,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _categoriesLoading = false;
       });
     } catch (e) {
-      print('Error loading categories: $e');
       setState(() {
         _categoriesLoading = false;
         _categories = ['all', 'boy', 'girl']; // Fallback categories
@@ -313,7 +295,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _selectedCategoryDisplay = displayName;
       });
     } catch (e) {
-      print('Error loading categories: $e');
       setState(() {
         _allCategoriesLoading = false;
         _allCategories = [];
@@ -353,7 +334,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       // Load books for all genres
       _loadBooksForAllGenres();
     } catch (e) {
-      print('Error loading genre categories: $e');
       setState(() {
         _genreCategoriesLoading = false;
         _genreCategories = [];
@@ -369,14 +349,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     try {
       // Use the same pattern as books page - load ALL books first
       final allBooks = await _bookService.getAllBooks();
-      print('🏠 Fetched ${allBooks.length} total books for genre filtering');
       
       List<Book> filteredBooks = allBooks;
       
       // Apply the same category filtering logic as featured books
       if (_selectedCategory != 'all') {
         final normalizedCategory = _selectedCategory.toLowerCase();
-        print('🏠 Applying filter "$normalizedCategory" to genre books');
         
         // Filter books based on the normalized category (same logic as featured books)
         filteredBooks = allBooks.where((book) {
@@ -398,7 +376,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           }
         }).toList();
         
-        print('🏠 Filtered to ${filteredBooks.length} books for category $normalizedCategory');
       }
       
       final Map<String, List<Book>> genreBooks = {};
@@ -416,7 +393,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _genreBooksLoading = false;
       });
     } catch (e) {
-      print('Error loading books for genres: $e');
       setState(() {
         _genreBooksLoading = false;
         _booksByGenre = {};
@@ -1134,7 +1110,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               GestureDetector(
                 onTap: () {
                   // Add your menu action here
-                  print('Menu tapped');
                 },
                 child: Container(
                   width: 30,
@@ -1162,7 +1137,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               GestureDetector(
                 onTap: () {
                   // Add your cart navigation here
-                  print('Cart tapped');
                 },
                 child: Container(
                   width: 30,
@@ -1327,7 +1301,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       // Set category as selected and filter products
                       final rawName = category['name']?.toString() ?? '';
                       final normalized = _normalizeCategoryName(rawName);
-                      print('🏷️ Category selected: $rawName -> $normalized');
 
                       // Update selected category for filtering and display
                       setState(() {
@@ -1454,7 +1427,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             final isRTL = _localizationService.textDirection == TextDirection.rtl;
             return GestureDetector(
               onTap: () {
-                print('🎯 Age card tapped: ${ageRanges[index]}');
                 MainNavigation.switchToShopWithAgeFilter(context, ageRanges[index]);
               },
               child: Container(
@@ -1532,7 +1504,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         itemBuilder: (context, index) {
           return GestureDetector(
             onTap: () {
-              print('🎯 Age card tapped: ${ageRanges[index]}');
               MainNavigation.switchToShopWithAgeFilter(context, ageRanges[index]);
             },
             child: Container(

@@ -42,11 +42,8 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
       
       // Debug logging
       if (kDebugMode && orders.isNotEmpty) {
-        print('📦 Loaded ${orders.length} orders');
         for (var order in orders) {
-          print('Order ${order.orderNumber}: ${order.items.length} items');
           for (var item in order.items) {
-            print('  - ${item.book?.title ?? "Unknown"}: status=${item.generationStatus}, pdfUrl=${item.pdfUrl != null ? "✓" : "✗"}');
           }
         }
       }
@@ -56,7 +53,6 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading orders: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -370,12 +366,6 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
   Widget _buildOrderItem(OrderItem item) {
     // Debug: print item data to understand what's available
     if (kDebugMode) {
-      print('🔍 Order item data:');
-      print('   bookTitle: ${item.bookTitle}');
-      print('   bookId: ${item.bookId}');
-      print('   generationStatus: ${item.generationStatus}');
-      print('   pdfUrl: ${item.pdfUrl ?? "null"}');
-      print('   personalizationData: ${item.personalizationData}');
     }
     
     // Use the helper methods from OrderItem
@@ -551,10 +541,6 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
   Widget _buildGenerationStatusSection(OrderItem item) {
     // Debug logging
     if (kDebugMode) {
-      print('🔍 Building status section for ${item.book?.title ?? "Unknown"}');
-      print('   Status: ${item.generationStatus}');
-      print('   PDF URL: ${item.pdfUrl ?? "null"}');
-      print('   isGenerationComplete: ${item.isGenerationComplete}');
     }
 
     final bool canDownload = item.generationStatus.toLowerCase() == 'completed' && item.pdfUrl != null;

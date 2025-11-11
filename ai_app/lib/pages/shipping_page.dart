@@ -5,24 +5,8 @@ import 'checkout_page.dart';
 import '../models/order.dart';
 import '../services/localization_service.dart';
 
-// Responsive helper functions
+// Responsive helper function
 bool _isMobile(BuildContext context) => MediaQuery.of(context).size.width < 650;
-bool _isTablet(BuildContext context) => MediaQuery.of(context).size.width >= 650 && MediaQuery.of(context).size.width < 1100;
-
-double _getMaxWidth(BuildContext context) {
-  final width = MediaQuery.of(context).size.width;
-  if (_isMobile(context)) return width;
-  if (_isTablet(context)) return 900;
-  return 1000;
-}
-
-EdgeInsets _getResponsivePadding(BuildContext context) {
-  if (_isMobile(context)) return const EdgeInsets.symmetric(horizontal: 20);
-  if (_isTablet(context)) return const EdgeInsets.symmetric(horizontal: 40);
-  final width = MediaQuery.of(context).size.width;
-  final padding = (width - 1000) / 2;
-  return EdgeInsets.symmetric(horizontal: padding > 40 ? padding : 40);
-}
 
 class ShippingPage extends StatefulWidget {
   final double cartTotal;
@@ -144,7 +128,6 @@ class _ShippingPageState extends State<ShippingPage> {
         });
       }
     } catch (e) {
-      print('Error loading book charges: $e');
       setState(() {
         _pdfCharges = 0.0;
         _physicalShipmentCharges = 0.0;
@@ -166,19 +149,13 @@ class _ShippingPageState extends State<ShippingPage> {
 
   Future<void> _testDatabaseConnection() async {
     try {
-      print('Testing database connection...');
-      final user = Supabase.instance.client.auth.currentUser;
-      print('Current user: ${user?.id} (${user?.email})');
-      
       // Test a simple query to verify connection
-      final testQuery = await Supabase.instance.client
+      await Supabase.instance.client
           .from('shipping_addresses')
           .select('count')
           .count(CountOption.exact);
       
-      print('Database connection test successful. Total records: ${testQuery.count}');
     } catch (e) {
-      print('Database connection test failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -215,21 +192,15 @@ class _ShippingPageState extends State<ShippingPage> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    print('Loading shipping address for user: ${user.id}');
-
     try {
       // Try to load from shipping_addresses table first
-      print('Querying shipping_addresses table...');
       final response = await Supabase.instance.client
           .from('shipping_addresses')
           .select()
           .eq('user_id', user.id)
           .maybeSingle();
 
-      print('Database query result: $response');
-
       if (response != null) {
-        print('Found saved shipping address in database');
         setState(() {
           _fullNameController.text = response['full_name'] ?? '';
           _phoneController.text = response['phone'] ?? '';
@@ -253,11 +224,9 @@ class _ShippingPageState extends State<ShippingPage> {
           _saveShippingDetails = true; // Auto-check the save box if data exists
         });
       } else {
-        print('No shipping address found in database, checking user metadata...');
         // Fallback to user metadata
         final shippingData = user.userMetadata?['shipping_address'];
         if (shippingData != null && shippingData is Map) {
-          print('Found shipping address in user metadata');
           setState(() {
             _fullNameController.text = shippingData['full_name'] ?? '';
             _phoneController.text = shippingData['phone'] ?? '';
@@ -280,12 +249,9 @@ class _ShippingPageState extends State<ShippingPage> {
             
             _saveShippingDetails = true; // Auto-check the save box if data exists
           });
-        } else {
-          print('No shipping address found in user metadata either');
         }
       }
     } catch (e) {
-      print('Error loading shipping address: $e');
       // Show error to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -314,8 +280,6 @@ class _ShippingPageState extends State<ShippingPage> {
       'state': _selectedState ?? _stateController.text.trim(),
     };
 
-    print('Attempting to save shipping data: $shippingData');
-
     try {
       // Check if record exists
       final existing = await Supabase.instance.client
@@ -324,34 +288,24 @@ class _ShippingPageState extends State<ShippingPage> {
           .eq('user_id', user.id)
           .maybeSingle();
 
-      print('Existing record check result: $existing');
-
       if (existing != null) {
         // Update existing record (remove user_id from update data as it's not needed)
         final updateData = Map<String, dynamic>.from(shippingData);
         updateData.remove('user_id');
         
-        print('Updating existing record with data: $updateData');
-        
-        final updateResult = await Supabase.instance.client
+        await Supabase.instance.client
             .from('shipping_addresses')
             .update(updateData)
             .eq('user_id', user.id)
             .select();
         
-        print('Update result: $updateResult');
-        print('Updated existing shipping address in database');
       } else {
         // Insert new record
-        print('Inserting new record with data: $shippingData');
-        
-        final insertResult = await Supabase.instance.client
+        await Supabase.instance.client
             .from('shipping_addresses')
             .insert(shippingData)
             .select();
         
-        print('Insert result: $insertResult');
-        print('Inserted new shipping address into database');
       }
 
       // Also save to user metadata as backup
@@ -365,7 +319,6 @@ class _ShippingPageState extends State<ShippingPage> {
             },
           ),
         );
-        print('Saved shipping address to user metadata');
       }
 
       // Show success message
@@ -379,8 +332,6 @@ class _ShippingPageState extends State<ShippingPage> {
         );
       }
     } catch (e) {
-      print('Error saving shipping address: $e');
-      print('Error type: ${e.runtimeType}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -438,7 +389,6 @@ class _ShippingPageState extends State<ShippingPage> {
         );
       }
     } catch (e) {
-      print('Error processing order: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -568,204 +518,166 @@ class _ShippingPageState extends State<ShippingPage> {
 
   Widget _buildShippingDetailsSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.symmetric(
+        horizontal: _isMobile(context) ? 16 : 20,
+        vertical: 20,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'shipping_page_shipping_details'.tr,
-            style: GoogleFonts.tajawal(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'shipping_page_shipping_details'.tr,
+              style: GoogleFonts.tajawal(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          
-          // Country dropdown
-          _buildDropdownField(
-            label: 'shipping_page_country'.tr,
-            value: _selectedCountry,
-            items: _countries,
-            onChanged: (value) {
-              setState(() {
-                _selectedCountry = value;
-                _selectedState = null;
-                _stateController.clear();
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          
-          // Full name
-          _buildTextFormField(
-            controller: _fullNameController,
-            label: 'shipping_page_full_name'.tr,
-            hintText: 'shipping_page_enter_full_name'.tr,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'shipping_page_please_enter_full_name'.tr;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          
-          // Phone number
-          _buildTextFormField(
-            controller: _phoneController,
-            label: 'shipping_page_phone_number'.tr,
-            hintText: 'shipping_page_enter_phone'.tr,
-            keyboardType: TextInputType.phone,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'shipping_page_please_enter_phone'.tr;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          
-          // Street address
-          _buildTextFormField(
-            controller: _streetController,
-            label: 'shipping_page_street'.tr,
-            hintText: 'shipping_page_enter_street'.tr,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'shipping_page_please_enter_street'.tr;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          
-          // City
-          _buildTextFormField(
-            controller: _cityController,
-            label: 'shipping_page_city'.tr,
-            hintText: 'shipping_page_enter_city'.tr,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'shipping_page_please_enter_city'.tr;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          
-          // Postal/Zip code
-          _buildTextFormField(
-            controller: _postalCodeController,
-            label: 'shipping_page_postal_code'.tr,
-            hintText: 'shipping_page_enter_postal'.tr,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'shipping_page_please_enter_postal'.tr;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          
-          // State/Province
-          if (_selectedCountry != null && _statesByCountry.containsKey(_selectedCountry))
+            const SizedBox(height: 20),
+            
+            // Country dropdown
             _buildDropdownField(
-              label: 'shipping_page_state_province'.tr,
-              value: _selectedState,
-              items: _statesByCountry[_selectedCountry!]!,
+              label: 'shipping_page_country'.tr,
+              value: _selectedCountry,
+              items: _countries,
               onChanged: (value) {
                 setState(() {
-                  _selectedState = value;
-                  _stateController.text = value ?? '';
+                  _selectedCountry = value;
+                  _selectedState = null;
+                  _stateController.clear();
                 });
               },
-            )
-          else
+            ),
+            const SizedBox(height: 16),
+            
+            // Full name
             _buildTextFormField(
-              controller: _stateController,
-              label: 'shipping_page_state_province'.tr,
-              hintText: 'shipping_page_enter_state'.tr,
+              controller: _fullNameController,
+              label: 'shipping_page_full_name'.tr,
+              hintText: 'shipping_page_enter_full_name'.tr,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'shipping_page_please_enter_state'.tr;
+                  return 'shipping_page_please_enter_full_name'.tr;
                 }
                 return null;
               },
             ),
-          
-          const SizedBox(height: 20),
-          
-          // Save shipping details checkbox
-          Row(
-            children: [
-              Checkbox(
-                value: _saveShippingDetails,
+            const SizedBox(height: 16),
+            
+            // Phone number
+            _buildTextFormField(
+              controller: _phoneController,
+              label: 'shipping_page_phone_number'.tr,
+              hintText: 'shipping_page_enter_phone'.tr,
+              keyboardType: TextInputType.phone,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'shipping_page_please_enter_phone'.tr;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // Street address
+            _buildTextFormField(
+              controller: _streetController,
+              label: 'shipping_page_street'.tr,
+              hintText: 'shipping_page_enter_street'.tr,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'shipping_page_please_enter_street'.tr;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // City
+            _buildTextFormField(
+              controller: _cityController,
+              label: 'shipping_page_city'.tr,
+              hintText: 'shipping_page_enter_city'.tr,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'shipping_page_please_enter_city'.tr;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // Postal/Zip code
+            _buildTextFormField(
+              controller: _postalCodeController,
+              label: 'shipping_page_postal_code'.tr,
+              hintText: 'shipping_page_enter_postal'.tr,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'shipping_page_please_enter_postal'.tr;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // State/Province
+            if (_selectedCountry != null && _statesByCountry.containsKey(_selectedCountry))
+              _buildDropdownField(
+                label: 'shipping_page_state_province'.tr,
+                value: _selectedState,
+                items: _statesByCountry[_selectedCountry!]!,
                 onChanged: (value) {
                   setState(() {
-                    _saveShippingDetails = value ?? false;
+                    _selectedState = value;
+                    _stateController.text = value ?? '';
                   });
                 },
-                activeColor: const Color(0xFF784D9C),
+              )
+            else
+              _buildTextFormField(
+                controller: _stateController,
+                label: 'shipping_page_state_province'.tr,
+                hintText: 'shipping_page_enter_state'.tr,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'shipping_page_please_enter_state'.tr;
+                  }
+                  return null;
+                },
               ),
-              Expanded(
-                child: Text(
-                  'shipping_page_save_shipping_details'.tr,
-                  style: GoogleFonts.tajawal(fontSize: 14),
+            
+            const SizedBox(height: 20),
+            
+            // Save shipping details checkbox
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Checkbox(
+                  value: _saveShippingDetails,
+                  onChanged: (value) {
+                    setState(() {
+                      _saveShippingDetails = value ?? false;
+                    });
+                  },
+                  activeColor: const Color(0xFF784D9C),
                 ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Test save button for debugging
-          // SizedBox(
-          //   width: double.infinity,
-          //   child: OutlinedButton.icon(
-          //     onPressed: _isLoading ? null : () async {
-          //       if (_formKey.currentState!.validate()) {
-          //         setState(() => _isLoading = true);
-          //         try {
-          //           await _saveShippingAddress();
-          //           if (mounted) {
-          //             ScaffoldMessenger.of(context).showSnackBar(
-          //               SnackBar(
-          //                 content: Text('shipping_page_test_save_success'.tr),
-          //                 backgroundColor: Colors.green,
-          //               ),
-          //             );
-          //           }
-          //         } catch (e) {
-          //           if (mounted) {
-          //             ScaffoldMessenger.of(context).showSnackBar(
-          //               SnackBar(
-          //                 content: Text('${'shipping_page_test_save_failed'.tr}$e'),
-          //                 backgroundColor: Colors.red,
-          //               ),
-          //             );
-          //           }
-          //         } finally {
-          //           if (mounted) {
-          //             setState(() => _isLoading = false);
-          //           }
-          //         }
-          //       }
-          //     },
-          //     icon: const Icon(Icons.save_outlined),
-          //     label: Text('shipping_page_test_save'.tr),
-          //     style: OutlinedButton.styleFrom(
-          //       foregroundColor: const Color(0xFF784D9C),
-          //       side: const BorderSide(color: Color(0xFF784D9C)),
-          //       padding: const EdgeInsets.symmetric(vertical: 12),
-          //     ),
-          //   ),
-          // ),
-        ],
+                Expanded(
+                  child: Text(
+                    'shipping_page_save_shipping_details'.tr,
+                    style: GoogleFonts.tajawal(fontSize: 14),
+                    overflow: TextOverflow.visible,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1062,42 +974,53 @@ class _ShippingPageState extends State<ShippingPage> {
           ),
         ),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          initialValue: value,
-          onChanged: onChanged,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '${'shipping_page_please_select'.tr}$label';
-            }
-            return null;
-          },
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(item),
-            );
-          }).toList(),
-          decoration: InputDecoration(
-            hintText: 'Select $label',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: _isMobile(context) ? 56 : double.infinity,
+          ),
+          child: DropdownButtonFormField<String>(
+            initialValue: value,
+            onChanged: onChanged,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '${'shipping_page_please_select'.tr}$label';
+              }
+              return null;
+            },
+            items: items.map((String item) {
+              return DropdownMenuItem<String>(
+                value: item,
+                child: Text(
+                  item,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            decoration: InputDecoration(
+              hintText: 'Select $label',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFF784D9C), width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              isDense: _isMobile(context),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF784D9C), width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            isExpanded: true,
+            isDense: _isMobile(context),
           ),
         ),
       ],

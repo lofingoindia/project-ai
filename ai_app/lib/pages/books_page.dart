@@ -101,7 +101,6 @@ class _BooksPageState extends State<BooksPage> {
         _categories = genres;
       });
     } catch (e) {
-      print('Error loading categories: $e');
       // Keep empty list if error
     }
   }
@@ -158,23 +157,19 @@ class _BooksPageState extends State<BooksPage> {
   Future<void> _loadUserPreferencesAndBooks() async {
     try {
       final selectedCategory = await UserPreferenceService.getSelectedCategoryWithFallback();
-      print('📱 BooksPage: Loading with selected category: $selectedCategory');
       
       // Pre-set the gender filter based on selected category
       if (selectedCategory == 'girl') {
         setState(() {
           _selectedGender = 'Girl';
         });
-        print('📱 BooksPage: Set gender filter to Girl');
       } else if (selectedCategory == 'boy') {
         setState(() {
           _selectedGender = 'Boy';
         });
-        print('📱 BooksPage: Set gender filter to Boy');
       }
       _loadBooks();
     } catch (e) {
-      print('📱 BooksPage: Error loading preferences: $e');
       _loadBooks();
     }
   }
@@ -208,15 +203,9 @@ class _BooksPageState extends State<BooksPage> {
         // Gender filter - improved to handle category-based filtering like home page
         if (_selectedGender != null && _selectedGender!.isNotEmpty) {
           final selectedGender = _selectedGender!.toLowerCase().trim();
-          print('📚 Filtering book: ${book.title}');
-          print('   - Selected gender: $selectedGender');
-          print('   - Book dbCategory: ${book.dbCategory}');
-          print('   - Book genderTarget: ${book.genderTarget}');
           
           // Use same logic as home page: filter by dbCategory (1=boy, 2=girl)
           bool matchesCategory = false;
-          print('   - Checking dbCategory type: ${book.dbCategory.runtimeType}');
-          print('   - dbCategory value: "${book.dbCategory}"');
           
           if (selectedGender == 'boy') {
             // Handle both int and string types for dbCategory
@@ -229,8 +218,6 @@ class _BooksPageState extends State<BooksPage> {
               matchesCategory = true;
             }
           }
-          
-          print('   - Matches category: $matchesCategory');
           
           if (!matchesCategory) {
             return false;
@@ -254,14 +241,10 @@ class _BooksPageState extends State<BooksPage> {
             selectedMaxAge = int.tryParse(parts[1].trim()) ?? 100;
           }
 
-          // Debug print
-          print('🎯 Selected age filter: $_selectedAge -> Min: $selectedMinAge, Max: $selectedMaxAge');
-
           bool ageMatches = false;
 
           // Try to extract numeric ages from the book's age_range field (supports Arabic and English)
           if (book.ageRange != null && book.ageRange!.isNotEmpty) {
-            print('📖 Book: ${book.title}, ageRange field: "${book.ageRange}"');
             
             // Convert Arabic numerals to English numerals and extract numbers
             String normalizedAgeRange = book.ageRange!
@@ -270,64 +253,41 @@ class _BooksPageState extends State<BooksPage> {
                 .replaceAll('٦', '6').replaceAll('٧', '7').replaceAll('٨', '8')
                 .replaceAll('٩', '9');
             
-            print('📝 Normalized age range: "$normalizedAgeRange"');
-            
             // Extract numbers from normalized text
             RegExp numberRegex = RegExp(r'\d+');
             List<String> numbers = numberRegex.allMatches(normalizedAgeRange).map((m) => m.group(0)!).toList();
-            
-            print('🔢 Extracted numbers: $numbers');
             
             if (numbers.length >= 2) {
               // If we found at least 2 numbers, assume they are min and max ages
               int bookMinAge = int.tryParse(numbers[0]) ?? 0;
               int bookMaxAge = int.tryParse(numbers[1]) ?? 100;
               
-              print('📊 Extracted from ageRange: Min: $bookMinAge, Max: $bookMaxAge');
-              
               // Check if the book's age range matches exactly with the selected range
               if (bookMinAge == selectedMinAge && bookMaxAge == selectedMaxAge) {
                 ageMatches = true;
-                print('✅ Exact age range match');
-              } else {
-                print('❌ Age range mismatch: Book($bookMinAge-$bookMaxAge) vs Selected($selectedMinAge-$selectedMaxAge)');
               }
             } else if (numbers.length == 1) {
               // Single number in age range, check if it falls within selected range
               int bookAge = int.tryParse(numbers[0]) ?? 0;
               if (bookAge >= selectedMinAge && bookAge <= selectedMaxAge) {
                 ageMatches = true;
-                print('✅ Single age $bookAge falls within selected range');
-              } else {
-                print('❌ Single age $bookAge outside selected range');
               }
-            } else {
-              print('⚠️ No numbers found in age range, trying fallback');
             }
           }
           
           // If no match from ageRange field, try numeric age_min and age_max fields
           if (!ageMatches) {
-            print('🔄 Trying fallback with ageMin: ${book.ageMin}, ageMax: ${book.ageMax}');
-            
             // Check if book's numeric age range matches selected range
             if (book.ageMin == selectedMinAge && book.ageMax == selectedMaxAge) {
               ageMatches = true;
-              print('✅ Fallback exact match');
             } else if (selectedMinAge <= book.ageMin && book.ageMax <= selectedMaxAge) {
               // Book's range is within selected range
               ageMatches = true;
-              print('✅ Book range within selected range');
-            } else {
-              print('❌ Fallback mismatch: Book(${book.ageMin}-${book.ageMax}) vs Selected($selectedMinAge-$selectedMaxAge)');
             }
           }
           
           if (!ageMatches) {
-            print('🚫 Book filtered out: ${book.title}');
             return false;
-          } else {
-            print('✅ Book passed age filter: ${book.title}');
           }
         }
 
@@ -340,26 +300,6 @@ class _BooksPageState extends State<BooksPage> {
 
         return true;
       }).toList();
-      
-      // Debug: Print filter results
-      print('======= BOOKS PAGE FILTER APPLIED =======');
-      print('Gender: $_selectedGender, Age: $_selectedAge, Category: $_selectedCategory');
-      print('Total books: ${_books.length}, Filtered books: ${_filteredBooks.length}');
-      if (_filteredBooks.isNotEmpty) {
-        print('Sample filtered books:');
-        _filteredBooks.take(3).forEach((b) {
-          print('  - ${b.title} (dbCategory: ${b.dbCategory}, Gender: ${b.genderTarget})');
-        });
-      } else {
-        print('No books matched the filters');
-        if (_selectedAge != null || _selectedGender != null) {
-          print('Sample of all books:');
-          _books.take(5).forEach((b) {
-            print('  - ${b.title}: dbCategory ${b.dbCategory}, Age ${b.ageMin}-${b.ageMax}');
-          });
-        }
-      }
-      print('==============================');
     });
   }
 

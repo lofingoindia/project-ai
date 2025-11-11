@@ -107,7 +107,6 @@ class _MyAccountPageState extends State<MyAccountPage> {
         _emailController.text = email;
       });
     } catch (e) {
-      print('Profile loading error: $e');
       // Fallback to auth user data if database query fails
       final name = user.userMetadata?['name'] ?? '';
       final email = user.email ?? '';
@@ -144,7 +143,6 @@ class _MyAccountPageState extends State<MyAccountPage> {
         dialogSetState(() {});
       }
     } catch (e) {
-      print('Error picking image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${'my_account_error_selecting_image'.tr}${e.toString()}'),
@@ -433,7 +431,7 @@ class _MyAccountPageState extends State<MyAccountPage> {
                       Text(_userName.isNotEmpty ? _userName : 'my_account_user'.tr, style: GoogleFonts.tajawal(fontSize: 22, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 16),
                       SizedBox(
-                        width: 120,
+                        width: double.infinity,
                         height: 42,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
@@ -453,13 +451,25 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                 
                                 return StatefulBuilder(
                                   builder: (context, setStateDialog) {
+                                    final screenSize = MediaQuery.of(context).size;
+                                    final isLargeScreen = screenSize.width >= 600;
+                                    final dialogWidth = isLargeScreen ? 500.0 : screenSize.width - 32;
+                                    
                                     return Dialog(
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(24.0),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                                      child: Container(
+                                        width: dialogWidth,
+                                        constraints: BoxConstraints(
+                                          maxWidth: 500,
+                                          maxHeight: screenSize.height * 0.9,
+                                        ),
+                                        child: SingleChildScrollView(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(24.0),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.stretch,
                                           children: [
                                             Text('my_account_edit_profile'.tr, style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, fontSize: 18)),
                                             const SizedBox(height: 16),
@@ -556,26 +566,26 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                 contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                               ),
                                             ),
-                                            const SizedBox(height: 12),
-                                            TextField(
-                                              controller: _passwordController,
-                                              obscureText: true,
-                                              decoration: InputDecoration(
-                                                hintText: 'my_account_new_password'.tr,
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 12),
-                                            TextField(
-                                              controller: _confirmPasswordController,
-                                              obscureText: true,
-                                              decoration: InputDecoration(
-                                                hintText: 'my_account_confirm_password'.tr,
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                              ),
-                                            ),
+                                            // const SizedBox(height: 12),
+                                            // TextField(
+                                            //   controller: _passwordController,
+                                            //   obscureText: true,
+                                            //   decoration: InputDecoration(
+                                            //     hintText: 'my_account_new_password'.tr,
+                                            //     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            //     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                            //   ),
+                                            // ),
+                                            // const SizedBox(height: 12),
+                                            // TextField(
+                                            //   controller: _confirmPasswordController,
+                                            //   obscureText: true,
+                                            //   decoration: InputDecoration(
+                                            //     hintText: 'my_account_confirm_password'.tr,
+                                            //     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            //     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                            //   ),
+                                            // ),
                                             const SizedBox(height: 20),
                                             if (dialogError != null) ...[
                                               Text(dialogError!, style: GoogleFonts.tajawal(color: Colors.red)),
@@ -645,7 +655,6 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                                   // Save image path locally
                                                                   await _saveImagePath(_selectedImage!.path);
                                                                 } catch (e) {
-                                                                  print('Error uploading image: $e');
                                                                   // Continue with profile update even if image upload fails
                                                                 }
                                                               }
@@ -667,7 +676,6 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                                       .eq('email', user.email!);
                                                                 }
                                                               } catch (e) {
-                                                                print('Error updating app_users: $e');
                                                               }
                                                               
                                                               // Update auth user data
@@ -732,7 +740,9 @@ class _MyAccountPageState extends State<MyAccountPage> {
                                                 ),
                                               ],
                                             ),
-                                          ],
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     );

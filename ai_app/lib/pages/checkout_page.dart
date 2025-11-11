@@ -52,16 +52,12 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   String _selectedPaymentMethod = 'paypal';
-  final TextEditingController _couponController = TextEditingController();
   bool _isProcessing = false;
-  double _discount = 0.0;
-  String _appliedCoupon = '';
 
-  double get total => widget.subtotal + widget.shippingCost - _discount;
+  double get total => widget.subtotal + widget.shippingCost;
 
   @override
   void dispose() {
-    _couponController.dispose();
     super.dispose();
   }
 
@@ -109,10 +105,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       
                       // Order Summary Section
                       _buildOrderSummary(),
-                      const SizedBox(height: 24),
-                      
-                      // Coupon Code Section
-                      _buildCouponSection(),
                       const SizedBox(height: 24),
                       
                       // Payment Method Section
@@ -553,31 +545,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ],
           ),
           
-          // Discount if applied
-          if (_discount > 0) ...[
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${'checkout_page_discount'.tr} ($_appliedCoupon)',
-                  style: GoogleFonts.tajawal(
-                    fontSize: 14,
-                    color: Colors.green[700],
-                  ),
-                ),
-                Text(
-                  '-\$${_discount.toStringAsFixed(2)}',
-                  style: GoogleFonts.tajawal(
-                    fontSize: 14,
-                    color: Colors.green[700],
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 16),
@@ -600,83 +567,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF784D9C),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCouponSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'checkout_page_got_coupon'.tr,
-            style: GoogleFonts.tajawal(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _couponController,
-                  decoration: InputDecoration(
-                    hintText: 'checkout_page_coupon_placeholder'.tr,
-                    hintStyle: GoogleFonts.tajawal(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF784D9C)),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  style: GoogleFonts.tajawal(fontSize: 14),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: _applyCoupon,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[600],
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'checkout_page_apply'.tr,
-                  style: GoogleFonts.tajawal(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
                 ),
               ),
             ],
@@ -948,61 +838,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ),
     );
   }
-
-  void _applyCoupon() {
-    final couponCode = _couponController.text.trim().toLowerCase();
-    
-    if (couponCode.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('checkout_page_please_enter_coupon'.tr),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Simple coupon validation (you can expand this)
-    double discount = 0.0;
-    String message = '';
-    
-    switch (couponCode) {
-      case 'save10':
-        discount = widget.subtotal * 0.10; // 10% off
-        message = 'checkout_page_discount_10_applied'.tr;
-        break;
-      case 'welcome5':
-        discount = 5.0; // $5 off
-        message = 'checkout_page_discount_5_applied'.tr;
-        break;
-      case 'freeship':
-        discount = widget.shippingCost; // Free shipping
-        message = 'checkout_page_freeship_applied'.tr;
-        break;
-      default:
-        message = 'checkout_page_invalid_coupon'.tr;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-    }
-
-    setState(() {
-      _discount = discount;
-      _appliedCoupon = couponCode.toUpperCase();
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
   Future<void> _processPayPalPayment() async {
     setState(() => _isProcessing = true);
 
@@ -1066,7 +901,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       // Simulate credit card processing
       await Future.delayed(const Duration(seconds: 3));
       
-      await _createOrder();
+      final orderId = await _createOrder();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1075,7 +910,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
             backgroundColor: Colors.green,
           ),
         );
-        final orderId = await _createOrder();
         _navigateToThankYou(orderId);
       }
     } catch (e) {
@@ -1125,15 +959,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
         totalAmount: total,
         subtotal: widget.subtotal,
         shippingCost: widget.shippingCost,
-        discountAmount: _discount,
+        discountAmount: 0.0,
         paymentMethod: _selectedPaymentMethod,
         shippingMethod: widget.shippingMethod,
         shippingAddress: widget.shippingAddress,
         orderItems: orderItems,
-        appliedCoupon: _appliedCoupon.isNotEmpty ? _appliedCoupon : null,
+        appliedCoupon: null,
       );
-
-      print('Order created successfully with ID: $orderId');
 
       // Clear cart after successful order
       final cartService = CartService();
@@ -1146,7 +978,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       
       return orderId;
     } catch (e) {
-      print('Error creating order: $e');
       rethrow;
     }
   }

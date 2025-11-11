@@ -34,7 +34,6 @@ class AiQueueService {
           .single();
 
       final queueId = response['id'] as String;
-      debugPrint('[AiQueueService] Request submitted with ID: $queueId');
 
       // Trigger the Edge Function
       await _triggerAiGeneration(
@@ -47,7 +46,6 @@ class AiQueueService {
 
       return queueId;
     } catch (e) {
-      debugPrint('[AiQueueService] Failed to submit request: $e');
       rethrow;
     }
   }
@@ -68,7 +66,6 @@ class AiQueueService {
         'childName': childName,
         'userId': userId,
       };
-      debugPrint('[AiQueueService] Calling function with payload: $payload');
       
       final response = await _client.functions.invoke(
         // Use the actual deployed function slug
@@ -80,9 +77,7 @@ class AiQueueService {
         throw Exception('Function call failed: ${response.status} ${response.data}');
       }
 
-      debugPrint('[AiQueueService] AI function triggered successfully: ${response.data}');
     } catch (e) {
-      debugPrint('[AiQueueService] Failed to trigger AI function: $e');
       // Don't rethrow here - the queue entry exists and can be retried
     }
   }
@@ -98,7 +93,6 @@ class AiQueueService {
 
       return response;
     } catch (e) {
-      debugPrint('[AiQueueService] Failed to get status: $e');
       return null;
     }
   }
@@ -138,7 +132,6 @@ class AiQueueService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('[AiQueueService] Failed to get user generations: $e');
       return [];
     }
   }
@@ -171,9 +164,7 @@ class AiQueueService {
         userId: generation['user_id'],
       );
 
-      debugPrint('[AiQueueService] Generation retry triggered for: $queueId');
     } catch (e) {
-      debugPrint('[AiQueueService] Failed to retry generation: $e');
       rethrow;
     }
   }
@@ -186,9 +177,7 @@ class AiQueueService {
           .delete()
           .eq('id', queueId);
 
-      debugPrint('[AiQueueService] Generation deleted: $queueId');
     } catch (e) {
-      debugPrint('[AiQueueService] Failed to delete generation: $e');
       rethrow;
     }
   }

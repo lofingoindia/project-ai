@@ -293,7 +293,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 'is_active': true,
               });
         } catch (profileError) {
-          print('Error creating user profile: $profileError');
+          // Non-blocking error
         }
         
         // Try to sign in immediately regardless of email confirmation status
@@ -306,7 +306,6 @@ class _SignUpPageState extends State<SignUpPage> {
           await _cartService.migrateLocalCartToServer();
         } catch (signInError) {
           // If sign in fails due to email confirmation, continue anyway
-          print('Sign in after signup failed (possibly due to email confirmation): $signInError');
         }
         
         // Always navigate to MyAccountPage - user account was created successfully

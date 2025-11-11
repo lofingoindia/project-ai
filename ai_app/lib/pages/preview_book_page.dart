@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/book.dart';
 import '../services/cart_service.dart';
+import '../services/localization_service.dart';
 import '../pages/cart_page.dart';
 import '../main_navigation.dart';
 
@@ -42,8 +43,8 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
   Future<void> _addToCart() async {
     if (widget.book == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to add to cart: Book information missing'),
+        SnackBar(
+          content: Text('preview_book_missing_info'.tr),
           backgroundColor: Colors.red,
         ),
       );
@@ -81,7 +82,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
             children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 8),
-              Text('Added to cart successfully!'),
+              Text('preview_book_added_success'.tr),
             ],
           ),
           backgroundColor: Colors.green,
@@ -111,7 +112,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to add to cart: $e'),
+          content: Text('${'preview_book_add_error'.tr}$e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -141,7 +142,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Preview', style: GoogleFonts.tajawal()),
+        title: Text('preview_book_page_title'.tr, style: GoogleFonts.tajawal()),
         backgroundColor: const Color(0xFFF5F3FF),
         elevation: 0,
         centerTitle: isWeb, // Center title on web
@@ -156,7 +157,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Personalized Cover',
+                  'preview_book_personalized_cover'.tr,
                   style: GoogleFonts.tajawal(
                     fontSize: isWeb ? 28 : 24, // Larger on web
                     fontWeight: FontWeight.w600,
@@ -199,7 +200,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Personalized for:',
+                          'preview_book_personalized_for'.tr,
                           style: GoogleFonts.tajawal(
                             fontSize: isWeb ? 16 : 14, // Larger on web
                             color: Colors.grey[600],
@@ -218,7 +219,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
                         if (widget.childAge != null) ...[
                           SizedBox(height: isWeb ? 6 : 4), // More space on web
                           Text(
-                            'Age: ${widget.childAge} years old',
+                            '${'preview_book_age'.tr} ${widget.childAge}',
                             style: GoogleFonts.tajawal(
                               fontSize: isWeb ? 16 : 14, // Larger on web
                               color: Colors.grey[600],
@@ -228,7 +229,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
                         if (widget.selectedLanguage != null) ...[
                           SizedBox(height: isWeb ? 6 : 4), // More space on web
                           Text(
-                            'Language: ${widget.selectedLanguage}',
+                            '${'preview_book_language'.tr} ${widget.selectedLanguage}',
                             style: GoogleFonts.tajawal(
                               fontSize: isWeb ? 16 : 14, // Larger on web
                               color: Colors.grey[600],
@@ -242,7 +243,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
                 ],
                 
                 Text(
-                  'Your personalized book cover is ready!',
+                  'preview_book_ready'.tr,
                   style: GoogleFonts.tajawal(
                     fontSize: isWeb ? 18 : 16, // Larger on web
                     color: Colors.grey[600],
@@ -268,7 +269,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
                           ),
                         ),
                         child: Text(
-                          'Back',
+                          'preview_book_back'.tr,
                           style: GoogleFonts.tajawal(
                             fontSize: isWeb ? 18 : 16, // Larger on web
                             fontWeight: FontWeight.w600,
@@ -300,7 +301,7 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
                                 ),
                               )
                             : Text(
-                                'Add to Cart',
+                                'preview_book_add_to_cart'.tr,
                                 style: GoogleFonts.tajawal(
                                   fontSize: isWeb ? 18 : 16, // Larger on web
                                   fontWeight: FontWeight.w600,
@@ -343,7 +344,6 @@ class _PreviewBookPageState extends State<PreviewBookPage> {
             ),
           );
         } catch (e) {
-          print('Error decoding base64 image: $e');
           return Container(
             height: imageHeight,
             color: Colors.grey[200],

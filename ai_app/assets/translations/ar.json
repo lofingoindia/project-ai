@@ -582,5 +582,23 @@
   "bestsellers": "الأكثر مبيعاً",
   "personalise_a_bestseller": "خصص كتاباً من الأكثر مبيعاً",
   "view_all": "عرض الكل",
-  "personalise": "تخصيص"
+  "personalise": "تخصيص",
+  
+  "preview_book_page_title": "معاينة",
+  "preview_book_personalized_cover": "غلاف مخصص",
+  "preview_book_personalized_for": "مخصص لـ:",
+  "preview_book_age": "العمر:",
+  "preview_book_language": "اللغة:",
+  "preview_book_ready": "غلاف الكتاب المخصص الخاص بك جاهز!",
+  "preview_book_back": "رجوع",
+  "preview_book_add_to_cart": "أضف إلى السلة",
+  "preview_book_added_success": "تمت الإضافة إلى السلة بنجاح!",
+  "preview_book_add_error": "فشل إضافة المنتج إلى السلة: ",
+  "preview_book_missing_info": "تعذر الإضافة إلى السلة: معلومات الكتاب مفقودة",
+  
+  "loading_page_book_moment_away": "...كتابك على بُعد لحظة واحدة",
+  "loading_page_ai_creating": "...الذكاء الاصطناعي ينشئ غلافك المخصص",
+  "loading_page_generating": "...جاري إنشاء كتابك المخصص",
+  "loading_page_downloading_images": "...جاري تحميل الصور",
+  "loading_page_full_book_after_purchase": "سيتم إنشاء الكتاب الكامل بالكامل بعد شرائك. تابع وفتّشه الآن."
 }

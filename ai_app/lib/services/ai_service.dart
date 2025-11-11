@@ -41,9 +41,6 @@ class AiService {
     String? childSourceHint,
     String? customPrompt,
   }) async {
-    // Log basic diagnostics
-    debugPrint('[AiService] Starting generation: coverBytes=${bookCoverBytes.length}, childBytes=${childImageBytes.length}, name="$childName"');
-
     // Build prompt exactly matching the Python example
     final prompt = (customPrompt != null && customPrompt.trim().isNotEmpty)
         ? customPrompt
@@ -56,10 +53,6 @@ class AiService {
     final childPart = DataPart(childMime, childImageBytes);
 
     try {
-      debugPrint('[AiService] Calling model: gemini-2.5-flash-image-preview');
-      debugPrint('[AiService] Cover MIME: $coverMime, Child MIME: $childMime');
-      debugPrint('[AiService] Prompt: $prompt');
-      
       final model = GenerativeModel(
         model: 'gemini-2.5-flash-image-preview',
         apiKey: apiKey,
@@ -69,8 +62,6 @@ class AiService {
       final response = await model.generateContent([
         Content.multi([coverPart, childPart, TextPart(prompt)])
       ]);
-
-      debugPrint('[AiService] Response received');
       
       if (response.candidates == null || response.candidates!.isEmpty) {
         throw Exception('No candidates returned by model');
@@ -83,14 +74,12 @@ class AiService {
 
       for (final part in candidate.content.parts) {
         if (part is DataPart) {
-          debugPrint('[AiService] Found DataPart with ${part.bytes.length} bytes');
           return Uint8List.fromList(part.bytes);
         }
       }
       
       throw Exception('No image data found in response');
     } catch (e) {
-      debugPrint('[AiService] Error details: $e');
       if (e.toString().contains('API_KEY_INVALID')) {
         throw Exception('Invalid API key. Please check your Gemini API key.');
       }

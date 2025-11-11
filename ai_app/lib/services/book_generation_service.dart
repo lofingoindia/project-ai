@@ -35,9 +35,7 @@ class BookGenerationService {
           .update(updateData)
           .eq('id', orderItemId);
 
-      debugPrint('Generation status updated: $status for item $orderItemId');
     } catch (e) {
-      debugPrint('Error updating generation status: $e');
       rethrow;
     }
   }
@@ -53,7 +51,6 @@ class BookGenerationService {
 
       return response;
     } catch (e) {
-      debugPrint('Error getting generation status: $e');
       return null;
     }
   }
@@ -83,12 +80,10 @@ class BookGenerationService {
       );
 
       if (response.status == 200) {
-        debugPrint('Book generation initiated successfully');
       } else {
         throw Exception('Failed to initiate book generation');
       }
     } catch (e) {
-      debugPrint('Error initiating book generation: $e');
       await updateGenerationStatus(
         orderItemId: orderItemId,
         status: 'failed',
@@ -111,14 +106,11 @@ class BookGenerationService {
       
       // If order item ID provided and URL seems invalid, try refreshing
       if (orderItemId != null && (pdfUrl.isEmpty || !pdfUrl.startsWith('http'))) {
-        debugPrint('⚠️  Invalid PDF URL, attempting to refresh...');
         final refreshResult = await _signedUrlService.refreshOrderUrls(orderItemId);
         
         if (refreshResult.success && refreshResult.pdfUrl != null) {
           urlToUse = refreshResult.pdfUrl!;
-          debugPrint('✅ Using refreshed PDF URL');
         } else {
-          debugPrint('❌ Failed to refresh URL, using original');
         }
       }
       
@@ -131,14 +123,11 @@ class BookGenerationService {
         );
         
         if (launched) {
-          debugPrint('Successfully opened PDF: $bookTitle for $childName');
           return true;
         } else {
-          debugPrint('Failed to launch PDF URL');
           
           // If launch failed and we have order item ID, try refreshing
           if (orderItemId != null) {
-            debugPrint('⚠️  Launch failed, attempting URL refresh...');
             final refreshResult = await _signedUrlService.refreshOrderUrls(orderItemId);
             
             if (refreshResult.success && refreshResult.pdfUrl != null) {
@@ -149,7 +138,6 @@ class BookGenerationService {
               );
               
               if (retryLaunched) {
-                debugPrint('✅ Successfully opened PDF with refreshed URL');
                 return true;
               }
             }
@@ -158,11 +146,9 @@ class BookGenerationService {
           return false;
         }
       } else {
-        debugPrint('Cannot launch URL: $urlToUse');
         return false;
       }
     } catch (e) {
-      debugPrint('Error downloading book: $e');
       return false;
     }
   }
@@ -187,7 +173,6 @@ class BookGenerationService {
       final items = response as List;
       return items.every((item) => item['generation_status'] == 'completed');
     } catch (e) {
-      debugPrint('Error checking order completion: $e');
       return false;
     }
   }

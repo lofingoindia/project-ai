@@ -90,7 +90,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
           });
         }
       }).catchError((error) {
-        print('Error initializing video: $error');
       });
       
       _videoController?.addListener(() {
@@ -101,7 +100,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> with TickerProvid
         }
       });
     } catch (e) {
-      print('Error creating video controller: $e');
     }
   }
 
