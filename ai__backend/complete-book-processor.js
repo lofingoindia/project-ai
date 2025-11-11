@@ -202,15 +202,21 @@ class CompleteBookPersonalizationService {
     const analysisPrompt = `
     You are an expert at analyzing children's book illustrations. Analyze this book page (page ${pageNumber + 1}) with extreme precision:
     
-    1. CHARACTER DETECTION (MOST IMPORTANT):
-       - Count ALL characters visible (humans, animals, creatures)
-       - Identify the MAIN PROTAGONIST (usually appears most frequently, is central to the story)
-       - For EACH character, describe:
-         * Physical appearance (age, gender, hair color, clothing, distinctive features)
+    1. CHARACTER DETECTION (MOST IMPORTANT - MAIN HUMAN CHARACTER ONLY):
+       - Identify ONLY the MAIN HUMAN PROTAGONIST (the story's hero - must be a human, NOT an animal)
+       - DO NOT identify animals, pets, or non-human creatures as the main character
+       - The main character is usually:
+         * A human child or person
+         * Appears most frequently across the book
+         * Central to the story narrative
+         * The character the story is about
+       - For the MAIN HUMAN CHARACTER ONLY, describe:
+         * Physical appearance (age, gender, hair color, hair style, clothing, distinctive features)
          * Position in the image (specific location: top-left, center, bottom-right, etc.)
          * Size relative to page (large/medium/small/tiny)
          * Facial expression and body language
-         * Is this likely the story's hero/main character? (yes/no/maybe)
+         * Is this the story's hero/main human character? (must be yes for replacement)
+       - List other characters (animals, side characters) but mark them as NOT for replacement
     
     2. SCENE ANALYSIS:
        - What is happening in this scene? (action, interaction, event)
@@ -231,7 +237,7 @@ class CompleteBookPersonalizationService {
        - Visual hierarchy (what draws attention first)
     
     5. REPLACEMENT GUIDANCE:
-       - Which character(s) should be replaced with the child's face?
+       - ONLY the MAIN HUMAN CHARACTER should be replaced (never animals, pets, or other items)
        - Difficulty level for replacement (easy/medium/hard)
        - Special considerations for replacement
     
@@ -243,6 +249,8 @@ class CompleteBookPersonalizationService {
       "characters": [
         {
           "isMainCharacter": true/false,
+          "isHuman": true/false,
+          "isAnimal": true/false,
           "confidence": 0.9,
           "description": "detailed physical description",
           "position": "specific position",
@@ -273,8 +281,8 @@ class CompleteBookPersonalizationService {
       },
       "replacementGuidance": {
         "shouldReplace": true/false,
-        "targetCharacter": "which character to replace",
-        "considerations": "special notes for replacement"
+        "targetCharacter": "which character to replace (MUST be main human character only)",
+        "considerations": "special notes for replacement - DO NOT replace animals or other items"
       }
     }
     `;
@@ -326,11 +334,15 @@ class CompleteBookPersonalizationService {
       pageNumber: pageNumber + 1,
       characters: [{
         isMainCharacter: true,
-        description: "main character (analysis failed)",
+        isHuman: true,
+        isAnimal: false,
+        description: "main human character (analysis failed)",
         position: "center",
         size: "medium",
         emotion: "neutral",
-        pose: "standing"
+        pose: "standing",
+        replaceWithChild: true,
+        replacementDifficulty: "medium"
       }],
       scene: {
         action: "story continues",
@@ -346,19 +358,28 @@ class CompleteBookPersonalizationService {
         composition: "standard layout",
         characterPositions: ["center"],
         visualFocus: "main character"
+      },
+      replacementGuidance: {
+        shouldReplace: true,
+        targetCharacter: "main human character",
+        considerations: "fallback analysis - proceed with caution"
       }
     };
   }
 
   /**
    * Identify the main character across all pages
+   * Only considers human characters (excludes animals)
    */
   identifyMainCharacter(analysisResults) {
     const characterCounts = {};
     
     analysisResults.forEach(page => {
       page.characters.forEach(char => {
-        if (char.isMainCharacter) {
+        // Only count human main characters (exclude animals)
+        if (char.isMainCharacter && 
+            char.isHuman !== false && 
+            char.isAnimal !== true) {
           const key = char.description.toLowerCase();
           characterCounts[key] = (characterCounts[key] || 0) + 1;
         }
@@ -369,7 +390,7 @@ class CompleteBookPersonalizationService {
       .sort(([,a], [,b]) => b - a)[0];
     
     return {
-      description: mostFrequent ? mostFrequent[0] : "main character",
+      description: mostFrequent ? mostFrequent[0] : "main human character",
       frequency: mostFrequent ? mostFrequent[1] : 0,
       totalPages: analysisResults.length
     };
@@ -395,10 +416,15 @@ class CompleteBookPersonalizationService {
 
   /**
    * Analyze character consistency across pages
+   * Only considers human main characters (excludes animals)
    */
   analyzeCharacterConsistency(analysisResults) {
     const mainCharacterAppearances = analysisResults
-      .filter(page => page.characters.some(char => char.isMainCharacter))
+      .filter(page => page.characters.some(char => 
+        char.isMainCharacter && 
+        char.isHuman !== false && 
+        char.isAnimal !== true
+      ))
       .length;
     
     return {
@@ -410,13 +436,20 @@ class CompleteBookPersonalizationService {
 
   /**
    * Map characters across all pages for replacement strategy
+   * Only maps the main HUMAN character (excludes animals and other items)
    */
   async mapCharacterAcrossPages(bookPages, bookAnalysis) {
     const characterMapping = [];
     
     for (let i = 0; i < bookAnalysis.pages.length; i++) {
       const pageAnalysis = bookAnalysis.pages[i];
-      const mainCharacter = pageAnalysis.characters.find(char => char.isMainCharacter);
+      // Find main character that is human (not animal) and should be replaced
+      const mainCharacter = pageAnalysis.characters.find(char => 
+        char.isMainCharacter && 
+        char.isHuman !== false && // Prefer human characters
+        char.isAnimal !== true && // Exclude animals
+        (char.replaceWithChild !== false) // Should be marked for replacement
+      );
       
       if (mainCharacter) {
         characterMapping.push({
@@ -426,6 +459,9 @@ class CompleteBookPersonalizationService {
           replacementStrategy: this.determineReplacementStrategy(mainCharacter, i),
           pageImage: bookPages[i]
         });
+      } else {
+        // Log if no main human character found
+        console.log(`⚠️  Page ${i + 1}: No main human character found for replacement`);
       }
     }
     
@@ -468,12 +504,26 @@ class CompleteBookPersonalizationService {
       
       try {
         // Process each page individually - ONE PAGE = ONE IMAGE
-        const batchResults = await Promise.all(
-          batch.map(mapping => {
-            console.log(`  📄 Processing page ${mapping.pageNumber} (will generate 1 image)`);
-            return this.processPage(mapping, childImage, childName);
-          })
-        );
+        // Pass previous page reference to maintain consistency
+        // Get the last successfully processed page from all previous batches
+        const lastProcessedPage = processedPages.length > 0 
+          ? processedPages[processedPages.length - 1] 
+          : null;
+        
+        // Process pages sequentially within batch to maintain consistency
+        // This ensures each page can reference the previous one for consistent appearance
+        const batchResults = [];
+        for (let batchIdx = 0; batchIdx < batch.length; batchIdx++) {
+          const mapping = batch[batchIdx];
+          // Use the last processed page (from previous batch or previous page in this batch)
+          const previousPage = batchResults.length > 0 
+            ? batchResults[batchResults.length - 1] 
+            : lastProcessedPage;
+          
+          console.log(`  📄 Processing page ${mapping.pageNumber} (will generate 1 image)`);
+          const result = await this.processPage(mapping, childImage, childName, previousPage);
+          batchResults.push(result);
+        }
         
         // Validate: Each result should have exactly one processed image
         batchResults.forEach((result, idx) => {
@@ -519,8 +569,9 @@ class CompleteBookPersonalizationService {
    * Process a single page with character replacement (with retry logic)
    * IMPORTANT: This function processes ONE page and returns ONE image
    * Ensures 1:1 mapping (one page = one processed image)
+   * Maintains consistent character appearance across all pages
    */
-  async processPage(characterMapping, childImage, childName) {
+  async processPage(characterMapping, childImage, childName, previousPage = null) {
     const { character, pageImage, pageNumber } = characterMapping;
     
     // Validate: Ensure we have valid page image
@@ -528,10 +579,23 @@ class CompleteBookPersonalizationService {
       throw new Error(`No page image provided for page ${pageNumber}`);
     }
     
+    // Validate: Ensure character is human (not animal)
+    if (character.isAnimal === true) {
+      console.warn(`⚠️  Page ${pageNumber}: Character is an animal, skipping replacement`);
+      return {
+        pageNumber,
+        processedImage: pageImage, // Use original if it's an animal
+        success: false,
+        error: 'Character is an animal, not replaced',
+        character: character.description,
+        attempts: 0
+      };
+    }
+    
     // Retry logic for failed image generation
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        const prompt = this.generatePagePrompt(characterMapping, childName);
+        const prompt = this.generatePagePrompt(characterMapping, childName, previousPage);
         
         console.log(`🎨 Processing page ${pageNumber} → generating 1 image (attempt ${attempt}/${this.maxRetries})...`);
         
@@ -628,34 +692,47 @@ class CompleteBookPersonalizationService {
 
   /**
    * Generate improved prompt for page processing
+   * Emphasizes consistent character appearance and only replacing main human character
    */
-  generatePagePrompt(characterMapping, childName) {
+  generatePagePrompt(characterMapping, childName, previousPageReference = null) {
     const { character, replacementStrategy, replacementGuidance } = characterMapping;
+    
+    const consistencyNote = previousPageReference 
+      ? `IMPORTANT: ${childName} must look EXACTLY the same as in previous pages - same face, same hair, same appearance. Use the SAME child image reference consistently.`
+      : `IMPORTANT: This is part of a complete book. ${childName} must have a consistent appearance across ALL pages - same face, same hair, same distinctive features.`;
     
     return `
     You are an expert at seamlessly replacing characters in children's book illustrations.
     
-    TASK: Replace the main character in this illustration with ${childName}'s face/appearance while maintaining perfect artistic consistency.
+    TASK: Replace ONLY the MAIN HUMAN CHARACTER in this illustration with ${childName}'s face/appearance while maintaining perfect artistic consistency.
     
-    TARGET CHARACTER TO REPLACE:
+    ${consistencyNote}
+    
+    TARGET CHARACTER TO REPLACE (MAIN HUMAN CHARACTER ONLY):
     - Description: ${character.description}
     - Position: ${character.position}
     - Size: ${character.size}
     - Current emotion: ${character.emotion}
     - Current pose: ${character.pose}
     - Replacement difficulty: ${character.replacementDifficulty || 'medium'}
+    - CRITICAL: This must be the MAIN HUMAN PROTAGONIST, NOT an animal or other character
     
-    CHILD'S APPEARANCE (from reference photo):
-    - Use the child's actual facial features, hair color, hair style, skin tone
-    - Maintain the child's distinctive characteristics
+    CHILD'S APPEARANCE (from reference photo - USE CONSISTENTLY):
+    - Use the EXACT same child's facial features, hair color, hair style, skin tone as in all other pages
+    - Maintain the child's distinctive characteristics consistently
+    - The child's face must look IDENTICAL across all pages of the book
     - Make ${childName} look natural in this illustration style
+    - Use the SAME child image reference to ensure consistency
     
     REPLACEMENT REQUIREMENTS:
-    1. FACE REPLACEMENT:
-       - Replace the character's face with ${childName}'s face
+    1. FACE REPLACEMENT (MAIN HUMAN CHARACTER ONLY):
+       - Replace ONLY the main human character's face with ${childName}'s face
+       - DO NOT replace animals, pets, or any non-human characters
+       - DO NOT replace background elements, objects, or other items
        - Match facial proportions to the illustration style
-       - Keep the same expression and emotion
+       - Keep the same expression and emotion as the original
        - Ensure the face looks natural in the art style
+       - The face must match ${childName}'s appearance from previous pages
     
     2. BODY & POSE:
        - Keep the exact same body pose as the original character
@@ -669,19 +746,33 @@ class CompleteBookPersonalizationService {
        - Maintain the same level of detail
        - Keep the same line work and shading style
     
-    4. SCENE PRESERVATION:
+    4. SCENE PRESERVATION (CRITICAL - DO NOT CHANGE):
        - Keep ALL background elements exactly the same
        - Preserve ALL text exactly as it appears
-       - Maintain ALL other characters unchanged
+       - Maintain ALL other characters UNCHANGED (including animals, pets, side characters)
        - Keep ALL props and objects in their original positions
+       - DO NOT modify or replace anything except the main human character's face
     
-    5. NATURAL INTEGRATION:
+    5. CHARACTER CONSISTENCY (CRITICAL):
+       - ${childName} must look EXACTLY the same as in all other pages
+       - Same face, same hair, same skin tone, same distinctive features
+       - The child's appearance must be consistent throughout the entire book
+       - Use the reference child image to maintain this consistency
+    
+    6. NATURAL INTEGRATION:
        - The replacement should be seamless and undetectable
        - ${childName} should look like they were always part of this illustration
        - No obvious editing artifacts or inconsistencies
        - Professional quality result
     
-    CRITICAL: Generate an image where ${childName} is the main character, looking natural and perfectly integrated into the scene's artistic style.
+    CRITICAL RULES:
+    - ONLY replace the MAIN HUMAN CHARACTER's face
+    - DO NOT replace animals, pets, or any non-human characters
+    - DO NOT replace background elements, objects, or other items
+    - ${childName} must look IDENTICAL across all pages (same face, same appearance)
+    - Keep everything else exactly as it appears in the original
+    
+    Generate an image where ${childName} is the main character, looking natural and perfectly integrated into the scene's artistic style, with a consistent appearance matching all other pages.
     `;
   }
 
