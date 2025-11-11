@@ -436,6 +436,7 @@ class CompleteBookPersonalizationService {
 
   /**
    * Map characters across all pages for replacement strategy
+   * Includes ALL pages - pages without main human characters will use original image
    * Only maps the main HUMAN character (excludes animals and other items)
    */
   async mapCharacterAcrossPages(bookPages, bookAnalysis) {
@@ -452,6 +453,7 @@ class CompleteBookPersonalizationService {
       );
       
       if (mainCharacter) {
+        // Page has main human character - will be processed
         characterMapping.push({
           pageNumber: i + 1,
           character: mainCharacter,
@@ -459,11 +461,22 @@ class CompleteBookPersonalizationService {
           replacementStrategy: this.determineReplacementStrategy(mainCharacter, i),
           pageImage: bookPages[i]
         });
+        console.log(`✅ Page ${i + 1}: Main human character found, will be processed`);
       } else {
-        // Log if no main human character found
-        console.log(`⚠️  Page ${i + 1}: No main human character found for replacement`);
+        // Page has no main human character - include it but mark as no replacement needed
+        // This ensures ALL pages are included in the final PDF
+        characterMapping.push({
+          pageNumber: i + 1,
+          character: null,
+          replacementNeeded: false,
+          replacementStrategy: null,
+          pageImage: bookPages[i]
+        });
+        console.log(`📄 Page ${i + 1}: No main human character found - will use original image (animals/background pages preserved)`);
       }
     }
+    
+    console.log(`📊 Character mapping complete: ${characterMapping.length} total pages, ${characterMapping.filter(m => m.replacementNeeded).length} pages need replacement`);
     
     return characterMapping;
   }
@@ -515,14 +528,32 @@ class CompleteBookPersonalizationService {
         const batchResults = [];
         for (let batchIdx = 0; batchIdx < batch.length; batchIdx++) {
           const mapping = batch[batchIdx];
-          // Use the last processed page (from previous batch or previous page in this batch)
-          const previousPage = batchResults.length > 0 
-            ? batchResults[batchResults.length - 1] 
-            : lastProcessedPage;
+          // Use the last successfully processed page with face replacement (from previous batch or previous page in this batch)
+          // Find the most recent page that had a successful face replacement for consistency
+          let previousPage = lastProcessedPage;
+          if (batchResults.length > 0) {
+            // Look for the most recent page that had a face replacement (not just original)
+            for (let j = batchResults.length - 1; j >= 0; j--) {
+              if (batchResults[j].success && batchResults[j].character && !batchResults[j].note) {
+                previousPage = batchResults[j];
+                break;
+              }
+            }
+            // If no replacement page found in batch, use last from all processed pages
+            if (!previousPage || previousPage.note) {
+              previousPage = lastProcessedPage;
+            }
+          }
           
-          console.log(`  📄 Processing page ${mapping.pageNumber} (will generate 1 image)`);
+          const needsReplacement = mapping.replacementNeeded && mapping.character;
+          console.log(`  📄 Processing page ${mapping.pageNumber}${needsReplacement ? ' (face replacement)' : ' (original preserved)'}`);
           const result = await this.processPage(mapping, childImage, childName, previousPage);
           batchResults.push(result);
+          
+          // Update lastProcessedPage if this was a successful face replacement
+          if (result.success && result.character && !result.note) {
+            lastProcessedPage = result;
+          }
         }
         
         // Validate: Each result should have exactly one processed image
@@ -549,6 +580,7 @@ class CompleteBookPersonalizationService {
           processedPages.push({
             pageNumber: mapping.pageNumber,
             processedImage: mapping.pageImage, // Use original if processing fails (1 page = 1 image)
+            pageImage: mapping.pageImage, // Also include pageImage for compatibility
             success: false,
             error: error.message
           });
@@ -557,7 +589,13 @@ class CompleteBookPersonalizationService {
     }
     
     // Final validation: Ensure we have one image per page
+    const pagesWithReplacement = processedPages.filter(p => p.success && p.character && !p.note).length;
+    const pagesPreserved = processedPages.filter(p => p.note || (!p.character && p.success)).length;
+    const pagesFailed = processedPages.filter(p => !p.success && !p.note).length;
+    
     console.log(`📊 Final validation: ${processedPages.length} pages processed → ${processedPages.length} images`);
+    console.log(`📊 Summary: ${pagesWithReplacement} pages with face replacement, ${pagesPreserved} pages preserved (original), ${pagesFailed} pages failed`);
+    
     if (processedPages.length !== characterMapping.length) {
       console.warn(`⚠️  Warning: Expected ${characterMapping.length} images but got ${processedPages.length}`);
     }
@@ -572,20 +610,34 @@ class CompleteBookPersonalizationService {
    * Maintains consistent character appearance across all pages
    */
   async processPage(characterMapping, childImage, childName, previousPage = null) {
-    const { character, pageImage, pageNumber } = characterMapping;
+    const { character, pageImage, pageNumber, replacementNeeded } = characterMapping;
     
     // Validate: Ensure we have valid page image
     if (!pageImage) {
       throw new Error(`No page image provided for page ${pageNumber}`);
     }
     
+    // If no replacement needed (page has no main human character), return original
+    if (!replacementNeeded || !character) {
+      console.log(`📄 Page ${pageNumber}: No replacement needed - using original image`);
+      return {
+        pageNumber,
+        processedImage: pageImage, // Use original image
+        pageImage: pageImage, // Also include pageImage for compatibility
+        success: true, // Mark as success since we're intentionally using original
+        character: null,
+        attempts: 0,
+        note: 'No main human character - original page preserved'
+      };
+    }
+    
     // Validate: Ensure character is human (not animal)
     if (character.isAnimal === true) {
-      console.warn(`⚠️  Page ${pageNumber}: Character is an animal, skipping replacement`);
+      console.warn(`⚠️  Page ${pageNumber}: Character is an animal, using original`);
       return {
         pageNumber,
         processedImage: pageImage, // Use original if it's an animal
-        success: false,
+        success: true, // Mark as success since we're intentionally using original
         error: 'Character is an animal, not replaced',
         character: character.description,
         attempts: 0
@@ -675,9 +727,10 @@ class CompleteBookPersonalizationService {
           return {
             pageNumber: characterMapping.pageNumber,
             processedImage: characterMapping.pageImage, // Use original as fallback
+            pageImage: characterMapping.pageImage, // Also include pageImage for compatibility
             success: false,
             error: error.message,
-            character: characterMapping.character.description,
+            character: characterMapping.character ? characterMapping.character.description : null,
             attempts: attempt
           };
         }
@@ -745,18 +798,21 @@ class CompleteBookPersonalizationService {
     1. FACE REPLACEMENT ONLY (MAIN HUMAN CHARACTER):
        - Replace ONLY the main human character's FACE with ${childName}'s face
        - DO NOT replace the body, clothing, or pose (keep them exactly as in original)
+       - DO NOT replace headwear, hats, crowns, helmets, or any accessories on the head (preserve them exactly)
        - DO NOT replace animals, pets, or any non-human characters
        - DO NOT replace background elements, objects, or other items
        - Match facial proportions to the illustration style
        - Keep the same expression and emotion as the original
        - Ensure the face looks natural in the art style
        - The face must match ${childName}'s appearance from previous pages
+       - If the character is wearing something on their head (hat, crown, helmet, etc.), keep it EXACTLY as it is - only replace the face underneath
     
     2. BODY & POSE (KEEP UNCHANGED):
        - Keep the EXACT same body pose as the original character
        - Keep the EXACT same clothing (same colors, same style, same design)
        - Preserve ALL body language and gestures exactly as they are
        - Same size and position on the page (pixel-perfect)
+       - CRITICAL: Preserve ALL headwear, accessories, hats, crowns, helmets, or anything on the head - keep them EXACTLY as they appear in the original
     
     3. ARTISTIC CONSISTENCY:
        - Match the EXACT artistic style of the original (watercolor/digital/cartoon/etc.)
@@ -787,12 +843,13 @@ class CompleteBookPersonalizationService {
     ⚠️ CRITICAL RULES (MUST FOLLOW):
     - This is a FACE REPLACEMENT task, NOT a page generation task
     - ONLY replace the MAIN HUMAN CHARACTER's FACE (nothing else)
+    - DO NOT replace headwear, hats, crowns, helmets, or any accessories - preserve them exactly
     - DO NOT replace animals, pets, or any non-human characters
     - DO NOT replace background elements, objects, or other items
     - DO NOT regenerate or recreate the page - preserve the original PDF content
     - ${childName} must look IDENTICAL across all pages (same face, same appearance)
-    - Keep EVERYTHING else exactly as it appears in the original PDF page
-    - The output must be the original page with ONLY the face replaced
+    - Keep EVERYTHING else exactly as it appears in the original PDF page (including all accessories and headwear)
+    - The output must be the original page with ONLY the face replaced (accessories and headwear must remain unchanged)
     
     Return the original PDF page with ONLY the main human character's face replaced with ${childName}'s face. Everything else must remain 100% identical to the original.
     `;
