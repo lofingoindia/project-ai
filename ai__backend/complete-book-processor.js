@@ -598,6 +598,8 @@ class CompleteBookPersonalizationService {
         const prompt = this.generatePagePrompt(characterMapping, childName, previousPage);
         
         console.log(`🎨 Processing page ${pageNumber} → generating 1 image (attempt ${attempt}/${this.maxRetries})...`);
+        console.log(`📝 Prompt preview: ${prompt.substring(0, 200)}...`);
+        console.log(`📸 Image order: 1) Child reference photo, 2) PDF page to edit`);
         
         const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
         const result = await generativeModel.generateContent({
@@ -693,6 +695,7 @@ class CompleteBookPersonalizationService {
   /**
    * Generate improved prompt for page processing
    * Emphasizes consistent character appearance and only replacing main human character
+   * CRITICAL: This is a FACE REPLACEMENT task, NOT a page regeneration task
    */
   generatePagePrompt(characterMapping, childName, previousPageReference = null) {
     const { character, replacementStrategy, replacementGuidance } = characterMapping;
@@ -702,11 +705,25 @@ class CompleteBookPersonalizationService {
       : `IMPORTANT: This is part of a complete book. ${childName} must have a consistent appearance across ALL pages - same face, same hair, same distinctive features.`;
     
     return `
-    You are an expert at seamlessly replacing characters in children's book illustrations.
+    ⚠️ CRITICAL: This is a FACE REPLACEMENT task on an existing PDF page. You MUST preserve the original page 100% - only replace the character's face.
     
-    TASK: Replace ONLY the MAIN HUMAN CHARACTER in this illustration with ${childName}'s face/appearance while maintaining perfect artistic consistency.
+    IMAGE REFERENCE GUIDE:
+    - FIRST IMAGE: Reference photo of ${childName} (use this child's face for replacement)
+    - SECOND IMAGE: The PDF page to edit (this is the existing page - preserve it 100% except for face replacement)
+    
+    TASK: Replace ONLY the MAIN HUMAN CHARACTER's FACE in the SECOND IMAGE (the PDF page) with ${childName}'s face from the FIRST IMAGE (reference photo). This is NOT a generation task - you are EDITING an existing page.
     
     ${consistencyNote}
+    
+    ⚠️ PDF PRESERVATION REQUIREMENTS (MOST CRITICAL):
+    - This is an EXISTING PDF page - you MUST preserve it exactly as-is
+    - Keep ALL text EXACTLY as it appears (word-for-word, same font, same size, same position)
+    - Keep ALL background elements 100% identical (colors, patterns, objects, layout)
+    - Keep ALL other characters UNCHANGED (animals, pets, side characters, all non-human elements)
+    - Keep ALL props, objects, and scene elements in their EXACT original positions
+    - Keep the EXACT same page layout, composition, and visual structure
+    - DO NOT regenerate, recreate, or modify anything except the main human character's face
+    - The output must look like the original page with ONLY the face replaced
     
     TARGET CHARACTER TO REPLACE (MAIN HUMAN CHARACTER ONLY):
     - Description: ${character.description}
@@ -725,8 +742,9 @@ class CompleteBookPersonalizationService {
     - Use the SAME child image reference to ensure consistency
     
     REPLACEMENT REQUIREMENTS:
-    1. FACE REPLACEMENT (MAIN HUMAN CHARACTER ONLY):
-       - Replace ONLY the main human character's face with ${childName}'s face
+    1. FACE REPLACEMENT ONLY (MAIN HUMAN CHARACTER):
+       - Replace ONLY the main human character's FACE with ${childName}'s face
+       - DO NOT replace the body, clothing, or pose (keep them exactly as in original)
        - DO NOT replace animals, pets, or any non-human characters
        - DO NOT replace background elements, objects, or other items
        - Match facial proportions to the illustration style
@@ -734,24 +752,25 @@ class CompleteBookPersonalizationService {
        - Ensure the face looks natural in the art style
        - The face must match ${childName}'s appearance from previous pages
     
-    2. BODY & POSE:
-       - Keep the exact same body pose as the original character
-       - Maintain the same clothing style (adapt colors if needed)
-       - Preserve all body language and gestures
-       - Same size and position on the page
+    2. BODY & POSE (KEEP UNCHANGED):
+       - Keep the EXACT same body pose as the original character
+       - Keep the EXACT same clothing (same colors, same style, same design)
+       - Preserve ALL body language and gestures exactly as they are
+       - Same size and position on the page (pixel-perfect)
     
     3. ARTISTIC CONSISTENCY:
        - Match the EXACT artistic style of the original (watercolor/digital/cartoon/etc.)
-       - Use the same color palette and lighting
-       - Maintain the same level of detail
-       - Keep the same line work and shading style
+       - Use the EXACT same color palette and lighting
+       - Maintain the EXACT same level of detail
+       - Keep the EXACT same line work and shading style
     
     4. SCENE PRESERVATION (CRITICAL - DO NOT CHANGE):
-       - Keep ALL background elements exactly the same
-       - Preserve ALL text exactly as it appears
+       - Keep ALL background elements EXACTLY the same (pixel-perfect preservation)
+       - Preserve ALL text EXACTLY as it appears (same words, same font, same position, same size)
        - Maintain ALL other characters UNCHANGED (including animals, pets, side characters)
-       - Keep ALL props and objects in their original positions
+       - Keep ALL props and objects in their EXACT original positions
        - DO NOT modify or replace anything except the main human character's face
+       - The page layout must remain 100% identical to the original
     
     5. CHARACTER CONSISTENCY (CRITICAL):
        - ${childName} must look EXACTLY the same as in all other pages
@@ -760,19 +779,22 @@ class CompleteBookPersonalizationService {
        - Use the reference child image to maintain this consistency
     
     6. NATURAL INTEGRATION:
-       - The replacement should be seamless and undetectable
-       - ${childName} should look like they were always part of this illustration
+       - The face replacement should be seamless and undetectable
+       - ${childName}'s face should look like it was always part of this illustration
        - No obvious editing artifacts or inconsistencies
        - Professional quality result
     
-    CRITICAL RULES:
-    - ONLY replace the MAIN HUMAN CHARACTER's face
+    ⚠️ CRITICAL RULES (MUST FOLLOW):
+    - This is a FACE REPLACEMENT task, NOT a page generation task
+    - ONLY replace the MAIN HUMAN CHARACTER's FACE (nothing else)
     - DO NOT replace animals, pets, or any non-human characters
     - DO NOT replace background elements, objects, or other items
+    - DO NOT regenerate or recreate the page - preserve the original PDF content
     - ${childName} must look IDENTICAL across all pages (same face, same appearance)
-    - Keep everything else exactly as it appears in the original
+    - Keep EVERYTHING else exactly as it appears in the original PDF page
+    - The output must be the original page with ONLY the face replaced
     
-    Generate an image where ${childName} is the main character, looking natural and perfectly integrated into the scene's artistic style, with a consistent appearance matching all other pages.
+    Return the original PDF page with ONLY the main human character's face replaced with ${childName}'s face. Everything else must remain 100% identical to the original.
     `;
   }
 
