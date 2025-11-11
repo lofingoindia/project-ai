@@ -11,6 +11,8 @@ class CoverImageGenerator {
     }
     this.genAI = new GoogleGenerativeAI(finalApiKey);
     this.model = "gemini-2.5-flash-image-preview";
+    this.maxRetries = 5; // Retry failed API calls
+    this.retryDelay = 3000; // 3 seconds base delay between retries
   }
 
   /**
@@ -75,12 +77,14 @@ class CoverImageGenerator {
    * Analyze the original cover image to understand style, composition, and elements
    */
   async _analyzeOriginalCover(coverImageBase64, bookData) {
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash-image-preview",
-      });
+    // Retry logic for API calls
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const model = this.genAI.getGenerativeModel({
+          model: "gemini-2.5-flash-image-preview",
+        });
 
-      const analysisPrompt = `Analyze this book cover image in detail. Describe:
+        const analysisPrompt = `Analyze this book cover image in detail. Describe:
 1. Visual style and art technique (illustration style, color palette, mood)
 2. Main character appearance and position (if present)
 3. Background elements and setting
@@ -91,41 +95,68 @@ class CoverImageGenerator {
 Book title: ${bookData.name || "N/A"}
 Genre: ${bookData.genre || "Children's Book"}
 Target age: ${
-        bookData.ageRange ||
-        `${bookData.ageMin || 3}-${bookData.ageMax || 12} years`
-      }
+          bookData.ageRange ||
+          `${bookData.ageMin || 3}-${bookData.ageMax || 12} years`
+        }
 
 Provide a structured analysis that can be used to recreate a similar style.`;
 
-      const result = await model.generateContent([
-        {
-          inlineData: {
-            data: coverImageBase64,
-            mimeType: "image/jpeg",
+        console.log(`🔍 Analyzing cover (attempt ${attempt}/${this.maxRetries})...`);
+
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              data: coverImageBase64,
+              mimeType: "image/jpeg",
+            },
           },
-        },
-        analysisPrompt,
-      ]);
+          analysisPrompt,
+        ]);
 
-      const response = await result.response;
-      const analysisText = response.text();
+        const response = await result.response;
+        const analysisText = response.text();
 
-      return {
-        rawAnalysis: analysisText,
-        style: this._extractStyle(analysisText),
-        composition: this._extractComposition(analysisText),
-        characterPosition: this._extractCharacterPosition(analysisText),
-        colorPalette: this._extractColorPalette(analysisText),
-      };
-    } catch (error) {
-      console.error("Cover analysis failed:", error);
-      // Return default analysis if API fails
-      return {
-        style: "children's book illustration",
-        composition: "centered",
-        characterPosition: "center",
-        colorPalette: "vibrant and colorful",
-      };
+        console.log(`✅ Cover analysis successful${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+
+        return {
+          rawAnalysis: analysisText,
+          style: this._extractStyle(analysisText),
+          composition: this._extractComposition(analysisText),
+          characterPosition: this._extractCharacterPosition(analysisText),
+          colorPalette: this._extractColorPalette(analysisText),
+        };
+      } catch (error) {
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
+        
+        console.error(`❌ Cover analysis failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
+        }
+        
+        // If this was the last attempt or error is not retryable, return default
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.warn(`⚠️  Non-retryable error, using default cover analysis`);
+          } else {
+            console.warn(`⚠️  Using default cover analysis after ${this.maxRetries} failed attempts`);
+          }
+          return {
+            rawAnalysis: "Default analysis - API unavailable",
+            style: "children's book illustration",
+            composition: "centered",
+            characterPosition: "center",
+            colorPalette: "vibrant and colorful",
+          };
+        }
+        
+        // Wait before retrying (exponential backoff with jitter)
+        const delay = this.retryDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 1000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry...`);
+        await this.sleep(totalDelay);
+      }
     }
   }
 
@@ -133,12 +164,14 @@ Provide a structured analysis that can be used to recreate a similar style.`;
    * Analyze child's image to extract key features
    */
   async _analyzeChildImage(childImageBase64, childData) {
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash-image-preview",
-      });
+    // Retry logic for API calls
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const model = this.genAI.getGenerativeModel({
+          model: "gemini-2.5-flash-image-preview",
+        });
 
-      const analysisPrompt = `Analyze this child's photo and describe:
+        const analysisPrompt = `Analyze this child's photo and describe:
 1. Physical appearance (hair color, hair style, eye color, skin tone)
 2. Approximate age and gender (if determinable)
 3. Facial features (round face, oval face, etc.)
@@ -151,36 +184,62 @@ Gender: ${childData.gender || "N/A"}
 
 Provide detailed but natural descriptions suitable for creating an illustrated character.`;
 
-      const result = await model.generateContent([
-        {
-          inlineData: {
-            data: childImageBase64,
-            mimeType: "image/jpeg",
+        console.log(`👶 Analyzing child image (attempt ${attempt}/${this.maxRetries})...`);
+
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              data: childImageBase64,
+              mimeType: "image/jpeg",
+            },
           },
-        },
-        analysisPrompt,
-      ]);
+          analysisPrompt,
+        ]);
 
-      const response = await result.response;
-      const analysisText = response.text();
+        const response = await result.response;
+        const analysisText = response.text();
 
-      return {
-        name: childData.name || "the child",
-        age: childData.age || null,
-        gender: childData.gender || null,
-        appearance: analysisText,
-        features: this._extractKeyFeatures(analysisText),
-      };
-    } catch (error) {
-      console.error("Child analysis failed:", error);
-      // Return basic features if API fails
-      return {
-        name: childData.name || "the child",
-        age: childData.age || null,
-        gender: childData.gender || null,
-        appearance: "a young child",
-        features: "happy and friendly",
-      };
+        console.log(`✅ Child analysis successful${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+
+        return {
+          name: childData.name || "the child",
+          age: childData.age || null,
+          gender: childData.gender || null,
+          appearance: analysisText,
+          features: this._extractKeyFeatures(analysisText),
+        };
+      } catch (error) {
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
+        
+        console.error(`❌ Child analysis failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
+        }
+        
+        // If this was the last attempt or error is not retryable, return default
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.warn(`⚠️  Non-retryable error, using default child features`);
+          } else {
+            console.warn(`⚠️  Using default child features after ${this.maxRetries} failed attempts`);
+          }
+          return {
+            name: childData.name || "the child",
+            age: childData.age || null,
+            gender: childData.gender || null,
+            appearance: "a young child",
+            features: "happy and friendly",
+          };
+        }
+        
+        // Wait before retrying (exponential backoff with jitter)
+        const delay = this.retryDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 1000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry...`);
+        await this.sleep(totalDelay);
+      }
     }
   }
 
@@ -189,17 +248,19 @@ Provide detailed but natural descriptions suitable for creating an illustrated c
    * This makes the prompt truly adaptive and intelligent
    */
   async _generateDynamicPrompt(coverAnalysis, childFeatures, bookData, childData) {
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash-image-preview",
-      });
+    // Retry logic for API calls
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const model = this.genAI.getGenerativeModel({
+          model: "gemini-2.5-flash-image-preview",
+        });
 
-      const bookName = bookData.name || "Adventure Book";
-      const childName = childFeatures.name;
-      const genre = bookData.genre || "adventure";
+        const bookName = bookData.name || "Adventure Book";
+        const childName = childFeatures.name;
+        const genre = bookData.genre || "adventure";
 
-      // Use AI to create the perfect prompt based on analysis
-      const metaPrompt = `You are an expert AI prompt engineer specializing in children's book cover personalization.
+        // Use AI to create the perfect prompt based on analysis
+        const metaPrompt = `You are an expert AI prompt engineer specializing in children's book cover personalization.
 
 Based on the following analysis data, create a precise and detailed prompt for an AI image generator to create a personalized book cover.
 
@@ -239,19 +300,43 @@ Generate a comprehensive, technical prompt that an AI image generator can use to
 
 Respond ONLY with the prompt itself - no explanations or meta-text.`;
 
-      const result = await model.generateContent(metaPrompt);
-      const response = await result.response;
-      const generatedPrompt = response.text().trim();
+        console.log(`🤖 Generating AI prompt (attempt ${attempt}/${this.maxRetries})...`);
 
-      console.log("🤖 AI-Generated Prompt:");
-      console.log(generatedPrompt.substring(0, 200) + "...");
+        const result = await model.generateContent(metaPrompt);
+        const response = await result.response;
+        const generatedPrompt = response.text().trim();
 
-      return generatedPrompt;
-    } catch (error) {
-      console.error("AI prompt generation failed, using fallback:", error);
-      
-      // Fallback to template-based prompt if AI fails
-      return this._generateFallbackPrompt(coverAnalysis, childFeatures, bookData, childData);
+        console.log(`✅ AI prompt generated successfully${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
+        console.log("📝 Prompt preview:");
+        console.log(generatedPrompt.substring(0, 200) + "...");
+
+        return generatedPrompt;
+      } catch (error) {
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
+        
+        console.error(`❌ AI prompt generation failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
+        }
+        
+        // If this was the last attempt or error is not retryable, use fallback
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.warn(`⚠️  Non-retryable error, using fallback prompt`);
+          } else {
+            console.warn(`⚠️  Using fallback prompt after ${this.maxRetries} failed attempts`);
+          }
+          return this._generateFallbackPrompt(coverAnalysis, childFeatures, bookData, childData);
+        }
+        
+        // Wait before retrying (exponential backoff with jitter)
+        const delay = this.retryDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 1000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry...`);
+        await this.sleep(totalDelay);
+      }
     }
   }
 
@@ -300,89 +385,116 @@ The result should be a professional children's book cover where ${childName} is 
    * Generate the actual cover image using Gemini
    */
   async _generateCoverImage(originalCoverBase64, childImageBase64, prompt) {
-    try {
-      const model = this.genAI.getGenerativeModel({ model: this.model });
-
-      // Prepare multi-image input with prompt
-      const contents = [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                data: originalCoverBase64,
-                mimeType: "image/jpeg",
-              },
-            },
-            {
-              inlineData: {
-                data: childImageBase64,
-                mimeType: "image/jpeg",
-              },
-            },
-            { text: prompt },
-          ],
-        },
-      ];
-
-      const generationConfig = {
-        responseModalities: ["IMAGE"],
-      };
-
-      // Try streaming first
-      let generatedImageData = null;
-
+    // Retry logic for API calls
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        const streamResult = await model.generateContentStream({
+        const model = this.genAI.getGenerativeModel({ model: this.model });
+
+        // Prepare multi-image input with prompt
+        const contents = [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  data: originalCoverBase64,
+                  mimeType: "image/jpeg",
+                },
+              },
+              {
+                inlineData: {
+                  data: childImageBase64,
+                  mimeType: "image/jpeg",
+                },
+              },
+              { text: prompt },
+            ],
+          },
+        ];
+
+        const generationConfig = {
+          responseModalities: ["IMAGE"],
+        };
+
+        console.log(`🎨 Generating cover image (attempt ${attempt}/${this.maxRetries})...`);
+
+        // Try streaming first
+        let generatedImageData = null;
+
+        try {
+          const streamResult = await model.generateContentStream({
+            contents,
+            generationConfig,
+          });
+
+          for await (const chunk of streamResult.stream) {
+            if (chunk.candidates?.[0]?.content?.parts) {
+              for (const part of chunk.candidates[0].content.parts) {
+                if (part.inlineData?.data) {
+                  generatedImageData = part.inlineData.data;
+                  console.log(
+                    `✅ Generated cover image: ${generatedImageData.length} bytes${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`
+                  );
+                  return generatedImageData;
+                }
+              }
+            }
+          }
+        } catch (streamError) {
+          console.log("Streaming failed, trying non-stream fallback...");
+        }
+
+        // Fallback to non-streaming
+        const result = await model.generateContent({
           contents,
           generationConfig,
         });
 
-        for await (const chunk of streamResult.stream) {
-          if (chunk.candidates?.[0]?.content?.parts) {
-            for (const part of chunk.candidates[0].content.parts) {
-              if (part.inlineData?.data) {
-                generatedImageData = part.inlineData.data;
-                console.log(
-                  `✅ Generated cover image: ${generatedImageData.length} bytes`
-                );
-                return generatedImageData;
+        const response = await result.response;
+
+        if (response.candidates) {
+          for (const candidate of response.candidates) {
+            if (candidate.content?.parts) {
+              for (const part of candidate.content.parts) {
+                if (part.inlineData?.data) {
+                  generatedImageData = part.inlineData.data;
+                  console.log(
+                    `✅ Generated cover image (fallback): ${generatedImageData.length} bytes${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`
+                  );
+                  return generatedImageData;
+                }
               }
             }
           }
         }
-      } catch (streamError) {
-        console.log("Streaming failed, trying non-stream fallback...");
-      }
 
-      // Fallback to non-streaming
-      const result = await model.generateContent({
-        contents,
-        generationConfig,
-      });
-
-      const response = await result.response;
-
-      if (response.candidates) {
-        for (const candidate of response.candidates) {
-          if (candidate.content?.parts) {
-            for (const part of candidate.content.parts) {
-              if (part.inlineData?.data) {
-                generatedImageData = part.inlineData.data;
-                console.log(
-                  `✅ Generated cover image (fallback): ${generatedImageData.length} bytes`
-                );
-                return generatedImageData;
-              }
-            }
-          }
+        throw new Error("No image data returned from Gemini API");
+      } catch (error) {
+        const errorStatus = error.status || error.statusCode || (error.message?.includes('500') ? 500 : null);
+        const isRetryable = this._isRetryableError(error, errorStatus);
+        
+        console.error(`❌ Cover image generation failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+        if (errorStatus) {
+          console.error(`   Error status: ${errorStatus}`);
         }
+        
+        // If this was the last attempt or error is not retryable, throw error
+        if (attempt === this.maxRetries || !isRetryable) {
+          if (!isRetryable) {
+            console.error(`❌ Non-retryable error in cover image generation`);
+          } else {
+            console.error(`❌ Cover image generation failed after ${this.maxRetries} attempts`);
+          }
+          throw error;
+        }
+        
+        // Wait before retrying (exponential backoff with jitter)
+        const delay = this.retryDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 1000;
+        const totalDelay = delay + jitter;
+        console.log(`⏳ Waiting ${Math.round(totalDelay)}ms before retry...`);
+        await this.sleep(totalDelay);
       }
-
-      throw new Error("No image data returned from Gemini API");
-    } catch (error) {
-      console.error("Image generation failed:", error);
-      throw error;
     }
   }
 
@@ -470,6 +582,55 @@ The result should be a professional children's book cover where ${childName} is 
     }
 
     return features.length > 0 ? features.join(", ") : "distinctive features";
+  }
+
+  /**
+   * Check if an error is retryable
+   * @param {Error} error - The error object
+   * @param {number|null} statusCode - HTTP status code if available
+   * @returns {boolean} - True if error should be retried
+   */
+  _isRetryableError(error, statusCode) {
+    // Retry on 5xx server errors (500, 502, 503, 504)
+    if (statusCode >= 500 && statusCode < 600) {
+      return true;
+    }
+    
+    // Retry on 429 (Too Many Requests)
+    if (statusCode === 429) {
+      return true;
+    }
+    
+    // Retry on network errors
+    if (error.message?.includes('ECONNRESET') || 
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('ENOTFOUND') ||
+        error.message?.includes('network')) {
+      return true;
+    }
+    
+    // Retry on Google API specific errors that indicate temporary issues
+    if (error.message?.includes('Internal Server Error') ||
+        error.message?.includes('Service Unavailable') ||
+        error.message?.includes('Gateway Timeout') ||
+        error.message?.includes('temporarily unavailable')) {
+      return true;
+    }
+    
+    // Don't retry on 4xx client errors (except 429)
+    if (statusCode >= 400 && statusCode < 500) {
+      return false;
+    }
+    
+    // Default: retry on unknown errors (could be temporary)
+    return true;
+  }
+
+  /**
+   * Utility function for delays
+   */
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
