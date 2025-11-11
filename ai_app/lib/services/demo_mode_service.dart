@@ -10,34 +10,27 @@ class DemoModeService {
   /// Cycle an order item through all statuses with delays
   Future<void> demonstrateStatusFlow(String orderItemId) async {
     if (!enableDemoMode) {
-      debugPrint('Demo mode is disabled in production');
       return;
     }
 
     try {
-      debugPrint('🎬 Starting demo flow for order item: $orderItemId');
 
       // Step 1: Set to Pending
-      debugPrint('📋 Status: Pending (In Queue)');
       await _updateStatus(orderItemId, 'pending', null);
       await Future.delayed(const Duration(seconds: 3));
 
       // Step 2: Set to Processing
-      debugPrint('⚙️ Status: Processing (Generating Book...)');
       await _updateStatus(orderItemId, 'processing', null);
       await Future.delayed(const Duration(seconds: 5));
 
       // Step 3: Set to Completed with demo PDF
-      debugPrint('✅ Status: Completed (Book Ready!)');
       await _updateStatus(
         orderItemId,
         'completed',
         'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       );
 
-      debugPrint('🎉 Demo flow completed successfully!');
     } catch (e) {
-      debugPrint('❌ Error in demo flow: $e');
       rethrow;
     }
   }
@@ -65,13 +58,11 @@ class DemoModeService {
   Future<void> setToPending(String orderItemId) async {
     if (!enableDemoMode) return;
     await _updateStatus(orderItemId, 'pending', null);
-    debugPrint('Set to Pending');
   }
 
   Future<void> setToProcessing(String orderItemId) async {
     if (!enableDemoMode) return;
     await _updateStatus(orderItemId, 'processing', null);
-    debugPrint('Set to Processing');
   }
 
   Future<void> setToCompleted(String orderItemId, {String? pdfUrl}) async {
@@ -81,7 +72,6 @@ class DemoModeService {
       'completed',
       pdfUrl ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     );
-    debugPrint('Set to Completed');
   }
 
   Future<void> setToFailed(String orderItemId, {String? errorMessage}) async {
@@ -91,7 +81,6 @@ class DemoModeService {
       'generation_error': errorMessage ?? 'Demo error message',
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', orderItemId);
-    debugPrint('Set to Failed');
   }
 
   /// Get all order items for current user (for demo selection)

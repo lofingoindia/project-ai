@@ -31,7 +31,6 @@ class SignedUrlService {
       
       return false; // Assume valid if we can't determine
     } catch (e) {
-      debugPrint('Error checking URL expiration: $e');
       return true; // Assume expired if we can't parse
     }
   }
@@ -40,7 +39,6 @@ class SignedUrlService {
   /// Returns new PDF URL and cover URL
   Future<RefreshUrlResult> refreshOrderUrls(String orderItemId) async {
     try {
-      debugPrint('🔄 Refreshing signed URLs for order item: $orderItemId');
       
       // Call backend to refresh URLs
       final response = await http.post(
@@ -51,7 +49,6 @@ class SignedUrlService {
       
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        debugPrint('✅ Signed URLs refreshed successfully');
         
         return RefreshUrlResult(
           success: true,
@@ -63,7 +60,6 @@ class SignedUrlService {
         throw Exception('Failed to refresh URLs: ${error['error']}');
       }
     } catch (e) {
-      debugPrint('❌ Error refreshing signed URLs: $e');
       return RefreshUrlResult(
         success: false,
         error: e.toString(),
@@ -74,7 +70,6 @@ class SignedUrlService {
   /// Get fresh signed URL for a specific S3 key
   Future<String?> getSignedUrl(String s3Key, {int expiresIn = 604800}) async {
     try {
-      debugPrint('🔗 Generating signed URL for: $s3Key');
       
       final response = await http.post(
         Uri.parse('$_backendUrl/generate-signed-url'),
@@ -89,11 +84,9 @@ class SignedUrlService {
         final result = jsonDecode(response.body);
         return result['signedUrl'];
       } else {
-        debugPrint('❌ Failed to generate signed URL: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      debugPrint('❌ Error generating signed URL: $e');
       return null;
     }
   }
@@ -109,7 +102,6 @@ class SignedUrlService {
           .single();
       
       if (response == null) {
-        debugPrint('❌ Order item not found: $orderItemId');
         return null;
       }
       
@@ -122,12 +114,10 @@ class SignedUrlService {
       // If URLs look valid, return as-is
       if (pdfUrl != null && pdfUrl.isNotEmpty && 
           coverUrl != null && coverUrl.isNotEmpty) {
-        debugPrint('✅ URLs appear valid, using existing URLs');
         return orderItem;
       }
       
       // If URLs are missing or invalid, refresh them
-      debugPrint('⚠️  URLs missing or invalid, refreshing...');
       final refreshResult = await refreshOrderUrls(orderItemId);
       
       if (refreshResult.success) {
@@ -136,11 +126,9 @@ class SignedUrlService {
         orderItem['cover_image_url'] = refreshResult.coverUrl;
         return orderItem;
       } else {
-        debugPrint('❌ Failed to refresh URLs: ${refreshResult.error}');
         return orderItem; // Return original even if refresh failed
       }
     } catch (e) {
-      debugPrint('❌ Error getting order item with fresh URLs: $e');
       return null;
     }
   }

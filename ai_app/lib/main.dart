@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:developer' as developer;
 import 'supabase_keys.dart';
 import 'services/localization_service.dart';
 import 'router.dart';
@@ -9,6 +10,8 @@ import 'router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Suppress verbose native logs
+  developer.Timeline.startSync('AppInit');
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,

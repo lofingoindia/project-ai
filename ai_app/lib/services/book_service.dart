@@ -138,7 +138,6 @@ class BookService {
           .map((json) => Book.fromJson(json))
           .toList();
     } catch (e) {
-      print('Failed to fetch books by category: $e');
       return [];
     }
   }
@@ -219,8 +218,6 @@ class BookService {
       // Normalize the search query
       final searchQuery = query.trim();
       
-      // print('Searching for: $searchQuery');
-      
       // Search in title, description, and category fields (case-insensitive)
       // Note: The database column is 'title', not 'name'
       final response = await _client
@@ -230,21 +227,13 @@ class BookService {
           .or('title.ilike.%$searchQuery%,description.ilike.%$searchQuery%,category.ilike.%$searchQuery%')
           .order('created_at', ascending: false)
           .limit(limit);
-
-      // print('Search query: $searchQuery, Results count: ${(response as List).length}');
       
       final books = (response as List)
           .map((json) => Book.fromJson(json))
           .toList();
-          
-      // print('Parsed books count: ${books.length}');
-      if (books.isNotEmpty) {
-        print('First book: ${books.first.title}, category: ${books.first.category}');
-      }
       
       return books;
     } catch (e) {
-      print('Search error: $e');
       throw Exception('Failed to search books: $e');
     }
   }
@@ -263,7 +252,6 @@ class BookService {
           .map((json) => Book.fromJson(json))
           .toList();
     } catch (e) {
-      print('Failed to fetch books: $e');
       return [];
     }
   }
@@ -357,7 +345,6 @@ class BookService {
       genres.sort(); // Sort alphabetically
       return genres;
     } catch (e) {
-      print('Failed to fetch genres: $e');
       return []; // Return empty list on error
     }
   }

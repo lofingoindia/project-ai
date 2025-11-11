@@ -260,7 +260,6 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
               const Center(child: Icon(Icons.book)),
         );
       } catch (e) {
-        print('Error decoding base64 image: $e');
         return const Center(child: Icon(Icons.book));
       }
     } else {

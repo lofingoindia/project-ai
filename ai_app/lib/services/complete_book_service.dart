@@ -17,28 +17,20 @@ class CompleteBookPersonalizationService {
     Map<String, dynamic>? processingOptions,
   }) async {
     try {
-      debugPrint('📚 Starting complete book personalization...');
-      debugPrint('📖 Book: $bookTitle');
-      debugPrint('👶 Child: $childName');
-      debugPrint('📄 Total pages: ${bookPageUrls.length}');
       
       // Step 1: Download and convert all book pages
-      debugPrint('⬇️ Step 1: Downloading book pages...');
       final bookPages = <String>[];
       for (int i = 0; i < bookPageUrls.length; i++) {
-        debugPrint('📄 Downloading page ${i + 1}/${bookPageUrls.length}');
         final pageBytes = await _downloadImage(bookPageUrls[i]);
         final pageBase64 = base64Encode(pageBytes);
         bookPages.add(pageBase64);
       }
       
       // Step 2: Download child image
-      debugPrint('👶 Step 2: Downloading child image...');
       final childImageBytes = await _downloadImage(childImageUrl);
       final childImageBase64 = base64Encode(childImageBytes);
       
       // Step 3: Call the complete book processing API
-      debugPrint('🤖 Step 3: Processing complete book...');
       final response = await http.post(
         Uri.parse('$_baseUrl/process-complete-book'),
         headers: {'Content-Type': 'application/json'},
@@ -57,10 +49,6 @@ class CompleteBookPersonalizationService {
       
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        debugPrint('✅ Complete book personalization successful!');
-        debugPrint('📄 Total pages processed: ${result['totalPages']}');
-        debugPrint('⏱️ Processing time: ${result['processingTime']}ms');
-        debugPrint('👤 Character replacements: ${result['characterReplacements']}');
         
         return CompleteBookResult.fromJson(result);
       } else {
@@ -69,7 +57,6 @@ class CompleteBookPersonalizationService {
       }
       
     } catch (e) {
-      debugPrint('❌ Complete book personalization failed: $e');
       return CompleteBookResult(
         success: false,
         error: e.toString(),
@@ -86,12 +73,10 @@ class CompleteBookPersonalizationService {
     required List<String> bookPageUrls,
   }) async {
     try {
-      debugPrint('🔍 Starting book analysis...');
       
       // Download and convert all book pages
       final bookPages = <String>[];
       for (int i = 0; i < bookPageUrls.length; i++) {
-        debugPrint('📄 Downloading page ${i + 1}/${bookPageUrls.length} for analysis');
         final pageBytes = await _downloadImage(bookPageUrls[i]);
         final pageBase64 = base64Encode(pageBytes);
         bookPages.add(pageBase64);
@@ -108,7 +93,6 @@ class CompleteBookPersonalizationService {
       
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        debugPrint('✅ Book analysis completed successfully!');
         return BookAnalysisResult.fromJson(result);
       } else {
         final errorData = jsonDecode(response.body);
@@ -116,7 +100,6 @@ class CompleteBookPersonalizationService {
       }
       
     } catch (e) {
-      debugPrint('❌ Book analysis failed: $e');
       return BookAnalysisResult(
         success: false,
         error: e.toString(),

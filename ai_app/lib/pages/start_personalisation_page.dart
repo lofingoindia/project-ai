@@ -135,7 +135,6 @@ class _StartPersonalisationPageState extends State<StartPersonalisationPage> {
     
     if (userId == null) {
       // User not logged in - skip upload but keep local bytes for AI processing
-      debugPrint('User not authenticated - skipping upload to Supabase');
       if (mounted) setState(() { _uploading = false; });
       return;
     }
@@ -157,7 +156,6 @@ class _StartPersonalisationPageState extends State<StartPersonalisationPage> {
       setState(() { _uploadedImageUrl = url; });
     } catch (e) {
       // Surface error but keep local bytes for AI flow
-      debugPrint('Upload failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${'start_personalisation_upload_failed'.tr}$e')),
       );
@@ -238,9 +236,6 @@ class _StartPersonalisationPageState extends State<StartPersonalisationPage> {
     }
     setState(() { _processing = true; });
     try {
-      print('📚 Book: ${widget.book.name} (ID: ${widget.book.id})');
-      print('🎨 Generating custom cover with child image and story-specific prompt');
-
       // 3) Read child image bytes
       final Uint8List childBytes = await _selectedImage!.readAsBytes();
 
@@ -266,12 +261,9 @@ class _StartPersonalisationPageState extends State<StartPersonalisationPage> {
             'child_name': _childNameController.text.trim(),
             'child_age': int.tryParse(_childAgeController.text.trim()) ?? 0,
           });
-        } else {
-          debugPrint('User not authenticated - skipping database save for preview');
         }
       } catch (e) {
         // Non-blocking for preview flow
-        debugPrint('Failed to insert child_image record: $e');
       }
 
       // 4) Prepare image data for AI processing
@@ -283,13 +275,6 @@ class _StartPersonalisationPageState extends State<StartPersonalisationPage> {
         if (ext == 'webp') return 'image/webp';
         return 'image/jpeg';
       })();
-      
-      debugPrint('📤 Navigating to loading page with data:');
-      debugPrint('   - Child Name: ${_childNameController.text.trim()}');
-      debugPrint('   - Child Age: ${_childAgeController.text.trim()}');
-      debugPrint('   - Image URL: ${_uploadedImageUrl ?? "(none - using base64)"}');
-      debugPrint('   - Has Base64: ${imageBase64.isNotEmpty}');
-      debugPrint('   - Language: ${_selectedLanguage == 'Select Language' ? 'English' : _selectedLanguage}');
       
       // 5) Navigate directly to simple loading page
       if (!mounted) return;

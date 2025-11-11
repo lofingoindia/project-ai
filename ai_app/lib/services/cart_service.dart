@@ -71,7 +71,6 @@ class CartService {
       // Keep local cart as backup (don't clear it)
       // User might log out later and we want to preserve their cart
     } catch (e) {
-      print('Error migrating local cart: $e');
     }
   }
 
@@ -83,7 +82,6 @@ class CartService {
       // This should be called just before logout with user still authenticated
       // So we'll create a separate method for that
     } catch (e) {
-      print('Error copying server cart to local: $e');
     }
   }
 
@@ -115,7 +113,6 @@ class CartService {
 
       await _saveLocalCartItems(localItems);
     } catch (e) {
-      print('Error preparing for logout: $e');
     }
   }
 
@@ -240,7 +237,6 @@ class CartService {
 
             cartItems.add(CartItem.fromJson(cartItemJson));
           } catch (e) {
-            print('Error fetching book for cart item: $e');
             // Skip items with errors
             continue;
           }

@@ -25,7 +25,6 @@ class FavoriteService {
       await prefs.setStringList(_favoritesKey, favorites.toList());
       return true;
     } catch (e) {
-      print('Error adding favorite: $e');
       return false;
     }
   }
@@ -39,7 +38,6 @@ class FavoriteService {
       await prefs.setStringList(_favoritesKey, favorites.toList());
       return true;
     } catch (e) {
-      print('Error removing favorite: $e');
       return false;
     }
   }

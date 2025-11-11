@@ -69,7 +69,6 @@ class OrderService {
 
       return orderId;
     } catch (e) {
-      print('Error creating order: $e');
       rethrow;
     }
   }
@@ -93,7 +92,6 @@ class OrderService {
           .order('created_at', ascending: false);
 
       if (kDebugMode) {
-        print('🔍 Orders query response: ${response.length} orders');
       }
 
       if (response.isEmpty) {
@@ -112,7 +110,6 @@ class OrderService {
             .eq('order_id', orderId);
 
         if (kDebugMode) {
-          print('🔍 Order ${orderData['order_number']}: ${itemsResponse.length} items');
         }
 
         // Add items to order data
@@ -123,7 +120,6 @@ class OrderService {
 
       return orders;
     } catch (e) {
-      print('Error fetching orders: $e');
       rethrow;
     }
   }
@@ -154,7 +150,6 @@ class OrderService {
 
       return Order.fromJson(response);
     } catch (e) {
-      print('Error fetching order: $e');
       return null;
     }
   }
@@ -181,7 +176,6 @@ class OrderService {
           .eq('id', orderId)
           .eq('user_id', user.id);
     } catch (e) {
-      print('Error cancelling order: $e');
       rethrow;
     }
   }

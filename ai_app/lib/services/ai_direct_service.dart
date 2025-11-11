@@ -1,6 +1,4 @@
-import 'dart:typed_data';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 
@@ -23,13 +21,6 @@ class AiDirectService {
     String? childImageMime,
   }) async {
     try {
-      debugPrint('[AiDirectService] ========================================');
-      debugPrint('[AiDirectService] Calling BACKEND API directly');
-      debugPrint('[AiDirectService] Backend URL: $_backendUrl');
-      debugPrint('[AiDirectService] Book: $bookName (ID: $bookId)');
-      debugPrint('[AiDirectService] Child: $childName');
-      debugPrint('[AiDirectService] ========================================');
-
       // Validate we have child image data
       final hasBase64 = childImageBase64 != null && childImageBase64.isNotEmpty;
       if (!hasBase64) {
@@ -37,7 +28,6 @@ class AiDirectService {
       }
 
       // Step 1: Get book data from Supabase to get original cover
-      debugPrint('[AiDirectService] Step 1: Fetching book data from database...');
       final bookData = await _client
           .from('books')
           .select('id, title, cover_image_url, genre, age_range, description, characters, ideal_for')
@@ -48,12 +38,7 @@ class AiDirectService {
         throw Exception('Book not found with ID: $bookId');
       }
 
-      debugPrint('[AiDirectService] ✓ Book data fetched');
-      debugPrint('[AiDirectService]   Title: ${bookData['title']}');
-      debugPrint('[AiDirectService]   Cover URL: ${bookData['cover_image_url']}');
-
       // Step 2: Download original book cover
-      debugPrint('[AiDirectService] Step 2: Downloading original book cover...');
       final coverUrl = bookData['cover_image_url'] as String?;
       if (coverUrl == null || coverUrl.isEmpty) {
         throw Exception('Book cover URL not found');
@@ -65,10 +50,8 @@ class AiDirectService {
       }
 
       final originalCoverBase64 = base64Encode(coverResponse.bodyBytes);
-      debugPrint('[AiDirectService] ✓ Book cover downloaded (${coverResponse.bodyBytes.length} bytes)');
 
       // Step 3: Prepare request for backend API
-      debugPrint('[AiDirectService] Step 3: Preparing backend API request...');
       final requestBody = {
         'originalCoverImage': originalCoverBase64,
         'childImage': childImageBase64,
@@ -87,10 +70,7 @@ class AiDirectService {
         },
       };
 
-      
-
       // Step 4: Call backend API
-      debugPrint('[AiDirectService] Step 4: Calling backend API: $_backendUrl/generate-cover');
       final response = await http.post(
         Uri.parse('$_backendUrl/generate-cover'),
         headers: {
@@ -103,10 +83,6 @@ class AiDirectService {
           throw Exception('Backend API timeout (60 seconds). Please check if the backend is running.');
         },
       );
-
-      debugPrint('[AiDirectService] Response received:');
-      debugPrint('[AiDirectService]   Status: ${response.statusCode}');
-      debugPrint('[AiDirectService]   Body length: ${response.body.length} chars');
 
       if (response.statusCode != 200) {
         final errorMsg = response.body.isNotEmpty ? response.body : 'Unknown error';
@@ -126,17 +102,10 @@ class AiDirectService {
         throw Exception('Backend did not return cover image');
       }
 
-      debugPrint('[AiDirectService] ✓ Cover generated successfully!');
-      debugPrint('[AiDirectService]   Generated image: ${generatedImageBase64.length} chars');
-      debugPrint('[AiDirectService] ========================================');
-
       // Return as data URL for Flutter to display
       return 'data:image/jpeg;base64,$generatedImageBase64';
 
-    } catch (e, stackTrace) {
-      debugPrint('[AiDirectService] ❌ ERROR: $e');
-      debugPrint('[AiDirectService] Stack trace: $stackTrace');
-      
+    } catch (e) {
       // Provide helpful error messages
       if (e.toString().contains('SocketException') || e.toString().contains('Connection refused')) {
         throw Exception('Cannot connect to backend API at $_backendUrl. Is the backend running?');

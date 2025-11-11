@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/ai_direct_service.dart';
+import '../services/localization_service.dart';
 import '../models/book.dart';
 import 'preview_book_page.dart';
 
@@ -90,13 +91,13 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
   Future<void> _generateCover() async {
     try {
       setState(() {
-        _statusMessage = 'Downloading images...';
+        _statusMessage = 'loading_page_downloading_images'.tr;
       });
 
       await Future.delayed(const Duration(seconds: 1)); // Small delay for UX
 
       setState(() {
-        _statusMessage = 'AI is creating your personalized cover...';
+        _statusMessage = 'loading_page_ai_creating'.tr;
       });
 
       // Call the direct AI service
@@ -367,7 +368,7 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
                                   
                                   // Main message
                                   Text(
-                                    'Your book is just one moment away...',
+                                    'loading_page_book_moment_away'.tr,
                                     style: GoogleFonts.tajawal(
                                       fontSize: isWeb ? 24 : 20, // Larger text on web
                                       fontWeight: FontWeight.w600,
@@ -541,7 +542,7 @@ class _SimpleLoadingPageState extends State<SimpleLoadingPage>
                               SizedBox(width: isWeb ? 16 : 12), // More space on web
                               Expanded(
                                 child: Text(
-                                  'The full book will be generated completely after your purchase. Go ahead and unlock it.',
+                                  'loading_page_full_book_after_purchase'.tr,
                                   style: GoogleFonts.tajawal(
                                     fontSize: isWeb ? 16 : 14, // Larger text on web
                                     color: Colors.grey[700],

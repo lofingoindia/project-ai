@@ -22,7 +22,6 @@ class LocalizationService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_languageKey) ?? defaultLanguage;
     } catch (e) {
-      print('Error getting saved language: $e');
       return defaultLanguage;
     }
   }
@@ -33,7 +32,6 @@ class LocalizationService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_languageKey, languageCode);
     } catch (e) {
-      print('Error saving language: $e');
     }
   }
 
@@ -50,7 +48,6 @@ class LocalizationService {
       
       await saveLanguage(languageCode);
     } catch (e) {
-      print('Error loading translations for $languageCode: $e');
       // Fallback to English if loading fails
       if (languageCode != defaultLanguage) {
         await load(defaultLanguage);

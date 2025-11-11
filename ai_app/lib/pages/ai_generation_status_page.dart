@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/ai_queue_service.dart';
+import '../services/localization_service.dart';
 import '../models/book.dart';
 import 'preview_book_page.dart';
 
@@ -300,7 +301,7 @@ class _AiGenerationStatusPageState extends State<AiGenerationStatusPage>
                                 const SizedBox(height: 24),
                                 
                                 Text(
-                                  'Your book is just one moment away...',
+                                  'loading_page_book_moment_away'.tr,
                                   style: GoogleFonts.tajawal(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,

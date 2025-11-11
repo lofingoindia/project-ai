@@ -29,12 +29,9 @@ class NotificationService {
       );
 
       if (response.status == 200) {
-        debugPrint('Email notification sent successfully to $userEmail');
       } else {
-        debugPrint('Failed to send email notification: ${response.status}');
       }
     } catch (e) {
-      debugPrint('Error sending email notification: $e');
       // Don't throw error - notification failure shouldn't break the flow
     }
   }
@@ -62,12 +59,9 @@ class NotificationService {
       );
 
       if (response.status == 200) {
-        debugPrint('Push notification sent successfully to user $userId');
       } else {
-        debugPrint('Failed to send push notification: ${response.status}');
       }
     } catch (e) {
-      debugPrint('Error sending push notification: $e');
       // Don't throw error - notification failure shouldn't break the flow
     }
   }
@@ -91,9 +85,7 @@ class NotificationService {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      debugPrint('In-app notification created for user $userId');
     } catch (e) {
-      debugPrint('Error creating in-app notification: $e');
     }
   }
 
@@ -139,9 +131,7 @@ class NotificationService {
         },
       );
 
-      debugPrint('All notifications sent for book completion');
     } catch (e) {
-      debugPrint('Error in notifyBookCompletion: $e');
     }
   }
 
@@ -160,7 +150,6 @@ class NotificationService {
 
       return (response as List).map((e) => e as Map<String, dynamic>).toList();
     } catch (e) {
-      debugPrint('Error getting unread notifications: $e');
       return [];
     }
   }
@@ -173,7 +162,6 @@ class NotificationService {
           .update({'is_read': true, 'read_at': DateTime.now().toIso8601String()})
           .eq('id', notificationId);
     } catch (e) {
-      debugPrint('Error marking notification as read: $e');
     }
   }
 

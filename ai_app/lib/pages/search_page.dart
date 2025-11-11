@@ -72,7 +72,6 @@ class _SearchPageState extends State<SearchPage> {
         });
       }
     } catch (e) {
-      print('Error loading recent books: $e');
       if (mounted) {
         setState(() {
           _recentBooks = [];
@@ -104,19 +103,15 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
-      print('SearchPage: Starting search for "$query"');
       final results = await _bookService.searchBooks(query);
-      print('SearchPage: Got ${results.length} results');
       
       if (mounted) {
         setState(() {
           _searchResults = results;
           _isLoading = false;
         });
-        print('SearchPage: Updated UI with ${_searchResults.length} results');
       }
     } catch (e) {
-      print('SearchPage error: $e');
       if (mounted) {
         setState(() {
           _searchResults = [];

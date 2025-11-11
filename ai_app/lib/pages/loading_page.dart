@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
 import '../models/book.dart';
 import '../services/ai_service.dart';
+import '../services/localization_service.dart';
 import '../config/ai_keys.dart';
 import 'preview_book_page.dart';
 
@@ -97,8 +98,6 @@ class _LoadingPageState extends State<LoadingPage>
         throw Exception('No cover image available for this book');
       }
 
-      print('[LoadingPage] Cover URL: $coverUrl');
-      print('[LoadingPage] Child URL: ${widget.childImageUrl}');
 
       // Download cover image (book cover)
       final coverResp = await http.get(Uri.parse(coverUrl));
@@ -106,7 +105,6 @@ class _LoadingPageState extends State<LoadingPage>
         throw Exception('Failed to load book cover image (Status: ${coverResp.statusCode})');
       }
       final Uint8List coverBytes = coverResp.bodyBytes;
-      print('[LoadingPage] Cover image downloaded: ${coverBytes.length} bytes');
 
       if (!mounted) return;
       setState(() { _statusMessage = 'Fetching child image...'; });
@@ -117,14 +115,12 @@ class _LoadingPageState extends State<LoadingPage>
         throw Exception('Failed to load child image (Status: ${childResp.statusCode})');
       }
       final Uint8List childBytes = childResp.bodyBytes;
-      print('[LoadingPage] Child image downloaded: ${childBytes.length} bytes');
 
       if (!mounted) return;
       setState(() { _statusMessage = 'AI is working its magic...'; });
       
       // Call AI service with the exact prompt from your Python example
       final ai = AiService(apiKey: geminiApiKey);
-      print('[LoadingPage] Calling AI service...');
       
       final generated = await ai.generatePersonalizedCover(
         bookCoverBytes: coverBytes,
@@ -135,7 +131,6 @@ class _LoadingPageState extends State<LoadingPage>
         customPrompt: """Replace the kids face in the book cover with the attached reference image. Keep the face, hairstyle, features, and camera angle exactly the same as in the reference image without any changes. The background and context must remain unchanged, and the final image should look perfectly realistic and clearly identifiable as the same kid, and even there is a text change that text into ${widget.childName} into lofingo keep face 100% same.""",
       );
 
-      print('[LoadingPage] AI generation completed: ${generated.length} bytes');
 
       if (!mounted) return;
       _timer?.cancel();
@@ -150,8 +145,6 @@ class _LoadingPageState extends State<LoadingPage>
       if (!mounted) return;
       _timer?.cancel();
       
-      print('[LoadingPage] Error: $e');
-      print('[LoadingPage] Stack trace: $stackTrace');
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -327,7 +320,7 @@ class _LoadingPageState extends State<LoadingPage>
                                 
                                 // Title
                                 Text(
-                                  'Your book is just one moment away...',
+                                  'loading_page_book_moment_away'.tr,
                                   style: GoogleFonts.tajawal(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w600,
