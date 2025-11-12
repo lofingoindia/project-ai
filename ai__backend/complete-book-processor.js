@@ -92,6 +92,7 @@ class CompleteBookPersonalizationService {
   /**
    * Main entry point for complete book processing
    * Accepts either pdfUrl or bookPages (for backward compatibility)
+   * Now supports story timeline caching - if timeline exists in DB, skips analysis and just replaces images
    */
   async processCompleteBook({
     pdfUrl,
@@ -99,6 +100,8 @@ class CompleteBookPersonalizationService {
     childImage,
     childName,
     bookTitle,
+    bookId = null, // Book ID for storing/retrieving timeline
+    supabase = null, // Supabase client for DB operations
     options = {}
   }) {
     try {
@@ -131,15 +134,111 @@ class CompleteBookPersonalizationService {
       
       console.log(`📄 Total pages to process: ${pagesToProcess.length}`);
       
-      // Step 1: Analyze all pages
-      console.log('🔍 Step 1: Analyzing all book pages...');
-      const bookAnalysis = await this.analyzeCompleteBook(pagesToProcess);
-      console.log('✅ Book analysis complete');
+      // Step 0.5: Check if story timeline exists in DB
+      let bookAnalysis = null;
+      let characterMapping = null;
+      let timelineFromDB = null;
       
-      // Step 2: Map characters across pages
-      console.log('👤 Step 2: Mapping characters across pages...');
-      const characterMapping = await this.mapCharacterAcrossPages(pagesToProcess, bookAnalysis);
-      console.log(`✅ Character mapping complete: ${characterMapping.length} total pages mapped`);
+      if (bookId && supabase) {
+        console.log(`🔍 Checking for stored story timeline (book_id: ${bookId})...`);
+        const { data: bookData, error: dbError } = await supabase
+          .from('books')
+          .select('story_timeline')
+          .eq('id', bookId)
+          .single();
+        
+        if (!dbError && bookData && bookData.story_timeline) {
+          timelineFromDB = bookData.story_timeline;
+          console.log('✅ Found stored story timeline in database - skipping analysis!');
+          console.log(`   Timeline contains ${timelineFromDB.characterMapping?.length || 0} pages`);
+          
+          // Use stored timeline
+          bookAnalysis = timelineFromDB.bookAnalysis;
+          characterMapping = timelineFromDB.characterMapping || [];
+          
+          // Ensure character mapping has page images attached and all required fields
+          if (characterMapping && pagesToProcess) {
+            for (let i = 0; i < characterMapping.length && i < pagesToProcess.length; i++) {
+              characterMapping[i].pageImage = pagesToProcess[i];
+              characterMapping[i].replacementNeeded = true; // Always replace images when using stored timeline
+              
+              // Ensure replacementStrategy exists (restore if missing)
+              if (!characterMapping[i].replacementStrategy && characterMapping[i].character) {
+                characterMapping[i].replacementStrategy = this.determineReplacementStrategy(
+                  characterMapping[i].character,
+                  i
+                );
+              }
+            }
+            
+            // Validate page count matches
+            if (characterMapping.length !== pagesToProcess.length) {
+              console.warn(`⚠️  Timeline has ${characterMapping.length} pages but PDF has ${pagesToProcess.length} pages`);
+              console.warn(`   Will use timeline for available pages and process remaining pages normally`);
+            }
+          }
+        } else {
+          console.log('📝 No stored timeline found - will perform full analysis and store it');
+        }
+      }
+      
+      // Step 1: Analyze all pages (only if timeline not found)
+      if (!bookAnalysis) {
+        console.log('🔍 Step 1: Analyzing all book pages...');
+        bookAnalysis = await this.analyzeCompleteBook(pagesToProcess);
+        console.log('✅ Book analysis complete');
+        
+        // Step 2: Map characters across pages
+        console.log('👤 Step 2: Mapping characters across pages...');
+        characterMapping = await this.mapCharacterAcrossPages(pagesToProcess, bookAnalysis);
+        console.log(`✅ Character mapping complete: ${characterMapping.length} total pages mapped`);
+        
+        // Store timeline in DB if bookId and supabase are provided
+        if (bookId && supabase) {
+          console.log(`💾 Storing story timeline in database (book_id: ${bookId})...`);
+          const timelineData = {
+            bookAnalysis: {
+              totalPages: bookAnalysis.totalPages,
+              pages: bookAnalysis.pages.map(page => ({
+                pageNumber: page.pageNumber,
+                characters: page.characters,
+                scene: page.scene,
+                text: page.text,
+                layout: page.layout,
+                replacementGuidance: page.replacementGuidance
+              })),
+              mainCharacter: bookAnalysis.mainCharacter,
+              bookStyle: bookAnalysis.bookStyle,
+              characterConsistency: bookAnalysis.characterConsistency
+            },
+            characterMapping: characterMapping.map(m => ({
+              pageNumber: m.pageNumber,
+              character: m.character,
+              replacementNeeded: m.replacementNeeded,
+              replacementStrategy: m.replacementStrategy,
+              // Don't store pageImage (base64 is too large, will be re-extracted from PDF)
+            })),
+            storedAt: new Date().toISOString(),
+            totalPages: pagesToProcess.length,
+            version: '1.0' // Version for future compatibility
+          };
+          
+          const { error: updateError } = await supabase
+            .from('books')
+            .update({ story_timeline: timelineData })
+            .eq('id', bookId);
+          
+          if (updateError) {
+            console.warn('⚠️  Failed to store timeline in DB:', updateError.message);
+          } else {
+            console.log('✅ Story timeline stored in database');
+            console.log(`   Stored ${timelineData.characterMapping.length} page mappings`);
+          }
+        }
+      } else {
+        console.log('✅ Using stored story timeline - skipping analysis');
+      }
+      
       console.log(`   Pages with replacement: ${characterMapping.filter(m => m.replacementNeeded).length}`);
       console.log(`   Pages to preserve (original): ${characterMapping.filter(m => !m.replacementNeeded).length}`);
       
@@ -149,6 +248,15 @@ class CompleteBookPersonalizationService {
       console.log(`   📝 Pages to replace: [${pagesToReplace.join(', ')}]`);
       if (pagesToPreserve.length > 0) {
         console.log(`   📝 Pages to preserve: [${pagesToPreserve.join(', ')}]`);
+      }
+      
+      // CRITICAL: Ensure ALL pages are marked for replacement when using stored timeline
+      if (timelineFromDB) {
+        console.log('🔄 Using stored timeline - ensuring ALL pages are replaced...');
+        characterMapping.forEach(m => {
+          m.replacementNeeded = true; // Force replacement for all pages
+        });
+        console.log(`✅ All ${characterMapping.length} pages will be replaced`);
       }
       
       // Step 2.5: Analyze child image ONCE (same as cover generation) - reuse throughout PDF

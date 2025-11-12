@@ -260,6 +260,7 @@ class OrderMonitor {
         .eq("id", orderItemId);
 
       // Step 2: Process complete book using PDF URL
+      // Pass bookId and supabase to enable story timeline caching
       console.log("📚 Processing complete book from PDF...");
       const bookResult = await this.bookProcessor.processCompleteBook({
         pdfUrl: bookData.pdf_url,
@@ -267,6 +268,8 @@ class OrderMonitor {
         childName:
           personalizationData.childName || personalizationData.child_name,
         bookTitle: bookData.title,
+        bookId: orderItem.book_id, // Pass book ID for timeline storage/retrieval
+        supabase: this.supabase, // Pass supabase client for DB operations
         options: {
           batchSize: 3,
           quality: "high",
