@@ -1898,7 +1898,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),

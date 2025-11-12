@@ -663,9 +663,9 @@ class _BooksPageState extends State<BooksPage> {
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: gridColumns,
-                              childAspectRatio: _isMobile(context) ? 0.6 : (_isTablet(context) ? 0.65 : 0.55), // Better ratio for tablets
-                              crossAxisSpacing: _isMobile(context) ? 16 : 20,
-                              mainAxisSpacing: _isMobile(context) ? 20 : 24,
+                              childAspectRatio: _isMobile(context) ? 0.6 : (_isTablet(context) ? 0.75 : 0.65), // Reduced tablet ratio to reduce gaps
+                              crossAxisSpacing: _isMobile(context) ? 16 : 16,
+                              mainAxisSpacing: _isMobile(context) ? 20 : 16,
                             ),
                             itemCount: _filteredBooks.length,
                             itemBuilder: (context, index) {
@@ -914,34 +914,39 @@ class _BooksPageState extends State<BooksPage> {
             flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Title
-                Text(
-                  book.title,
-                  style: GoogleFonts.tajawal(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      book.title,
+                      style: GoogleFonts.tajawal(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    // Subtitle/Description
+                    Text(
+                      book.description.isNotEmpty ? book.description : 'تجربة ممتعة ومشوقة',
+                      style: GoogleFonts.tajawal(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.grey[600],
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                // Subtitle/Description
-                Text(
-                  book.description.isNotEmpty ? book.description : 'تجربة ممتعة ومشوقة',
-                  style: GoogleFonts.tajawal(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.grey[600],
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
                 // Personalize button
-                Container(
+                SizedBox(
                   width: double.infinity,
                   height: 32,
                   child: ElevatedButton(
