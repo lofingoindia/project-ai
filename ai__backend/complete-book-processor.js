@@ -933,7 +933,14 @@ class CompleteBookPersonalizationService {
         });
         
         processedPages.push(...batchResults);
+        
+        // Count successful vs failed pages in this batch
+        const batchSuccessful = batchResults.filter(r => r.success && !r.usedOriginal).length;
+        const batchFailed = batchResults.filter(r => !r.success || r.usedOriginal).length;
+        
         console.log(`✅ Batch ${batchNumber} completed: ${batchResults.length} pages → ${batchResults.length} images`);
+        console.log(`   ✅ Successfully processed: ${batchSuccessful} pages`);
+        console.log(`   ❌ Failed (using originals): ${batchFailed} pages`);
         console.log(`📊 Total pages processed so far: ${processedPages.length}/${characterMapping.length}`);
         console.log(`🔄 ========== BATCH ${batchNumber}/${totalBatches} END ==========\n`);
         
@@ -966,15 +973,39 @@ class CompleteBookPersonalizationService {
     }
     
     // Final validation: Ensure we have one image per page
-    const pagesWithReplacement = processedPages.filter(p => p.success && p.character && !p.note).length;
+    const pagesWithReplacement = processedPages.filter(p => p.success && p.character && !p.note && !p.usedOriginal).length;
     const pagesPreserved = processedPages.filter(p => p.note || (!p.character && p.success)).length;
-    const pagesFailed = processedPages.filter(p => !p.success && !p.note).length;
+    const pagesFailed = processedPages.filter(p => !p.success || p.usedOriginal).length;
     
-    console.log(`📊 Final validation: ${processedPages.length} pages processed → ${processedPages.length} images`);
-    console.log(`📊 Summary: ${pagesWithReplacement} pages with face replacement, ${pagesPreserved} pages preserved (original), ${pagesFailed} pages failed`);
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`📊 FINAL PROCESSING SUMMARY`);
+    console.log(`${"=".repeat(80)}`);
+    console.log(`📊 Total pages: ${processedPages.length}`);
+    console.log(`✅ Successfully replaced: ${pagesWithReplacement} pages`);
+    console.log(`❌ Failed (using originals): ${pagesFailed} pages`);
+    console.log(`📝 Preserved: ${pagesPreserved} pages`);
+    
+    // Log failed pages details
+    if (pagesFailed > 0) {
+      console.log(`\n⚠️  FAILED PAGES DETAILS:`);
+      processedPages.filter(p => !p.success || p.usedOriginal).forEach(p => {
+        console.log(`   ❌ Page ${p.pageNumber}: ${p.error || 'Used original image'}`);
+      });
+    }
+    
+    console.log(`${"=".repeat(80)}\n`);
     
     if (processedPages.length !== characterMapping.length) {
       console.warn(`⚠️  Warning: Expected ${characterMapping.length} images but got ${processedPages.length}`);
+    }
+    
+    if (pagesWithReplacement === 0) {
+      console.error(`\n❌❌❌ CRITICAL ERROR: NO PAGES WERE SUCCESSFULLY REPLACED! ❌❌❌`);
+      console.error(`   All pages are showing original images.`);
+      console.error(`   This indicates a systemic issue with the AI generation process.`);
+    } else if (pagesWithReplacement < characterMapping.length * 0.5) {
+      console.warn(`\n⚠️⚠️⚠️  WARNING: Less than 50% of pages were successfully replaced!`);
+      console.warn(`   Only ${pagesWithReplacement} out of ${characterMapping.length} pages were processed.`);
     }
     
     return processedPages;
@@ -1097,6 +1128,11 @@ Provide detailed but natural descriptions suitable for creating an illustrated c
    * This makes the prompt truly adaptive and intelligent
    */
   async _generateDynamicPagePrompt(pageAnalysis, childFeatures, characterMapping, childName, previousPageReference = null) {
+    // SIMPLIFIED: Use static prompt instead of complex AI-generated one
+    // This is more reliable and faster
+    return this.generatePagePrompt(characterMapping, childName, previousPageReference);
+    
+    /* DISABLED: Complex dynamic prompt generation - using simple static prompt instead
     // Retry logic for API calls
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
@@ -1108,70 +1144,30 @@ Provide detailed but natural descriptions suitable for creating an illustrated c
         });
 
         const { character, pageNumber } = characterMapping;
-        const consistencyNote = previousPageReference 
-          ? `CRITICAL CONSISTENCY: ${childName} must look EXACTLY the same as in previous pages - SAME EXACT SKIN TONE (do not change color), same face, same hair color, same eye color, same distinctive facial features.`
-          : `CRITICAL CONSISTENCY: This is part of a complete book. ${childName} must have IDENTICAL appearance across ALL pages - SAME EXACT SKIN TONE on every page (copy from reference photo), same face, same hair, same distinctive features.`;
 
-        // Use AI to create the perfect prompt based on analysis
-        const metaPrompt = `You are an expert AI prompt engineer specializing in children's book page personalization with face replacement.
+        // SIMPLIFIED meta-prompt
+        const metaPrompt = `Create a simple, clear prompt for replacing the main human character in a children's book page with ${childName}.
 
-Based on the following analysis data, create a precise and detailed prompt for an AI image generator to replace the main character's face on a book page.
+The task is:
+1. Find the main human character in the book page
+2. Replace them with a cartoonized version of ${childName}
+3. Keep everything else the same (background, text, other characters)
+4. Match the book's illustration style
+5. Remove any scanning watermarks like "Digitized by Google"
 
-PAGE ANALYSIS (Page ${pageNumber}):
-${JSON.stringify(pageAnalysis, null, 2)}
+Child's features: ${childFeatures.appearance}
 
-Key character details:
-- Description: ${character.description}
-- Position: ${character.position}
-- Size: ${character.size}
-- Emotion: ${character.emotion}
-- Pose: ${character.pose}
-- Replacement difficulty: ${character.replacementDifficulty || 'medium'}
+Character to replace: ${character.description} at position ${character.position}
 
-CHILD'S APPEARANCE:
-${childFeatures.appearance}
-- Name: ${childName}
-- Key Features: ${childFeatures.features}
+Create a clear, concise prompt that tells the AI exactly what to do. Keep it simple and direct.`;
 
-CONSISTENCY REQUIREMENTS:
-${consistencyNote}
-
-TASK:
-Generate a detailed prompt for replacing ONLY the main human character's FACE on this book page. The prompt should:
-
-1. Specify EXACTLY how to preserve the original page 100% (text, background, other characters, layout)
-2. Describe precisely how to replace ONLY the face with ${childName}'s face from the reference photo
-3. Detail which elements to keep identical (everything except the face)
-4. Explain how to maintain the EXACT same skin tone from the reference photo
-5. Ensure the face replacement is seamless and undetectable
-6. Maintain character consistency across all pages
-7. Preserve all headwear, accessories, and clothing exactly as they are
-8. CRITICAL: Remove ALL OCR artifacts, watermarks, "Digitized by Google" text, scanning marks, and digitization metadata
-9. Clean up any garbled or corrupted text from OCR errors
-10. Output should be a clean, professional book page without scanning artifacts
-
-CRITICAL REQUIREMENTS:
-- This is a FACE REPLACEMENT task, NOT a page regeneration task
-- ONLY replace the main human character's FACE (nothing else)
-- Use the EXACT skin tone from the child reference photo
-- Preserve ALL ORIGINAL BOOK TEXT, background, other characters, and layout exactly
-- Keep headwear, hats, crowns, helmets exactly as they appear
-- The output must look like the original page with ONLY the face replaced
-- REMOVE ALL OCR artifacts, watermarks, and scanning metadata (but keep original book content)
-
-Generate a comprehensive, technical prompt that an AI image generator can use to create a seamless face replacement. Be specific about what to preserve and what to replace.
-
-Respond ONLY with the prompt itself - no explanations or meta-text.`;
-
-        console.log(`🤖 Generating AI prompt for page ${pageNumber} (attempt ${attempt}/${this.maxRetries})...`);
+        console.log(`🤖 Generating simplified AI prompt for page ${pageNumber} (attempt ${attempt}/${this.maxRetries})...`);
 
         const result = await model.generateContent(metaPrompt);
         const response = await result.response;
         const generatedPrompt = response.text().trim();
 
-        console.log(`✅ AI prompt generated successfully for page ${pageNumber}${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
-        console.log("📝 Prompt preview:");
-        console.log(generatedPrompt.substring(0, 200) + "...");
+        console.log(`✅ Simplified prompt generated for page ${pageNumber}${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
         this.rateLimiter.handleSuccess(); // Track successful request
 
         return generatedPrompt;
@@ -1211,11 +1207,13 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
         await this.sleep(totalDelay);
       }
     }
+    */ // End of disabled complex prompt generation
   }
 
   /**
    * Process a single page with character replacement (with retry logic)
-   * Uses the same approach as cover generation: use pre-analyzed child features → generate prompt → generate image
+   * SIMPLIFIED APPROACH: Just replace human character with cartoonized child
+   * Uses straightforward prompt - no complex analysis
    * IMPORTANT: This function processes ONE page and returns ONE image
    * Ensures 1:1 mapping (one page = one processed image)
    * Maintains consistent character appearance across all pages using pre-analyzed child features
@@ -1223,8 +1221,15 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
   async processPage(characterMapping, childImage, childName, childFeatures, previousPage = null) {
     const { character, pageImage, pageNumber, replacementNeeded } = characterMapping;
     
+    console.log(`\n🔍 DEBUG - Processing Page ${pageNumber}:`);
+    console.log(`   - Has pageImage: ${!!pageImage}`);
+    console.log(`   - Has character: ${!!character}`);
+    console.log(`   - replacementNeeded: ${replacementNeeded}`);
+    console.log(`   - Character description: ${character?.description?.substring(0, 50)}...`);
+    
     // Validate: Ensure we have valid page image
     if (!pageImage) {
+      console.error(`❌ Page ${pageNumber}: No page image provided!`);
       throw new Error(`No page image provided for page ${pageNumber}`);
     }
     
@@ -1245,6 +1250,10 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
       console.warn(`⚠️  Page ${pageNumber}: Character marked as animal, but will still process`);
       console.warn(`   This may not produce good results, but processing all pages as requested`);
     }
+    
+    // FORCE PROCESSING - Always attempt to process this page
+    console.log(`✅ Page ${pageNumber}: Proceeding with AI image generation...`);
+
 
     // Step 4: Generate the image (same as cover generator)
     // Retry logic for failed image generation
@@ -1407,6 +1416,8 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
           } else {
             console.warn(`⚠️  Using original page ${pageNumber} after ${this.maxRetries} failed attempts`);
           }
+          console.error(`❌ FINAL ERROR for page ${pageNumber}:`, error.message);
+          console.error(`❌ This page will show the ORIGINAL image (not personalized)`);
           return {
             pageNumber: characterMapping.pageNumber,
             processedImage: characterMapping.pageImage, // Use original as fallback
@@ -1414,7 +1425,8 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
             success: false,
             error: error.message,
             character: characterMapping.character ? characterMapping.character.description : null,
-            attempts: attempt
+            attempts: attempt,
+            usedOriginal: true // Flag to indicate original was used
           };
         }
         
@@ -1436,141 +1448,41 @@ Respond ONLY with the prompt itself - no explanations or meta-text.`;
   }
 
   /**
-   * Generate improved prompt for page processing
-   * Emphasizes consistent character appearance and only replacing main human character
-   * CRITICAL: This is a FACE REPLACEMENT task, NOT a page regeneration task
+   * SIMPLIFIED prompt for page processing - just replace human character with cartoonized child
+   * Direct and straightforward approach
    */
   generatePagePrompt(characterMapping, childName, previousPageReference = null) {
-    const { character, replacementStrategy, replacementGuidance } = characterMapping;
-    
-    const consistencyNote = previousPageReference 
-      ? `CRITICAL CONSISTENCY: ${childName} must look EXACTLY the same as in previous pages - SAME EXACT SKIN TONE (do not change color), same face, same hair color, same eye color, same distinctive facial features. Use the SAME child reference photo (FIRST IMAGE) consistently. The child must be INSTANTLY recognizable as the same person.`
-      : `CRITICAL CONSISTENCY: This is part of a complete book. ${childName} must have IDENTICAL appearance across ALL pages - SAME EXACT SKIN TONE on every page (copy from reference photo), same face, same hair, same distinctive features. Use the FIRST IMAGE (child reference) for consistent skin tone. The child must look like the SAME person throughout the entire book.`;
-    
-    return `
-    ⚠️ CRITICAL: This is a FACE REPLACEMENT task on an existing PDF page. You MUST preserve the original page 100% - only replace the character's face.
-    
-    IMAGE REFERENCE GUIDE:
-    - FIRST IMAGE: Reference photo of ${childName} (use this child's EXACT face, skin tone, and features for replacement)
-    - SECOND IMAGE: The PDF page to edit (this is the existing page - preserve it 100% except for face replacement)
-    
-    TASK: Replace ONLY the MAIN HUMAN CHARACTER's FACE in the SECOND IMAGE (the PDF page) with ${childName}'s face from the FIRST IMAGE (reference photo). This is NOT a generation task - you are EDITING an existing page.
-    
-    ⚠️ CRITICAL: REMOVE ALL OCR ARTIFACTS AND WATERMARKS:
-    - Remove any "Digitized by Google" or similar OCR watermarks
-    - Remove any scanning artifacts, page numbers from scanning, or metadata text
-    - Remove any library stamps, copyright notices, or digitization marks
-    - Clean up any garbled or corrupted text from OCR errors
-    - The output should be a clean, professional book page without any scanning artifacts
-    
-    ${consistencyNote}
-    
-    ⚠️ ABSOLUTE CONSISTENCY REQUIREMENTS (MOST CRITICAL):
-    - Use the EXACT same skin tone as in the FIRST IMAGE (child reference photo) - DO NOT change skin color
-    - Use the EXACT same facial features throughout ALL pages
-    - Keep ${childName}'s skin tone, hair color, eye color IDENTICAL across all pages
-    - The child must be INSTANTLY recognizable as the same person on every page
-    - DO NOT lighten, darken, or alter the skin tone in any way
-    - DO NOT change hair style, hair color, or any distinctive features
-    - The face must look like it was photographed from the same child every time
-    
-    ⚠️ PDF PRESERVATION REQUIREMENTS (MOST CRITICAL):
-    - This is an EXISTING PDF page - you MUST preserve it exactly as-is
-    - Keep ALL ORIGINAL BOOK TEXT EXACTLY as it appears (word-for-word, same font, same size, same position)
-    - Keep ALL background elements 100% identical (colors, patterns, objects, layout)
-    - Keep ALL other characters UNCHANGED (animals, pets, side characters, all non-human elements)
-    - Keep ALL props, objects, and scene elements in their EXACT original positions
-    - Keep the EXACT same page layout, composition, and visual structure
-    - DO NOT regenerate, recreate, or modify anything except the main human character's face
-    - The output must look like the original page with ONLY the face replaced
-    - ⚠️ EXCEPTION: Remove ALL OCR artifacts, watermarks, "Digitized by Google" text, scanning marks, and digitization metadata
-    
-    TARGET CHARACTER TO REPLACE (MAIN HUMAN CHARACTER ONLY):
-    - Description: ${character.description}
-    - Position: ${character.position}
-    - Size: ${character.size}
-    - Current emotion: ${character.emotion}
-    - Current pose: ${character.pose}
-    - Replacement difficulty: ${character.replacementDifficulty || 'medium'}
-    - CRITICAL: This must be the MAIN HUMAN PROTAGONIST, NOT an animal or other character
-    
-    CHILD'S APPEARANCE (from reference photo - USE CONSISTENTLY):
-    - CRITICAL: Use the EXACT same skin tone from the reference photo - DO NOT alter skin color in any way
-    - Use the EXACT same child's facial features, hair color, hair style, eye color as in all other pages
-    - Maintain the child's distinctive characteristics consistently
-    - The child's face must look IDENTICAL across all pages of the book (same person, same skin tone, same features)
-    - Make ${childName} look natural in this illustration style
-    - Use the SAME child image reference to ensure consistency
-    - NEVER change, lighten, darken, or modify the skin tone - keep it exactly as in the reference photo
-    - The child should be instantly recognizable as the same person across all pages
-    
-    REPLACEMENT REQUIREMENTS:
-    1. FACE REPLACEMENT ONLY (MAIN HUMAN CHARACTER):
-       - Replace ONLY the main human character's FACE with ${childName}'s face from the FIRST IMAGE
-       - CRITICAL: Use the EXACT skin tone from the child reference photo (FIRST IMAGE) - DO NOT change it
-       - DO NOT replace the body, clothing, or pose (keep them exactly as in original)
-       - DO NOT replace headwear, hats, crowns, helmets, or any accessories on the head (preserve them exactly)
-       - DO NOT replace animals, pets, or any non-human characters
-       - DO NOT replace background elements, objects, or other items
-       - Match facial proportions to the illustration style but KEEP THE EXACT SKIN TONE
-       - Keep the same expression and emotion as the original
-       - Ensure the face looks natural in the art style while maintaining skin tone consistency
-       - The face must match ${childName}'s appearance (especially skin tone) from previous pages
-       - If the character is wearing something on their head (hat, crown, helmet, etc.), keep it EXACTLY as it is - only replace the face underneath
-       - ABSOLUTELY NO changes to skin color, tone, or complexion - copy exactly from reference photo
-    
-    2. BODY & POSE (KEEP UNCHANGED):
-       - Keep the EXACT same body pose as the original character
-       - Keep the EXACT same clothing (same colors, same style, same design)
-       - Preserve ALL body language and gestures exactly as they are
-       - Same size and position on the page (pixel-perfect)
-       - CRITICAL: Preserve ALL headwear, accessories, hats, crowns, helmets, or anything on the head - keep them EXACTLY as they appear in the original
-    
-    3. ARTISTIC CONSISTENCY:
-       - Match the EXACT artistic style of the original (watercolor/digital/cartoon/etc.)
-       - Use the EXACT same color palette and lighting
-       - Maintain the EXACT same level of detail
-       - Keep the EXACT same line work and shading style
-    
-    4. SCENE PRESERVATION (CRITICAL - DO NOT CHANGE):
-       - Keep ALL background elements EXACTLY the same (pixel-perfect preservation)
-       - Preserve ALL text EXACTLY as it appears (same words, same font, same position, same size)
-       - Maintain ALL other characters UNCHANGED (including animals, pets, side characters)
-       - Keep ALL props and objects in their EXACT original positions
-       - DO NOT modify or replace anything except the main human character's face
-       - The page layout must remain 100% identical to the original
-    
-    5. CHARACTER CONSISTENCY (CRITICAL - SKIN TONE):
-       - ${childName} must look EXACTLY the same as in all other pages
-       - CRITICAL: EXACT same skin tone on every page - copy directly from reference photo
-       - Same face, same hair, SAME SKIN COLOR, same distinctive features
-       - The child's appearance must be IDENTICAL throughout the entire book
-       - Use the reference child image (FIRST IMAGE) to maintain exact skin tone consistency
-       - The child should be the SAME person with the SAME skin tone on every single page
-       - DO NOT adapt or modify skin tone to match the illustration - keep it from the reference photo
-    
-    6. NATURAL INTEGRATION:
-       - The face replacement should be seamless and undetectable
-       - ${childName}'s face should look like it was always part of this illustration
-       - No obvious editing artifacts or inconsistencies
-       - Professional quality result
-    
-    ⚠️ CRITICAL RULES (MUST FOLLOW):
-    - This is a FACE REPLACEMENT task, NOT a page generation task
-    - ONLY replace the MAIN HUMAN CHARACTER's FACE (nothing else)
-    - CRITICAL: Use the EXACT skin tone from the child reference photo (FIRST IMAGE) on ALL pages
-    - DO NOT replace headwear, hats, crowns, helmets, or any accessories - preserve them exactly
-    - DO NOT replace animals, pets, or any non-human characters
-    - DO NOT replace background elements, objects, or other items
-    - DO NOT regenerate or recreate the page - preserve the original PDF content
-    - ${childName} must look IDENTICAL across all pages (SAME face, SAME skin tone, SAME appearance)
-    - Keep EVERYTHING else exactly as it appears in the original PDF page (including all accessories and headwear)
-    - The output must be the original page with ONLY the face replaced (accessories and headwear must remain unchanged)
-    - SKIN TONE MUST BE IDENTICAL on every page - copy from the reference photo, not from the illustration
-    
-    Return the original PDF page with ONLY the main human character's face replaced with ${childName}'s face (using EXACT skin tone from reference photo). Everything else must remain 100% identical to the original.
-    `;
+    return "🎯 SIMPLE TASK: Replace the human character in the book page with a cartoonized version of " + childName + ".\n\n" +
+      "📸 IMAGES PROVIDED:\n" +
+      "1. FIRST IMAGE: Photo of " + childName + " (the child to insert into the story)\n" +
+      "2. SECOND IMAGE: Book page from PDF (the page to modify)\n\n" +
+      "✅ WHAT TO DO:\n" +
+      "1. Find the MAIN HUMAN CHARACTER in the SECOND IMAGE (the book page)\n" +
+      "2. Replace that character with a CARTOONIZED/ILLUSTRATED version of " + childName + " from the FIRST IMAGE\n" +
+      "3. Make " + childName + " look like they belong in this book illustration style\n" +
+      "4. Keep " + childName + " key features: skin tone, hair color, facial features\n" +
+      "5. Match the artistic style of the book (cartoon/watercolor/digital art)\n" +
+      "6. Keep the SAME pose, clothing, and position as the original character\n" +
+      "7. Remove any 'Digitized by Google' watermarks or scanning artifacts\n\n" +
+      "❌ WHAT NOT TO DO:\n" +
+      "- Don't change the background\n" +
+      "- Don't change other characters (animals, people, etc.)\n" +
+      "- Don't change the text\n" +
+      "- Don't change the scene/setting\n" +
+      "- Don't regenerate the whole page - just replace the one character\n\n" +
+      "🎨 STYLE MATCHING:\n" +
+      "- Make " + childName + " look like they were drawn in the book art style\n" +
+      "- Keep their distinctive features recognizable\n" +
+      "- Match the colors, shading, and artistic technique of the book\n" +
+      "- Make it look natural and seamless\n\n" +
+      "🔄 CONSISTENCY:\n" +
+      "- Use the SAME skin tone, hair color, and facial features for " + childName + " on every page\n" +
+      "- They should be instantly recognizable as the same child throughout the book\n" +
+      "- Copy their appearance from the reference photo (FIRST IMAGE)\n\n" +
+      "📝 OUTPUT:\n" +
+      "Return the book page with " + childName + " as the main character, looking like they were always part of the story.";
   }
+
 
   /**
    * Assemble the final personalized book
